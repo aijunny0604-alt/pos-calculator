@@ -2812,51 +2812,89 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
             </h3>
             
             <div className="bg-slate-900/50 rounded-xl overflow-hidden border border-slate-700/50">
-              <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-slate-700/50 text-slate-300 text-sm font-medium">
+              {/* PC 헤더 */}
+              <div className="hidden sm:grid grid-cols-12 gap-3 px-4 py-3 bg-slate-700/50 text-slate-300 text-sm font-medium">
                 <div className="col-span-5">상품명</div>
                 <div className="col-span-2 text-right">단가</div>
                 <div className="col-span-3 text-center">수량</div>
                 <div className="col-span-2 text-right">금액</div>
               </div>
               
-              <div className="divide-y divide-slate-700/50 max-h-64 overflow-y-auto order-scroll">
+              <div className="divide-y divide-slate-700/50 max-h-64 overflow-y-auto order-scroll mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {cart.map((item) => {
                   const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
                   return (
-                    <div key={item.id} className="grid grid-cols-12 gap-3 px-4 py-3 hover:bg-slate-700/30 items-center">
-                      <div className="col-span-5 text-white text-sm truncate pr-2">{item.name}</div>
-                      <div className="col-span-2 text-right text-slate-300 text-sm">{formatPrice(price)}</div>
-                      <div className="col-span-3 flex items-center justify-center gap-1">
-                        <button 
-                          onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                          className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
-                            if (val >= 0) onUpdateQuantity(item.id, val);
-                          }}
-                          onFocus={(e) => e.target.select()}
-                          className="w-12 h-7 text-center text-white font-medium bg-slate-800 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <button 
-                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                          className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                        <button 
-                          onClick={() => onRemoveItem(item.id)}
-                          className="w-7 h-7 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors ml-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    <div key={item.id} className="px-3 sm:px-4 py-3 hover:bg-slate-700/30">
+                      {/* 모바일 레이아웃 */}
+                      <div className="sm:hidden space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-white text-sm font-medium flex-1">{item.name}</p>
+                          <button 
+                            onClick={() => onRemoveItem(item.id)}
+                            className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-slate-400 text-xs">{formatPrice(price)} × {item.quantity}</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
+                              <button 
+                                onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                                className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-8 text-center text-white text-sm font-medium">{item.quantity}</span>
+                              <button 
+                                onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                                className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <p className="text-blue-400 font-bold text-sm min-w-[80px] text-right">{formatPrice(price * item.quantity)}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="col-span-2 text-right text-blue-400 font-semibold">{formatPrice(price * item.quantity)}</div>
+                      
+                      {/* PC 레이아웃 */}
+                      <div className="hidden sm:grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-5 text-white text-sm truncate pr-2">{item.name}</div>
+                        <div className="col-span-2 text-right text-slate-300 text-sm">{formatPrice(price)}</div>
+                        <div className="col-span-3 flex items-center justify-center gap-1">
+                          <button 
+                            onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                            className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              if (val >= 0) onUpdateQuantity(item.id, val);
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            className="w-12 h-7 text-center text-white font-medium bg-slate-800 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button 
+                            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                            className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => onRemoveItem(item.id)}
+                            className="w-7 h-7 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors ml-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="col-span-2 text-right text-blue-400 font-semibold">{formatPrice(price * item.quantity)}</div>
+                      </div>
                     </div>
                   );
                 })}
@@ -5191,7 +5229,7 @@ export default function PriceCalculator() {
                         >
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-white text-xs font-medium truncate flex-1 pr-1">{product.name}</p>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
                               isOutOfStock ? 'bg-red-600/30 text-red-400' :
                               isLowStock ? 'bg-yellow-600/30 text-yellow-400' :
                               'bg-emerald-600/30 text-emerald-400'
@@ -5199,40 +5237,37 @@ export default function PriceCalculator() {
                               {isOutOfStock ? '품절' : `${availableStock}개`}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className={`text-sm font-bold ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                          
+                          {cartItem ? (
+                            /* 장바구니에 담긴 상태 - 컴팩트 레이아웃 */
+                            <div className="flex items-center justify-between gap-1">
+                              <p className={`text-sm font-bold whitespace-nowrap ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
                                 {formatPrice(displayPrice)}
                               </p>
-                              <p className="text-[10px] text-slate-500">
-                                (VAT제외 {formatPrice(exVatPrice)})
-                              </p>
-                            </div>
-                            
-                            {cartItem ? (
-                              <div className="flex items-center gap-0.5 bg-slate-800 rounded">
-                                <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity - 1); }} className="p-1 hover:bg-slate-600 rounded-l">
+                              <div className="flex items-center gap-0.5 bg-slate-800 rounded flex-shrink-0">
+                                <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity - 1); }} className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded-l">
                                   <Minus className="w-3 h-3 text-white" />
                                 </button>
-                                <input
-                                  type="number"
-                                  value={cartItem.quantity}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 0;
-                                    if (val >= 0) updateQuantity(product.id, val);
-                                  }}
-                                  onFocus={(e) => e.target.select()}
-                                  className="w-8 h-5 text-center text-white text-xs font-bold bg-transparent border-none focus:outline-none focus:bg-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity + 1); }} className="p-1 hover:bg-slate-600 rounded-r">
+                                <span className="w-6 text-center text-white text-xs font-bold">{cartItem.quantity}</span>
+                                <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity + 1); }} className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded-r">
                                   <Plus className="w-3 h-3 text-white" />
                                 </button>
                               </div>
-                            ) : (
-                              <Plus className="w-4 h-4 text-slate-500" />
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            /* 일반 상태 */
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0">
+                                <p className={`text-sm font-bold whitespace-nowrap ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                                  {formatPrice(displayPrice)}
+                                </p>
+                                <p className="text-[10px] text-slate-500 whitespace-nowrap">
+                                  (VAT제외 {formatPrice(exVatPrice)})
+                                </p>
+                              </div>
+                              <Plus className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
