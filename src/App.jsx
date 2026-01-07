@@ -236,6 +236,21 @@ const CustomStyles = () => (
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
+      cursor: default;
+    }
+    
+    /* 버튼, 링크에만 pointer 커서 */
+    button, a, [role="button"], .cursor-pointer {
+      cursor: pointer;
+    }
+    
+    /* 입력 필드는 text 커서 */
+    input, textarea, select {
+      cursor: text;
+    }
+    
+    input[type="number"] {
+      cursor: text;
     }
     
     /* 모든 스크롤 가능 영역에 부드러운 스크롤 적용 */
@@ -1029,6 +1044,25 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
+  // 모달 열릴 때 body 스크롤 완전 잠금
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    };
+  }, [isOpen]);
+
   if (!isOpen || !order) return null;
 
   const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -1043,7 +1077,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
     text += `주문일자: ${formatDate(order.createdAt)}\n`;
     if (order.customerName) text += `고객명: ${order.customerName}\n`;
     if (order.customerPhone) text += `연락처: ${order.customerPhone}\n`;
-    text += `단가기준: ${order.priceType === 'wholesale' ? '도매가' : '소비자가'}\n\n`;
+    text += `단가기준: ${order.priceType === 'wholesale' ? '도매가 (부가세 포함)' : '소비자가 (부가세 포함)'}\n\n`;
     text += `───────────────────────────────────\n`;
     text += `상품 목록\n`;
     text += `───────────────────────────────────\n\n`;
@@ -1265,12 +1299,31 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  // 모달 열릴 때 body 스크롤 완전 잠금
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    };
+  }, [isOpen]);
   
   if (!isOpen) return null;
   
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-2xl border border-slate-700">
+      <div className="bg-slate-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-2xl border border-slate-700 animate-scale-in">
         <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Save className="w-6 h-6 text-white" />
@@ -1745,61 +1798,111 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
     link.click();
   };
 
-  // XLSX 다운로드 (엑셀 파일)
+  // XLSX 다운로드 (엑셀 파일) - 원본 양식대로
   const generateXlsxLabel = async () => {
     if (selectedOrders.length === 0) return;
     
     const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
     
-    // SheetJS 라이브러리 동적 로드
-    if (!window.XLSX) {
+    // ExcelJS 라이브러리 동적 로드
+    if (!window.ExcelJS) {
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
       document.head.appendChild(script);
       await new Promise(resolve => script.onload = resolve);
     }
     
-    const XLSX = window.XLSX;
+    const ExcelJS = window.ExcelJS;
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('택배 송장');
     
-    // 엑셀 데이터 준비
-    const wsData = [
-      ['보내는곳 : ' + senderName],
-      ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처']
+    // 컬럼 너비 설정 (원본과 동일)
+    worksheet.columns = [
+      { width: 7.5 },   // A: 번호
+      { width: 25.5 },  // B: 받는곳
+      { width: 12.2 },  // C: 배송
+      { width: 12.4 },  // D: 포장
+      { width: 17.4 },  // E: 운임
+      { width: 30.6 },  // F: 품명
+      { width: 24.1 }   // G: 연락처
     ];
     
+    // 테두리 스타일
+    const thinBorder = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+    
+    // 1행: 보내는곳 헤더
+    worksheet.mergeCells('A1:G1');
+    const headerRow = worksheet.getRow(1);
+    headerRow.getCell(1).value = '보내는곳 : ' + senderName;
+    headerRow.getCell(1).font = { bold: true, size: 14 };
+    headerRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    headerRow.getCell(1).border = thinBorder;
+    headerRow.height = 35;
+    
+    // 2행: 컬럼 헤더
+    const headers = ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처'];
+    const colHeaderRow = worksheet.getRow(2);
+    headers.forEach((header, idx) => {
+      const cell = colHeaderRow.getCell(idx + 1);
+      cell.value = header;
+      cell.font = { bold: true, size: 14 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = thinBorder;
+    });
+    colHeaderRow.height = 26;
+    
+    // 데이터 행
+    let rowNum = 3;
     selectedData.forEach((order, index) => {
-      const customer = findCustomer(order.customerName);
+      const customer = order.customerName ? findCustomer(order.customerName) : null;
       const mostExpensive = getMostExpensiveItem(order.items);
       const phone = customer?.phone || order.customerPhone || '';
       const address = customer?.address || '';
       
       // 기본 정보 행
-      wsData.push([index + 1, order.customerName, '착불', '박스1', shippingCost, mostExpensive, phone]);
-      // 주소 행
+      const dataRow = worksheet.getRow(rowNum);
+      const rowData = [index + 1, order.customerName || '', '착불', '박스1', shippingCost, mostExpensive, phone];
+      rowData.forEach((value, idx) => {
+        const cell = dataRow.getCell(idx + 1);
+        cell.value = value;
+        cell.font = { size: 11 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = thinBorder;
+      });
+      dataRow.height = 38;
+      rowNum++;
+      
+      // 주소 행 (병합)
       if (address) {
-        wsData.push([address, '', '', '', '', '', '']);
+        worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
+        const addrRow = worksheet.getRow(rowNum);
+        addrRow.getCell(1).value = address;
+        addrRow.getCell(1).font = { size: 11 };
+        addrRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        addrRow.getCell(1).border = thinBorder;
+        addrRow.getCell(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFF9C4' } // 연한 노란색
+        };
+        addrRow.height = 30;
+        rowNum++;
       }
     });
     
-    // 워크시트 및 워크북 생성
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '택배 송장');
-    
-    // 컬럼 너비 설정
-    ws['!cols'] = [
-      { wch: 5 },   // 번호
-      { wch: 20 },  // 받는곳
-      { wch: 8 },   // 배송
-      { wch: 8 },   // 포장
-      { wch: 10 },  // 운임
-      { wch: 25 },  // 품명
-      { wch: 15 }   // 연락처
-    ];
-    
-    // 다운로드
+    // 파일 다운로드
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
     const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `택배송장_${date}.xlsx`);
+    link.href = URL.createObjectURL(blob);
+    link.download = `택배송장_${date}.xlsx`;
+    link.click();
   };
   
   // 인쇄용 HTML 생성
@@ -2243,16 +2346,21 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
   );
 }
 
-function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }) {
+function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice, customerName = '' }) {
   const [cartName, setCartName] = useState('');
   
   useEffect(() => {
     if (isOpen) {
-      const now = new Date();
-      const defaultName = `장바구니 ${now.toLocaleDateString('ko-KR')} ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
-      setCartName(defaultName);
+      // 고객명이 있으면 고객명으로, 없으면 날짜로
+      if (customerName && customerName.trim()) {
+        setCartName(customerName.trim());
+      } else {
+        const now = new Date();
+        const defaultName = `${now.getMonth() + 1}월 ${now.getDate()}일 ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+        setCartName(defaultName);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, customerName]);
   
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -2260,6 +2368,25 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  // 모달 열릴 때 body 스크롤 완전 잠금
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    };
+  }, [isOpen]);
   
   if (!isOpen) return null;
   
@@ -2276,7 +2403,7 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }
   
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-slate-700">
+      <div className="bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-slate-700 animate-scale-in">
         <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Save className="w-6 h-6 text-white" />
@@ -2294,9 +2421,10 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }
               type="text"
               value={cartName}
               onChange={(e) => setCartName(e.target.value)}
-              placeholder="예: 단골A 주문, 정기 주문 등"
+              placeholder="고객명 또는 저장명 입력"
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
               autoFocus
+              onFocus={(e) => e.target.select()}
             />
           </div>
           
@@ -2359,6 +2487,25 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  // 모달 열릴 때 body 스크롤 완전 잠금
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    };
+  }, [isOpen]);
 
   // 모달이 열릴 때 한 번만 주문번호 생성
   useEffect(() => {
@@ -2425,7 +2572,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
     text += `주문일자: ${formatDate(today.toISOString())}\n`;
     if (customerName) text += `고객명: ${customerName}\n`;
     if (customerPhone) text += `연락처: ${customerPhone}\n`;
-    text += `단가기준: ${priceType === 'wholesale' ? '도매가' : '소비자가'}\n\n`;
+    text += `단가기준: ${priceType === 'wholesale' ? '도매가 (부가세 포함)' : '소비자가 (부가세 포함)'}\n\n`;
     text += `───────────────────────────────────\n`;
     text += `상품 목록\n`;
     text += `───────────────────────────────────\n\n`;
@@ -2845,10 +2992,10 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
               >
                 {saved ? <><Check className="w-5 h-5" />저장 완료!</> : 
                  isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
-                 <><Upload className="w-5 h-5" />클라우드 저장</>}
+                 <><Check className="w-5 h-5" />주문 완료</>}
               </button>
               <button
-                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(); }}
+                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(customerName); }}
                 disabled={cart.length === 0}
                 className={`py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
                   cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
@@ -4009,6 +4156,7 @@ export default function PriceCalculator() {
   const [toast, setToast] = useState(null);
   const [savedCarts, setSavedCarts] = useState([]);
   const [isSaveCartModalOpen, setIsSaveCartModalOpen] = useState(false);
+  const [saveCartCustomerName, setSaveCartCustomerName] = useState('');
   const [isSavedCartsModalOpen, setIsSavedCartsModalOpen] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -4129,7 +4277,13 @@ export default function PriceCalculator() {
     try {
       const data = await supabase.getProducts();
       if (data) {
-        setProducts(data);
+        // 재고 기본값 설정
+        const productsWithStock = data.map(p => ({
+          ...p,
+          stock: p.stock !== undefined ? p.stock : 50,
+          min_stock: p.min_stock !== undefined ? p.min_stock : 5
+        }));
+        setProducts(productsWithStock);
         setIsOnline(true);
       }
     } catch (error) {
@@ -4513,7 +4667,7 @@ export default function PriceCalculator() {
         onRemoveItem={removeFromCart}
         onAddItem={addToCart}
         products={priceData}
-        onSaveCart={() => setIsSaveCartModalOpen(true)}
+        onSaveCart={(name) => { setSaveCartCustomerName(name || ''); setIsSaveCartModalOpen(true); }}
         customers={customers}
       />
       <SaveCartModal 
@@ -4522,7 +4676,8 @@ export default function PriceCalculator() {
         onSave={saveCartWithName} 
         cart={cart} 
         priceType={priceType} 
-        formatPrice={formatPrice} 
+        formatPrice={formatPrice}
+        customerName={saveCartCustomerName}
       />
       <SavedCartsModal 
         isOpen={isSavedCartsModalOpen} 
@@ -4551,11 +4706,11 @@ export default function PriceCalculator() {
         <div className="w-full px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center animate-pulse-glow">
+              <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
                 <Package className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-base font-bold text-white gradient-text">POS 재고관리 시스템</h1>
+                <h1 className="text-base font-bold text-amber-400">POS 재고관리 시스템</h1>
               </div>
               {/* 온라인 상태 표시 */}
               <div className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
@@ -4927,7 +5082,7 @@ export default function PriceCalculator() {
         <StockOverviewModal 
           isOpen={showStockOverview}
           onClose={() => setShowStockOverview(false)}
-          products={priceData}
+          products={products.length > 0 ? products : priceData}
           categories={categories}
           formatPrice={formatPrice}
         />
