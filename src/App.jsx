@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Lenis from 'lenis';
 import { Search, ShoppingCart, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
@@ -144,12 +145,26 @@ const ADMIN_PASSWORD = '1234';
 // 커스텀 스타일 및 애니메이션
 const CustomStyles = () => (
   <style>{`
-    /* 부드러운 스크롤 */
+    /* 물리 기반 부드러운 스크롤 */
     * {
       scroll-behavior: smooth;
     }
     
-    html, body {
+    html {
+      scroll-behavior: smooth;
+      overflow-y: scroll;
+      overscroll-behavior: smooth;
+    }
+    
+    body {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+    
+    /* 모든 스크롤 가능 영역에 부드러운 스크롤 적용 */
+    [class*="overflow"] {
+      -webkit-overflow-scrolling: touch;
       scroll-behavior: smooth;
     }
     
@@ -168,6 +183,7 @@ const CustomStyles = () => (
       background: linear-gradient(180deg, #3b82f6, #8b5cf6);
       border-radius: 10px;
       border: 2px solid rgba(30, 41, 59, 0.5);
+      transition: background 0.3s ease;
     }
     
     ::-webkit-scrollbar-thumb:hover {
@@ -1338,7 +1354,7 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }
 }
 
 // 주문 확인 모달
-function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products }) {
+function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -1729,6 +1745,16 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
               {saved ? <><Check className="w-5 h-5" />저장됨!</> : 
                isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
                <><Cloud className="w-5 h-5" />저장</>}
+            </button>
+            <button
+              onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(); }}
+              disabled={cart.length === 0}
+              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-violet-600 hover:bg-violet-500 text-white'
+              }`}
+            >
+              <Save className="w-5 h-5" />담기
             </button>
             <button
               onClick={handleCopy}
@@ -2416,6 +2442,31 @@ export default function PriceCalculator() {
   const [products, setProducts] = useState([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
 
+  // Lenis 부드러운 스크롤 초기화
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,           // 스크롤 지속 시간 (높을수록 부드러움)
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // 물리 기반 이징
+      orientation: 'vertical', // 수직 스크롤
+      gestureOrientation: 'vertical',
+      smoothWheel: true,       // 마우스 휠 부드럽게
+      wheelMultiplier: 1,      // 휠 속도
+      touchMultiplier: 2,      // 터치 속도
+      infinite: false,         // 무한 스크롤 끄기
+    });
+
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    // 클린업
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
+
   // 토스트 알림 표시
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -2792,6 +2843,7 @@ export default function PriceCalculator() {
         onRemoveItem={removeFromCart}
         onAddItem={addToCart}
         products={priceData}
+        onSaveCart={() => setIsSaveCartModalOpen(true)}
       />
       <SaveCartModal 
         isOpen={isSaveCartModalOpen} 
@@ -2848,6 +2900,19 @@ export default function PriceCalculator() {
                 {orders.length > 0 && (
                   <span className="min-w-5 h-5 px-1.5 bg-emerald-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                     {orders.length > 99 ? '99+' : orders.length}
+                  </span>
+                )}
+              </button>
+              
+              <button
+                onClick={() => setIsSavedCartsModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
+                title="저장된 장바구니"
+              >
+                <Download className="w-5 h-5 text-violet-400" />
+                {savedCarts.length > 0 && (
+                  <span className="min-w-5 h-5 px-1.5 bg-violet-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {savedCarts.length > 9 ? '9+' : savedCarts.length}
                   </span>
                 )}
               </button>
@@ -2950,6 +3015,9 @@ export default function PriceCalculator() {
                       const cartItem = cart.find(item => item.id === product.id);
                       const displayPrice = priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
                       const exVatPrice = Math.round(displayPrice / 1.1);
+                      const stock = product.stock || 0;
+                      const isOutOfStock = stock === 0;
+                      const isLowStock = stock > 0 && stock <= (product.min_stock || 5);
                       
                       return (
                         <div 
@@ -2958,13 +3026,24 @@ export default function PriceCalculator() {
                           className={`px-2 py-2 rounded-lg cursor-pointer transition-all duration-200 hover-lift ${
                             cartItem 
                               ? 'bg-blue-600/30 border border-blue-500/50 animate-pulse-glow' 
-                              : 'bg-slate-700/30 hover:bg-slate-700/60 border border-transparent hover:border-slate-600'
+                              : isOutOfStock
+                                ? 'bg-red-900/20 border border-red-500/30 opacity-60'
+                                : 'bg-slate-700/30 hover:bg-slate-700/60 border border-transparent hover:border-slate-600'
                           }`}
                         >
-                          <p className="text-white text-xs font-medium truncate mb-1">{product.name}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-white text-xs font-medium truncate flex-1 pr-1">{product.name}</p>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                              isOutOfStock ? 'bg-red-600/30 text-red-400' :
+                              isLowStock ? 'bg-yellow-600/30 text-yellow-400' :
+                              'bg-emerald-600/30 text-emerald-400'
+                            }`}>
+                              {isOutOfStock ? '품절' : `${stock}개`}
+                            </span>
+                          </div>
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className={`text-sm font-bold ${priceType === 'wholesale' ? 'text-blue-400' : 'text-purple-400'}`}>
+                              <p className={`text-sm font-bold ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
                                 {formatPrice(displayPrice)}
                               </p>
                               <p className="text-[10px] text-slate-500">
@@ -2998,7 +3077,7 @@ export default function PriceCalculator() {
             )}
           </div>
 
-          <div className={`md:w-80 lg:w-96 ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-auto`}>
+          <div className={`md:w-[420px] lg:w-[480px] ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-auto`}>
             <div className="bg-gradient-to-r from-emerald-900/90 to-teal-900/80 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 md:sticky md:top-14 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -3006,48 +3085,16 @@ export default function PriceCalculator() {
                   <h2 className="text-sm font-semibold text-white">주문 목록</h2>
                   <span className="text-xs text-emerald-300 bg-emerald-800/50 px-2 py-0.5 rounded-full">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => setIsSavedCartsModalOpen(true)}
-                    className="p-1.5 hover:bg-emerald-800/50 rounded-lg transition-colors relative" 
-                    title="저장된 장바구니"
-                  >
-                    <Download className="w-4 h-4 text-emerald-400" />
-                    {savedCarts.length > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-violet-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                        {savedCarts.length > 9 ? '9+' : savedCarts.length}
-                      </span>
-                    )}
-                  </button>
-                  {cart.length > 0 && (
-                    <button 
-                      onClick={() => setIsSaveCartModalOpen(true)}
-                      className="p-1.5 hover:bg-emerald-800/50 rounded-lg transition-colors" 
-                      title="장바구니 저장"
-                    >
-                      <Save className="w-4 h-4 text-emerald-400" />
-                    </button>
-                  )}
-                  <button onClick={() => setActiveTab('catalog')} className="md:hidden p-1 hover:bg-emerald-800/50 rounded btn-ripple">
-                    <X className="w-4 h-4 text-emerald-400" />
-                  </button>
-                </div>
+                <button onClick={() => setActiveTab('catalog')} className="md:hidden p-1 hover:bg-emerald-800/50 rounded btn-ripple">
+                  <X className="w-4 h-4 text-emerald-400" />
+                </button>
               </div>
 
               <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll">
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
-                    <p className="text-emerald-400/70 text-sm mb-3">주문 목록이 비어있습니다</p>
-                    {savedCarts.length > 0 && (
-                      <button 
-                        onClick={() => setIsSavedCartsModalOpen(true)}
-                        className="flex items-center justify-center gap-2 mx-auto px-4 py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg text-violet-300 text-sm transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                        저장된 장바구니 ({savedCarts.length})
-                      </button>
-                    )}
+                    <p className="text-emerald-400/70 text-sm">주문 목록이 비어있습니다</p>
                   </div>
                 ) : (
                   <div className="p-2 grid grid-cols-2 gap-1.5">
