@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, ShoppingCart, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff } from 'lucide-react';
+import { Search, ShoppingCart, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_YB9UnUwuMql8hUGHgC0bsg_DhrAxpji';
 
-// Supabase API 호출 함수 (주문만)
+// Supabase API 호출 함수 (주문 + 제품)
 const supabase = {
+  // ===== 주문 관련 =====
   async getOrders() {
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?order=created_at.desc`, {
@@ -59,8 +60,86 @@ const supabase = {
       console.error('Supabase deleteOrder error:', error);
       return false;
     }
+  },
+
+  // ===== 제품 관련 =====
+  async getProducts() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/products?order=category,name`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch products');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase getProducts error:', error);
+      return null;
+    }
+  },
+
+  async addProduct(product) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(product)
+      });
+      if (!response.ok) throw new Error('Failed to add product');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase addProduct error:', error);
+      return null;
+    }
+  },
+
+  async updateProduct(id, product) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(product)
+      });
+      if (!response.ok) throw new Error('Failed to update product');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase updateProduct error:', error);
+      return null;
+    }
+  },
+
+  async deleteProduct(id) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete product');
+      return true;
+    } catch (error) {
+      console.error('Supabase deleteProduct error:', error);
+      return false;
+    }
   }
 };
+
+// 관리자 비밀번호
+const ADMIN_PASSWORD = '1234';
 
 // 커스텀 스타일 및 애니메이션
 const CustomStyles = () => (
@@ -1071,6 +1150,193 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
   );
 }
 
+// ==================== 저장된 장바구니 모달 ====================
+function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, formatPrice }) {
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-slate-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-2xl border border-slate-700">
+        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Save className="w-6 h-6 text-white" />
+            <h2 className="text-xl font-bold text-white">저장된 장바구니</h2>
+            <span className="text-violet-200 text-sm">({savedCarts.length}개)</span>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)]">
+          {savedCarts.length === 0 ? (
+            <div className="text-center py-8">
+              <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">저장된 장바구니가 없습니다</p>
+              <p className="text-slate-500 text-sm mt-1">장바구니를 저장하면 여기에 표시됩니다</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedCarts.map((cart, index) => (
+                <div key={index} className="bg-slate-700/50 rounded-xl p-4 hover:bg-slate-700 transition-colors">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="text-white font-semibold">{cart.name}</h3>
+                      <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
+                    </div>
+                    <p className="text-emerald-400 font-bold">{formatPrice(cart.total)}</p>
+                  </div>
+                  
+                  <div className="bg-slate-800/50 rounded-lg p-2 mb-3">
+                    <p className="text-slate-400 text-sm truncate">
+                      {cart.items.map(item => `${item.name}(${item.quantity})`).join(', ')}
+                    </p>
+                    <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => { onLoad(cart); onClose(); }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      불러오기
+                    </button>
+                    <button 
+                      onClick={() => setDeleteConfirm(index)}
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  {deleteConfirm === index && (
+                    <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
+                      <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => { onDelete(index); setDeleteConfirm(null); }}
+                          className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
+                        >
+                          삭제
+                        </button>
+                        <button 
+                          onClick={() => setDeleteConfirm(null)}
+                          className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="bg-slate-900 px-6 py-4">
+          <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== 장바구니 저장 모달 ====================
+function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }) {
+  const [cartName, setCartName] = useState('');
+  
+  useEffect(() => {
+    if (isOpen) {
+      const now = new Date();
+      const defaultName = `장바구니 ${now.toLocaleDateString('ko-KR')} ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+      setCartName(defaultName);
+    }
+  }, [isOpen]);
+  
+  if (!isOpen) return null;
+  
+  const total = cart.reduce((sum, item) => {
+    const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+    return sum + (price * item.quantity);
+  }, 0);
+  
+  const handleSave = () => {
+    if (!cartName.trim()) return;
+    onSave(cartName.trim());
+    onClose();
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-slate-700">
+        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Save className="w-6 h-6 text-white" />
+            <h2 className="text-xl font-bold text-white">장바구니 저장</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        
+        <div className="p-6">
+          <div className="mb-4">
+            <label className="block text-slate-400 text-sm mb-2">저장 이름</label>
+            <input
+              type="text"
+              value={cartName}
+              onChange={(e) => setCartName(e.target.value)}
+              placeholder="예: 단골A 주문, 정기 주문 등"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+              autoFocus
+            />
+          </div>
+          
+          <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-slate-400">상품</span>
+              <span className="text-white">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">합계</span>
+              <span className="text-emerald-400 font-bold text-lg">{formatPrice(total)}</span>
+            </div>
+          </div>
+          
+          <div className="bg-slate-900/50 rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
+            <p className="text-slate-400 text-sm">
+              {cart.map(item => `${item.name}(${item.quantity})`).join(', ')}
+            </p>
+          </div>
+        </div>
+        
+        <div className="bg-slate-900 px-6 py-4 flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={!cartName.trim()}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-xl text-white font-semibold transition-colors"
+          >
+            <Save className="w-5 h-5" />
+            저장하기
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // 주문 확인 모달
 function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products }) {
   const [copied, setCopied] = useState(false);
@@ -1498,6 +1764,348 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
   );
 }
 
+// ==================== 관리자 페이지 ====================
+function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeleteProduct, onUpdateStock, formatPrice, isLoading, onRefresh }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [newProduct, setNewProduct] = useState({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' });
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [sortField, setSortField] = useState('name');
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [stockFilter, setStockFilter] = useState('all');
+  const [showStockModal, setShowStockModal] = useState(null);
+
+  const categories = ['전체', ...new Set(products.map(p => p.category))];
+
+  const handleAddProduct = async () => {
+    if (!newProduct.name || !newProduct.wholesale || !newProduct.category) return;
+    
+    const product = {
+      name: newProduct.name,
+      wholesale: parseInt(newProduct.wholesale),
+      retail: newProduct.retail ? parseInt(newProduct.retail) : null,
+      category: newProduct.category,
+      stock: newProduct.stock ? parseInt(newProduct.stock) : 0,
+      min_stock: newProduct.min_stock ? parseInt(newProduct.min_stock) : 5
+    };
+    
+    const success = await onAddProduct(product);
+    if (success) {
+      setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' });
+      setShowAddModal(false);
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
+    
+    const product = {
+      name: editingProduct.name,
+      wholesale: parseInt(editingProduct.wholesale),
+      retail: editingProduct.retail ? parseInt(editingProduct.retail) : null,
+      category: editingProduct.category,
+      stock: editingProduct.stock !== undefined ? parseInt(editingProduct.stock) : 0,
+      min_stock: editingProduct.min_stock !== undefined ? parseInt(editingProduct.min_stock) : 5
+    };
+    
+    await onUpdateProduct(editingProduct.id, product);
+    setEditingProduct(null);
+  };
+
+  const handleQuickStock = async (productId, newStock) => {
+    await onUpdateStock(productId, { stock: parseInt(newStock) || 0 });
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const stockStats = useMemo(() => {
+    const outOfStock = products.filter(p => (p.stock || 0) === 0).length;
+    const lowStock = products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length;
+    const normalStock = products.filter(p => (p.stock || 0) > (p.min_stock || 5)).length;
+    return { outOfStock, lowStock, normalStock, total: products.length };
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
+        let matchesStock = true;
+        const stock = p.stock || 0;
+        const minStock = p.min_stock || 5;
+        if (stockFilter === 'out') {
+          matchesStock = stock === 0;
+        } else if (stockFilter === 'low') {
+          matchesStock = stock > 0 && stock <= minStock;
+        } else if (stockFilter === 'normal') {
+          matchesStock = stock > minStock;
+        }
+        return matchesSearch && matchesCategory && matchesStock;
+      })
+      .sort((a, b) => {
+        let comparison = 0;
+        switch (sortField) {
+          case 'name':
+            comparison = a.name.localeCompare(b.name, 'ko');
+            break;
+          case 'wholesale':
+            comparison = a.wholesale - b.wholesale;
+            break;
+          case 'stock':
+            comparison = (a.stock || 0) - (b.stock || 0);
+            break;
+          case 'category':
+            comparison = a.category.localeCompare(b.category, 'ko');
+            break;
+          default:
+            comparison = 0;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+  }, [products, searchTerm, selectedCategory, stockFilter, sortField, sortDirection]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <CustomStyles />
+      
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <ChevronLeft className="w-6 h-6 text-white" />
+            </button>
+            <div className="flex items-center gap-2">
+              <Settings className="w-6 h-6 text-amber-400" />
+              <h1 className="text-xl font-bold text-white">관리자</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={onRefresh} disabled={isLoading} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium transition-colors">
+              <Plus className="w-5 h-5" />
+              제품 추가
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto p-4">
+        {/* 재고 현황 카드 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div onClick={() => setStockFilter('all')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'all' ? 'ring-2 ring-blue-500' : 'hover:bg-slate-750'}`}>
+            <p className="text-slate-400 text-sm mb-1">전체 제품</p>
+            <p className="text-2xl font-bold text-white">{stockStats.total}</p>
+          </div>
+          <div onClick={() => setStockFilter('normal')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-500' : 'hover:bg-slate-750'}`}>
+            <p className="text-slate-400 text-sm mb-1">정상 재고</p>
+            <p className="text-2xl font-bold text-emerald-400">{stockStats.normalStock}</p>
+          </div>
+          <div onClick={() => setStockFilter('low')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-500' : 'hover:bg-slate-750'}`}>
+            <p className="text-slate-400 text-sm mb-1">재고 부족</p>
+            <p className="text-2xl font-bold text-yellow-400">{stockStats.lowStock}</p>
+          </div>
+          <div onClick={() => setStockFilter('out')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-500' : 'hover:bg-slate-750'}`}>
+            <p className="text-slate-400 text-sm mb-1">품절</p>
+            <p className="text-2xl font-bold text-red-400">{stockStats.outOfStock}</p>
+          </div>
+        </div>
+
+        {/* 검색 및 필터 */}
+        <div className="bg-slate-800 rounded-xl p-4 mb-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="제품 검색..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-amber-500"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* 제품 테이블 */}
+        <div className="bg-slate-800 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-700/50">
+                <tr>
+                  <th onClick={() => handleSort('name')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                    제품명 {sortField === 'name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th onClick={() => handleSort('category')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                    카테고리 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th onClick={() => handleSort('wholesale')} className="px-4 py-3 text-right text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                    도매가 {sortField === 'wholesale' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-300">소비자가</th>
+                  <th onClick={() => handleSort('stock')} className="px-4 py-3 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                    재고 {sortField === 'stock' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-slate-300">작업</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {filteredProducts.map(product => {
+                  const stock = product.stock || 0;
+                  const minStock = product.min_stock || 5;
+                  const isOutOfStock = stock === 0;
+                  const isLowStock = stock > 0 && stock <= minStock;
+                  
+                  return (
+                    <tr key={product.id} className={`hover:bg-slate-700/30 ${isOutOfStock ? 'bg-red-900/10' : isLowStock ? 'bg-yellow-900/10' : ''}`}>
+                      <td className="px-4 py-3 text-white">{product.name}</td>
+                      <td className="px-4 py-3 text-slate-400">{product.category}</td>
+                      <td className="px-4 py-3 text-right text-emerald-400">{formatPrice(product.wholesale)}</td>
+                      <td className="px-4 py-3 text-right text-blue-400">{product.retail ? formatPrice(product.retail) : '-'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setShowStockModal(product)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            isOutOfStock ? 'bg-red-600/20 text-red-400' :
+                            isLowStock ? 'bg-yellow-600/20 text-yellow-400' :
+                            'bg-emerald-600/20 text-emerald-400'
+                          }`}
+                        >
+                          {isOutOfStock ? '품절' : `${stock}개`}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => setEditingProduct(product)} className="p-2 hover:bg-slate-600 rounded-lg text-blue-400">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeleteConfirm(product.id)} className="p-2 hover:bg-slate-600 rounded-lg text-red-400">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          
+          {filteredProducts.length === 0 && (
+            <div className="p-8 text-center text-slate-400">
+              검색 결과가 없습니다
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 제품 추가 모달 */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-4">제품 추가</h3>
+            <div className="space-y-3">
+              <input type="text" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} placeholder="제품명 *" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+              <input type="text" value={newProduct.category} onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} placeholder="카테고리 *" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+              <div className="grid grid-cols-2 gap-3">
+                <input type="number" value={newProduct.wholesale} onChange={(e) => setNewProduct({...newProduct, wholesale: e.target.value})} placeholder="도매가 *" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+                <input type="number" value={newProduct.retail} onChange={(e) => setNewProduct({...newProduct, retail: e.target.value})} placeholder="소비자가" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="number" value={newProduct.stock} onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})} placeholder="재고 수량" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+                <input type="number" value={newProduct.min_stock} onChange={(e) => setNewProduct({...newProduct, min_stock: e.target.value})} placeholder="최소 재고 (기본 5)" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowAddModal(false)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
+              <button onClick={handleAddProduct} className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium">추가</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 제품 수정 모달 */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-4">제품 수정</h3>
+            <div className="space-y-3">
+              <input type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="제품명" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+              <input type="text" value={editingProduct.category} onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})} placeholder="카테고리" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+              <div className="grid grid-cols-2 gap-3">
+                <input type="number" value={editingProduct.wholesale} onChange={(e) => setEditingProduct({...editingProduct, wholesale: e.target.value})} placeholder="도매가" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+                <input type="number" value={editingProduct.retail || ''} onChange={(e) => setEditingProduct({...editingProduct, retail: e.target.value})} placeholder="소비자가" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="number" value={editingProduct.stock || 0} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} placeholder="재고" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+                <input type="number" value={editingProduct.min_stock || 5} onChange={(e) => setEditingProduct({...editingProduct, min_stock: e.target.value})} placeholder="최소 재고" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditingProduct(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
+              <button onClick={handleUpdateProduct} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 재고 수정 모달 */}
+      {showStockModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-sm w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-2">재고 수정</h3>
+            <p className="text-slate-400 mb-4">{showStockModal.name}</p>
+            <div className="flex items-center gap-3 mb-4">
+              <button onClick={() => { const input = document.getElementById('stock-input'); input.value = Math.max(0, parseInt(input.value || 0) - 10); }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">-10</button>
+              <button onClick={() => { const input = document.getElementById('stock-input'); input.value = Math.max(0, parseInt(input.value || 0) - 1); }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">-1</button>
+              <input id="stock-input" type="number" defaultValue={showStockModal.stock || 0} className="w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-center focus:outline-none focus:border-amber-500" />
+              <button onClick={() => { const input = document.getElementById('stock-input'); input.value = parseInt(input.value || 0) + 1; }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">+1</button>
+              <button onClick={() => { const input = document.getElementById('stock-input'); input.value = parseInt(input.value || 0) + 10; }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">+10</button>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowStockModal(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
+              <button onClick={() => { const newStock = document.getElementById('stock-input').value; handleQuickStock(showStockModal.id, newStock); setShowStockModal(null); }} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-sm w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-2">제품 삭제</h3>
+            <p className="text-slate-400 mb-4">이 제품을 삭제하시겠습니까?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
+              <button onClick={() => { onDeleteProduct(deleteConfirm); setDeleteConfirm(null); }} className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-medium">삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // 주문 내역 페이지
 function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefresh, isLoading, formatPrice }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -1791,13 +2399,189 @@ export default function PriceCalculator() {
     return initial;
   });
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('main'); // main, history
+  const [currentPage, setCurrentPage] = useState('main'); // main, history, admin
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [savedCarts, setSavedCarts] = useState([]);
+  const [isSaveCartModalOpen, setIsSaveCartModalOpen] = useState(false);
+  const [isSavedCartsModalOpen, setIsSavedCartsModalOpen] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [products, setProducts] = useState([]);
+  const [isProductLoading, setIsProductLoading] = useState(false);
+
+  // 토스트 알림 표시
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  // 저장된 장바구니 불러오기
+  useEffect(() => {
+    const saved = localStorage.getItem('pos_saved_carts');
+    if (saved) {
+      try {
+        setSavedCarts(JSON.parse(saved));
+      } catch (e) {
+        console.error('저장된 장바구니 불러오기 실패:', e);
+      }
+    }
+  }, []);
+
+  // 저장된 장바구니 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('pos_saved_carts', JSON.stringify(savedCarts));
+  }, [savedCarts]);
+
+  // 장바구니 저장
+  const saveCartWithName = (name) => {
+    const now = new Date();
+    const total = cart.reduce((sum, item) => {
+      const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+      return sum + (price * item.quantity);
+    }, 0);
+    
+    const newCart = {
+      name,
+      items: cart.map(item => ({ ...item })),
+      total,
+      priceType,
+      date: now.toLocaleDateString('ko-KR'),
+      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    setSavedCarts(prev => [newCart, ...prev]);
+    showToast(`💾 "${name}" 저장됨!`);
+  };
+
+  // 저장된 장바구니 불러오기
+  const loadSavedCart = (savedCart) => {
+    const validItems = savedCart.items.filter(item => 
+      priceData.some(p => p.id === item.id)
+    ).map(item => {
+      const currentProduct = priceData.find(p => p.id === item.id);
+      return currentProduct ? {
+        ...currentProduct,
+        quantity: item.quantity
+      } : null;
+    }).filter(Boolean);
+    
+    if (validItems.length === 0) {
+      showToast('⚠️ 불러올 수 있는 제품이 없습니다', 'error');
+      return;
+    }
+    
+    setCart(validItems);
+    setPriceType(savedCart.priceType);
+    
+    if (validItems.length < savedCart.items.length) {
+      showToast(`📦 ${validItems.length}/${savedCart.items.length}개 제품 불러옴`);
+    } else {
+      showToast(`📦 "${savedCart.name}" 불러옴!`);
+    }
+  };
+
+  // 저장된 장바구니 삭제
+  const deleteSavedCart = (index) => {
+    setSavedCarts(prev => prev.filter((_, i) => i !== index));
+    showToast('🗑️ 장바구니가 삭제되었습니다');
+  };
+
+  // ===== 제품 관리 함수들 =====
+  // Supabase에서 제품 불러오기
+  const loadProducts = async () => {
+    setIsProductLoading(true);
+    try {
+      const data = await supabase.getProducts();
+      if (data) {
+        setProducts(data);
+        setIsOnline(true);
+      }
+    } catch (error) {
+      console.log('제품 목록 불러오기 실패:', error);
+    } finally {
+      setIsProductLoading(false);
+    }
+  };
+
+  // 제품 추가
+  const addProduct = async (product) => {
+    try {
+      const result = await supabase.addProduct(product);
+      if (result) {
+        await loadProducts();
+        showToast('✅ 제품이 추가되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 제품 추가 실패', 'error');
+    }
+    return false;
+  };
+
+  // 제품 수정
+  const updateProduct = async (id, product) => {
+    try {
+      const result = await supabase.updateProduct(id, product);
+      if (result) {
+        await loadProducts();
+        showToast('✅ 제품이 수정되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 제품 수정 실패', 'error');
+    }
+    return false;
+  };
+
+  // 제품 삭제
+  const deleteProduct = async (id) => {
+    try {
+      const result = await supabase.deleteProduct(id);
+      if (result) {
+        await loadProducts();
+        showToast('🗑️ 제품이 삭제되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 제품 삭제 실패', 'error');
+    }
+    return false;
+  };
+
+  // 재고 수정
+  const updateStock = async (id, stockData) => {
+    try {
+      const result = await supabase.updateProduct(id, stockData);
+      if (result) {
+        await loadProducts();
+        showToast('📦 재고가 수정되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 재고 수정 실패', 'error');
+    }
+    return false;
+  };
+
+  // 관리자 로그인 처리
+  const handleAdminLogin = () => {
+    if (adminPassword === ADMIN_PASSWORD) {
+      setIsAdminLoggedIn(true);
+      setShowAdminLogin(false);
+      setAdminPassword('');
+      setCurrentPage('admin');
+      loadProducts();
+    } else {
+      showToast('❌ 비밀번호가 틀렸습니다', 'error');
+    }
+  };
 
   // Supabase에서 주문 불러오기
   const loadOrders = async () => {
@@ -1953,6 +2737,23 @@ export default function PriceCalculator() {
     setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
+  // 관리자 페이지
+  if (currentPage === 'admin') {
+    return (
+      <AdminPage
+        products={products.length > 0 ? products : priceData}
+        onBack={() => { setCurrentPage('main'); setIsAdminLoggedIn(false); }}
+        onAddProduct={addProduct}
+        onUpdateProduct={updateProduct}
+        onDeleteProduct={deleteProduct}
+        onUpdateStock={updateStock}
+        formatPrice={formatPrice}
+        isLoading={isProductLoading}
+        onRefresh={loadProducts}
+      />
+    );
+  }
+
   if (currentPage === 'history') {
     return (
       <>
@@ -1992,6 +2793,22 @@ export default function PriceCalculator() {
         onAddItem={addToCart}
         products={priceData}
       />
+      <SaveCartModal 
+        isOpen={isSaveCartModalOpen} 
+        onClose={() => setIsSaveCartModalOpen(false)} 
+        onSave={saveCartWithName} 
+        cart={cart} 
+        priceType={priceType} 
+        formatPrice={formatPrice} 
+      />
+      <SavedCartsModal 
+        isOpen={isSavedCartsModalOpen} 
+        onClose={() => setIsSavedCartsModalOpen(false)} 
+        savedCarts={savedCarts} 
+        onLoad={loadSavedCart} 
+        onDelete={deleteSavedCart} 
+        formatPrice={formatPrice} 
+      />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -2015,6 +2832,14 @@ export default function PriceCalculator() {
             </div>
             
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAdminLogin(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="관리자"
+              >
+                <Settings className="w-5 h-5 text-amber-400" />
+              </button>
+              
               <button
                 onClick={() => { setCurrentPage('history'); loadOrders(); }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all hover-lift btn-ripple"
@@ -2181,16 +3006,48 @@ export default function PriceCalculator() {
                   <h2 className="text-sm font-semibold text-white">주문 목록</h2>
                   <span className="text-xs text-emerald-300 bg-emerald-800/50 px-2 py-0.5 rounded-full">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
                 </div>
-                <button onClick={() => setActiveTab('catalog')} className="md:hidden p-1 hover:bg-emerald-800/50 rounded btn-ripple">
-                  <X className="w-4 h-4 text-emerald-400" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => setIsSavedCartsModalOpen(true)}
+                    className="p-1.5 hover:bg-emerald-800/50 rounded-lg transition-colors relative" 
+                    title="저장된 장바구니"
+                  >
+                    <Download className="w-4 h-4 text-emerald-400" />
+                    {savedCarts.length > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-violet-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                        {savedCarts.length > 9 ? '9+' : savedCarts.length}
+                      </span>
+                    )}
+                  </button>
+                  {cart.length > 0 && (
+                    <button 
+                      onClick={() => setIsSaveCartModalOpen(true)}
+                      className="p-1.5 hover:bg-emerald-800/50 rounded-lg transition-colors" 
+                      title="장바구니 저장"
+                    >
+                      <Save className="w-4 h-4 text-emerald-400" />
+                    </button>
+                  )}
+                  <button onClick={() => setActiveTab('catalog')} className="md:hidden p-1 hover:bg-emerald-800/50 rounded btn-ripple">
+                    <X className="w-4 h-4 text-emerald-400" />
+                  </button>
+                </div>
               </div>
 
               <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll">
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
-                    <p className="text-emerald-400/70 text-sm">주문 목록이 비어있습니다</p>
+                    <p className="text-emerald-400/70 text-sm mb-3">주문 목록이 비어있습니다</p>
+                    {savedCarts.length > 0 && (
+                      <button 
+                        onClick={() => setIsSavedCartsModalOpen(true)}
+                        className="flex items-center justify-center gap-2 mx-auto px-4 py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg text-violet-300 text-sm transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        저장된 장바구니 ({savedCarts.length})
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="p-2 grid grid-cols-2 gap-1.5">
@@ -2280,6 +3137,55 @@ export default function PriceCalculator() {
           </button>
         </div>
       </div>
+      
+      {/* 토스트 알림 */}
+      {toast && (
+        <div className={`fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl z-50 ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        } text-white font-medium animate-fade-in`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* 관리자 로그인 모달 */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-sm w-full p-6 border border-slate-700">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-amber-600/20 rounded-xl">
+                <Lock className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">관리자 로그인</h3>
+                <p className="text-slate-400 text-sm">비밀번호를 입력하세요</p>
+              </div>
+            </div>
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+              placeholder="비밀번호"
+              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowAdminLogin(false); setAdminPassword(''); }}
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAdminLogin}
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl text-white font-medium transition-colors"
+              >
+                로그인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
