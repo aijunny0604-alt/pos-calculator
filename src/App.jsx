@@ -3967,12 +3967,7 @@ export default function PriceCalculator() {
   const [cart, setCart] = useState([]);
   const [priceType, setPriceType] = useState('wholesale');
   const [activeTab, setActiveTab] = useState('catalog');
-  const [expandedCategories, setExpandedCategories] = useState(() => {
-    // 모든 카테고리 기본 접힘
-    const initial = {};
-    categories.forEach(cat => initial[cat] = true);
-    return initial;
-  });
+  const [expandedCategories, setExpandedCategories] = useState({});
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('main'); // main, history, admin
   const [orders, setOrders] = useState([]);
@@ -3995,6 +3990,21 @@ export default function PriceCalculator() {
   const [customers, setCustomers] = useState([]);
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showCustomerListModal, setShowCustomerListModal] = useState(false);
+
+  // 동적 카테고리 목록 (Supabase products 기반)
+  const dynamicCategories = useMemo(() => {
+    const sourceProducts = products.length > 0 ? products : priceData;
+    return [...new Set(sourceProducts.map(item => item.category))];
+  }, [products]);
+  
+  // expandedCategories 초기화
+  useEffect(() => {
+    if (dynamicCategories.length > 0 && Object.keys(expandedCategories).length === 0) {
+      const initial = {};
+      dynamicCategories.forEach(cat => initial[cat] = true);
+      setExpandedCategories(initial);
+    }
+  }, [dynamicCategories]);
 
   // Lenis 부드러운 스크롤 초기화
   useEffect(() => {
@@ -4422,7 +4432,9 @@ export default function PriceCalculator() {
   };
 
   const filteredProducts = useMemo(() => {
-    return priceData.filter(product => {
+    // Supabase products 사용, 없으면 priceData fallback
+    const sourceProducts = products.length > 0 ? products : priceData;
+    return sourceProducts.filter(product => {
       // 띄어쓰기 제거 후 비교
       const productName = product.name.toLowerCase().replace(/\s/g, '');
       const search = searchTerm.toLowerCase().replace(/\s/g, '');
@@ -4430,7 +4442,7 @@ export default function PriceCalculator() {
       const matchesCategory = selectedCategory === '전체' || product.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory, products]);
 
   const groupedProducts = useMemo(() => {
     const groups = {};
@@ -4702,7 +4714,7 @@ export default function PriceCalculator() {
                   className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
                   <option value="전체">전체</option>
-                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 
                 <div className="flex bg-slate-900/50 rounded-lg p-0.5">
@@ -4975,7 +4987,7 @@ export default function PriceCalculator() {
           isOpen={showStockOverview}
           onClose={() => setShowStockOverview(false)}
           products={products.length > 0 ? products : priceData}
-          categories={categories}
+          categories={dynamicCategories}
           formatPrice={formatPrice}
         />
       )}
