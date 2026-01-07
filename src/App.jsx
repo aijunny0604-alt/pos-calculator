@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
@@ -946,6 +946,13 @@ const STORAGE_KEY = 'pos-orders-shared';
 function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
   const [copied, setCopied] = useState(false);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !order) return null;
 
   const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -1176,6 +1183,13 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
 function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, formatPrice }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+  
   if (!isOpen) return null;
   
   return (
@@ -1281,6 +1295,13 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }
     }
   }, [isOpen]);
   
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+  
   if (!isOpen) return null;
   
   const total = cart.reduce((sum, item) => {
@@ -1369,6 +1390,13 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
   const [productSearch, setProductSearch] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
   // 모달이 열릴 때 한 번만 주문번호 생성
   useEffect(() => {
@@ -1534,7 +1562,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <FileText className="w-7 h-7 text-white" />
@@ -2078,23 +2106,74 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
       {/* 제품 수정 모달 */}
       {editingProduct && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-white mb-4">제품 수정</h3>
-            <div className="space-y-3">
-              <input type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="제품명" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
-              <input type="text" value={editingProduct.category} onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})} placeholder="카테고리" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" value={editingProduct.wholesale} onChange={(e) => setEditingProduct({...editingProduct, wholesale: e.target.value})} placeholder="도매가" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
-                <input type="number" value={editingProduct.retail || ''} onChange={(e) => setEditingProduct({...editingProduct, retail: e.target.value})} placeholder="소비자가" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+          <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-blue-600/20 rounded-xl">
+                <Edit3 className="w-6 h-6 text-blue-400" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" value={editingProduct.stock || 0} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} placeholder="재고" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
-                <input type="number" value={editingProduct.min_stock || 5} onChange={(e) => setEditingProduct({...editingProduct, min_stock: e.target.value})} placeholder="최소 재고" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white" />
+              <div>
+                <h3 className="text-xl font-bold text-white">제품 수정</h3>
+                <p className="text-slate-400 text-sm">제품 정보를 수정합니다</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">제품명 *</label>
+                <input type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="제품명 입력" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">카테고리 *</label>
+                <input type="text" value={editingProduct.category} onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})} placeholder="카테고리 입력" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">도매가 *</label>
+                  <div className="relative">
+                    <input type="number" value={editingProduct.wholesale} onChange={(e) => setEditingProduct({...editingProduct, wholesale: e.target.value})} placeholder="0" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 pr-8" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">원</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">소비자가</label>
+                  <div className="relative">
+                    <input type="number" value={editingProduct.retail || ''} onChange={(e) => setEditingProduct({...editingProduct, retail: e.target.value})} placeholder="0" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 pr-8" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">원</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">현재 재고</label>
+                  <div className="relative">
+                    <input type="number" value={editingProduct.stock || 0} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} placeholder="0" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 pr-8" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">최소 재고</label>
+                  <div className="relative">
+                    <input type="number" value={editingProduct.min_stock || 5} onChange={(e) => setEditingProduct({...editingProduct, min_stock: e.target.value})} placeholder="5" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 pr-8" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
+                  </div>
+                </div>
+              </div>
+              {/* 재고 상태 미리보기 */}
+              <div className="bg-slate-700/50 rounded-xl p-4">
+                <p className="text-slate-400 text-sm mb-2">재고 상태 미리보기</p>
+                <div className="flex items-center gap-2">
+                  {(editingProduct.stock || 0) === 0 ? (
+                    <span className="px-3 py-1 bg-red-600/20 text-red-400 rounded-full text-sm font-medium">품절</span>
+                  ) : (editingProduct.stock || 0) <= (editingProduct.min_stock || 5) ? (
+                    <span className="px-3 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-sm font-medium">재고 부족 ({editingProduct.stock}개)</span>
+                  ) : (
+                    <span className="px-3 py-1 bg-emerald-600/20 text-emerald-400 rounded-full text-sm font-medium">정상 ({editingProduct.stock}개)</span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditingProduct(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
-              <button onClick={handleUpdateProduct} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium">저장</button>
+              <button onClick={() => setEditingProduct(null)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors">취소</button>
+              <button onClick={handleUpdateProduct} className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-medium transition-colors">저장</button>
             </div>
           </div>
         </div>
@@ -2139,11 +2218,13 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 }
 
 // 주문 내역 페이지
-function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefresh, isLoading, formatPrice }) {
+function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month, custom
+  const [dateFilter, setDateFilter] = useState('all'); // all, today, yesterday, week, month, custom
   const [customDate, setCustomDate] = useState('');
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   // 날짜 필터링 함수
   const filterByDate = (order) => {
@@ -2157,6 +2238,14 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
       const orderDay = new Date(orderDate);
       orderDay.setHours(0, 0, 0, 0);
       return orderDay.getTime() === today.getTime();
+    }
+    
+    if (dateFilter === 'yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const orderDay = new Date(orderDate);
+      orderDay.setHours(0, 0, 0, 0);
+      return orderDay.getTime() === yesterday.getTime();
     }
     
     if (dateFilter === 'week') {
@@ -2199,11 +2288,46 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
   const totalSales = orders.reduce((sum, order) => sum + order.totalAmount, 0);
   const totalExVat = calcExVat(totalSales);
 
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(filteredOrders.map(o => o.orderNumber));
+    }
+  };
+
+  // 개별 선택
+  const handleSelect = (orderNumber) => {
+    setSelectedOrders(prev => 
+      prev.includes(orderNumber) 
+        ? prev.filter(o => o !== orderNumber)
+        : [...prev, orderNumber]
+    );
+  };
+
+  // 선택 삭제
+  const handleBulkDelete = () => {
+    if (onDeleteMultiple) {
+      onDeleteMultiple(selectedOrders);
+    } else {
+      selectedOrders.forEach(orderNumber => onDeleteOrder(orderNumber));
+    }
+    setSelectedOrders([]);
+    setShowBulkDeleteConfirm(false);
+  };
+
+  // 초기화 (검색어만 초기화, 필터는 유지)
+  const handleReset = () => {
+    setSearchTerm('');
+    setSelectedOrders([]);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <CustomStyles />
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors btn-ripple hover-lift">
@@ -2211,7 +2335,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center animate-pulse-glow">
-                  <History className="w-6 h-6 text-white" />
+                  <List className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-white gradient-text">주문 내역</h1>
@@ -2224,18 +2348,29 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
                 </div>
               </div>
             </div>
-            <button
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-50 btn-ripple hover-lift"
-            >
-              <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              {selectedOrders.length > 0 && (
+                <button
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  선택 삭제 ({selectedOrders.length})
+                </button>
+              )}
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-50 btn-ripple hover-lift"
+              >
+                <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="w-full px-4 py-6">
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700 card-glow animate-fade-in-up stagger-1">
@@ -2277,13 +2412,14 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
             {[
               { key: 'all', label: '전체' },
               { key: 'today', label: '오늘' },
+              { key: 'yesterday', label: '어제' },
               { key: 'week', label: '이번 주' },
               { key: 'month', label: '이번 달' },
               { key: 'custom', label: '날짜 선택' },
             ].map(({ key, label }) => (
               <button
                 key={key}
-                onClick={() => setDateFilter(key)}
+                onClick={() => { setDateFilter(key); setSelectedOrders([]); }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   dateFilter === key
                     ? 'bg-emerald-500 text-white'
@@ -2301,6 +2437,12 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
                 className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             )}
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-600 text-slate-300 hover:bg-slate-500 transition-all"
+            >
+              초기화
+            </button>
           </div>
           
           {/* 검색 */}
@@ -2315,17 +2457,27 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
             />
           </div>
           
-          {/* 필터 결과 요약 */}
-          {(dateFilter !== 'all' || searchTerm) && (
-            <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-between text-sm">
+          {/* 필터 결과 요약 & 전체 선택 */}
+          <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-between text-sm">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                />
+                <span className="text-slate-400">전체 선택</span>
+              </label>
               <span className="text-slate-400">
                 검색 결과: <span className="text-white font-semibold">{filteredOrders.length}건</span>
-              </span>
-              <span className="text-emerald-400 font-semibold">
-                {formatPrice(filteredTotalSales)}
+                {selectedOrders.length > 0 && <span className="text-emerald-400 ml-2">({selectedOrders.length}개 선택됨)</span>}
               </span>
             </div>
-          )}
+            <span className="text-emerald-400 font-semibold">
+              {formatPrice(filteredTotalSales)}
+            </span>
+          </div>
         </div>
 
         {isLoading && (
@@ -2337,15 +2489,23 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
 
         {!isLoading && filteredOrders.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
-            <History className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+            <List className="w-16 h-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400">{orders.length === 0 ? '저장된 주문 내역이 없습니다' : '검색 결과가 없습니다'}</p>
           </div>
         ) : (
           <div className="space-y-3">
             {filteredOrders.map((order, index) => (
-              <div key={order.orderNumber} className={`bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 overflow-hidden card-glow hover-lift animate-fade-in-up`} style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}>
+              <div key={order.orderNumber} className={`bg-slate-800/50 backdrop-blur rounded-xl border ${selectedOrders.includes(order.orderNumber) ? 'border-emerald-500' : 'border-slate-700'} overflow-hidden card-glow hover-lift animate-fade-in-up`} style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}>
                 <div className="p-4">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    {/* 체크박스 */}
+                    <input 
+                      type="checkbox" 
+                      checked={selectedOrders.includes(order.orderNumber)}
+                      onChange={() => handleSelect(order.orderNumber)}
+                      className="mt-1 w-5 h-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-white font-semibold">{order.orderNumber}</span>
@@ -2414,6 +2574,38 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onViewOrder, onRefres
           </div>
         )}
       </div>
+
+      {/* 선택 삭제 확인 모달 */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-sm w-full p-6 border border-slate-700">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-600/20 rounded-xl">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">선택 삭제</h3>
+                <p className="text-slate-400 text-sm">{selectedOrders.length}개 주문 삭제</p>
+              </div>
+            </div>
+            <p className="text-slate-300 mb-6">선택한 {selectedOrders.length}개의 주문을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-medium transition-colors"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2447,6 +2639,7 @@ export default function PriceCalculator() {
   const [adminPassword, setAdminPassword] = useState('');
   const [products, setProducts] = useState([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
+  const [showStockOverview, setShowStockOverview] = useState(false);
 
   // Lenis 부드러운 스크롤 초기화
   useEffect(() => {
@@ -2894,6 +3087,14 @@ export default function PriceCalculator() {
             
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowStockOverview(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="재고 현황"
+              >
+                <Package className="w-5 h-5 text-cyan-400" />
+              </button>
+              
+              <button
                 onClick={() => setShowAdminLogin(true)}
                 className="flex items-center gap-1.5 px-3 py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="관리자"
@@ -2905,7 +3106,7 @@ export default function PriceCalculator() {
                 onClick={() => { setCurrentPage('history'); loadOrders(); }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all hover-lift btn-ripple"
               >
-                <History className="w-5 h-5 text-white" />
+                <List className="w-5 h-5 text-white" />
                 {orders.length > 0 && (
                   <span className="min-w-5 h-5 px-1.5 bg-emerald-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                     {orders.length > 99 ? '99+' : orders.length}
@@ -3200,6 +3401,111 @@ export default function PriceCalculator() {
           toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
         } text-white font-medium animate-fade-in`}>
           {toast.message}
+        </div>
+      )}
+
+      {/* 재고 현황 모달 */}
+      {showStockOverview && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden border border-slate-700">
+            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Package className="w-6 h-6 text-white" />
+                <div>
+                  <h2 className="text-xl font-bold text-white">재고 현황</h2>
+                  <p className="text-cyan-100 text-sm">전체 {priceData.length}개 제품</p>
+                </div>
+              </div>
+              <button onClick={() => setShowStockOverview(false)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            
+            {/* 재고 통계 */}
+            <div className="p-4 border-b border-slate-700">
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-slate-700/50 rounded-xl p-3 text-center">
+                  <p className="text-slate-400 text-xs mb-1">전체</p>
+                  <p className="text-xl font-bold text-white">{priceData.length}</p>
+                </div>
+                <div className="bg-emerald-600/20 rounded-xl p-3 text-center">
+                  <p className="text-emerald-300 text-xs mb-1">정상</p>
+                  <p className="text-xl font-bold text-emerald-400">{priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length}</p>
+                </div>
+                <div className="bg-yellow-600/20 rounded-xl p-3 text-center">
+                  <p className="text-yellow-300 text-xs mb-1">부족</p>
+                  <p className="text-xl font-bold text-yellow-400">{priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length}</p>
+                </div>
+                <div className="bg-red-600/20 rounded-xl p-3 text-center">
+                  <p className="text-red-300 text-xs mb-1">품절</p>
+                  <p className="text-xl font-bold text-red-400">{priceData.filter(p => (p.stock || 0) === 0).length}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 품절/부족 제품 목록 */}
+            <div className="p-4 overflow-y-auto max-h-[calc(85vh-200px)]">
+              {/* 품절 제품 */}
+              {priceData.filter(p => (p.stock || 0) === 0).length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-red-400 font-semibold mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    품절 제품 ({priceData.filter(p => (p.stock || 0) === 0).length})
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {priceData.filter(p => (p.stock || 0) === 0).map(product => (
+                      <div key={product.id} className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                        <p className="text-red-400 text-xs">{product.category}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 재고 부족 제품 */}
+              {priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-yellow-400 font-semibold mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    재고 부족 ({priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length})
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).map(product => (
+                      <div key={product.id} className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
+                        <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-yellow-400 text-xs">{product.category}</p>
+                          <span className="text-yellow-400 text-xs font-bold">{product.stock}개</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 정상 재고 제품 (접을 수 있게) */}
+              <div>
+                <h3 className="text-emerald-400 font-semibold mb-2 flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  정상 재고 ({priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).slice(0, 20).map(product => (
+                    <div key={product.id} className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-2">
+                      <p className="text-white text-xs font-medium truncate">{product.name}</p>
+                      <span className="text-emerald-400 text-[10px]">{product.stock}개</span>
+                    </div>
+                  ))}
+                  {priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length > 20 && (
+                    <div className="bg-slate-700/30 rounded-lg p-2 flex items-center justify-center">
+                      <span className="text-slate-400 text-xs">+{priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length - 20}개 더</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
