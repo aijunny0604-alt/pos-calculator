@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
@@ -134,6 +134,81 @@ const supabase = {
       return true;
     } catch (error) {
       console.error('Supabase deleteProduct error:', error);
+      return false;
+    }
+  },
+
+  // ===== 거래처 관련 =====
+  async getCustomers() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?order=name`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch customers');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase getCustomers error:', error);
+      return null;
+    }
+  },
+
+  async addCustomer(customer) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(customer)
+      });
+      if (!response.ok) throw new Error('Failed to add customer');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase addCustomer error:', error);
+      return null;
+    }
+  },
+
+  async updateCustomer(id, customer) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(customer)
+      });
+      if (!response.ok) throw new Error('Failed to update customer');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase updateCustomer error:', error);
+      return null;
+    }
+  },
+
+  async deleteCustomer(id) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete customer');
+      return true;
+    } catch (error) {
+      console.error('Supabase deleteCustomer error:', error);
       return false;
     }
   }
@@ -1284,6 +1359,322 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
 }
 
 // ==================== 장바구니 저장 모달 ====================
+// ==================== 택배 송장 생성 모달 ====================
+function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice }) {
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [shippingCost, setShippingCost] = useState(7300);
+  const [senderName, setSenderName] = useState('무브모터스');
+  
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+  
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedOrders([]);
+    }
+  }, [isOpen]);
+  
+  if (!isOpen) return null;
+  
+  // 오늘 주문만 필터링
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayOrders = orders.filter(order => {
+    const orderDate = new Date(order.createdAt);
+    orderDate.setHours(0, 0, 0, 0);
+    return orderDate.getTime() === today.getTime() && order.customerName;
+  });
+  
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedOrders.length === todayOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(todayOrders.map(o => o.orderNumber));
+    }
+  };
+  
+  // 주문 선택
+  const toggleOrder = (orderNumber) => {
+    setSelectedOrders(prev => 
+      prev.includes(orderNumber)
+        ? prev.filter(o => o !== orderNumber)
+        : [...prev, orderNumber]
+    );
+  };
+  
+  // 거래처 정보 찾기
+  const findCustomer = (name) => {
+    return customers.find(c => 
+      c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
+    );
+  };
+  
+  // 가장 비싼 상품 찾기
+  const getMostExpensiveItem = (items) => {
+    if (!items || items.length === 0) return '상품';
+    return items.reduce((max, item) => item.price > max.price ? item : max, items[0]).name;
+  };
+  
+  // 엑셀 생성 및 다운로드
+  const generateShippingLabel = () => {
+    if (selectedOrders.length === 0) return;
+    
+    const selectedData = todayOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    
+    // CSV 형식으로 생성 (엑셀 호환)
+    let csv = '\uFEFF'; // BOM for UTF-8
+    csv += '보내는곳 : ' + senderName + '\n';
+    csv += '번호,받는곳,배송,포장,운임,품명,연락처\n';
+    
+    selectedData.forEach((order, index) => {
+      const customer = findCustomer(order.customerName);
+      const mostExpensive = getMostExpensiveItem(order.items);
+      const phone = customer?.phone || order.customerPhone || '';
+      const address = customer?.address || '';
+      
+      // 첫 번째 행 (기본 정보)
+      csv += `${index + 1},${order.customerName},착불,박스1,${shippingCost},${mostExpensive},${phone}\n`;
+      // 두 번째 행 (주소)
+      if (address) {
+        csv += `${address}\n`;
+      }
+    });
+    
+    // 다운로드
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    link.href = URL.createObjectURL(blob);
+    link.download = `택배송장_${date}.csv`;
+    link.click();
+  };
+  
+  // 인쇄용 HTML 생성
+  const printShippingLabels = () => {
+    if (selectedOrders.length === 0) return;
+    
+    const selectedData = todayOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>택배 송장 - ${senderName}</title>
+        <style>
+          body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+          th { background: #f0f0f0; font-weight: bold; }
+          .header { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+          .address-row { background: #fffde7; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">보내는곳 : ${senderName}</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px">번호</th>
+              <th style="width:150px">받는곳</th>
+              <th style="width:50px">배송</th>
+              <th style="width:60px">포장</th>
+              <th style="width:70px">운임</th>
+              <th>품명</th>
+              <th style="width:130px">연락처</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    selectedData.forEach((order, index) => {
+      const customer = findCustomer(order.customerName);
+      const mostExpensive = getMostExpensiveItem(order.items);
+      const phone = customer?.phone || order.customerPhone || '';
+      const address = customer?.address || '';
+      
+      html += `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${order.customerName}</td>
+          <td>착불</td>
+          <td>박스1</td>
+          <td>${shippingCost.toLocaleString()}</td>
+          <td>${mostExpensive}</td>
+          <td>${phone}</td>
+        </tr>
+      `;
+      if (address) {
+        html += `<tr class="address-row"><td colspan="7">${address}</td></tr>`;
+      }
+    });
+    
+    html += `
+          </tbody>
+        </table>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Truck className="w-6 h-6 text-white" />
+            <div>
+              <h2 className="text-xl font-bold text-white">택배 송장 생성</h2>
+              <p className="text-orange-100 text-sm">오늘 주문 {todayOrders.length}건</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        
+        {/* 설정 */}
+        <div className="p-4 border-b border-slate-700 bg-slate-800/50">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-1">보내는 곳</label>
+              <input
+                type="text"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-1">택배비 (착불)</label>
+              <input
+                type="number"
+                value={shippingCost}
+                onChange={(e) => setShippingCost(parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+              />
+            </div>
+          </div>
+        </div>
+        
+        {/* 주문 목록 */}
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={todayOrders.length > 0 && selectedOrders.length === todayOrders.length}
+                onChange={handleSelectAll}
+                className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500"
+              />
+              <span className="text-slate-300 text-sm">전체 선택</span>
+            </label>
+            <span className="text-orange-400 font-semibold">{selectedOrders.length}건 선택됨</span>
+          </div>
+          
+          <div className="overflow-y-auto max-h-[40vh] space-y-2">
+            {todayOrders.length === 0 ? (
+              <div className="text-center py-8">
+                <Truck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400">오늘 주문 내역이 없습니다</p>
+              </div>
+            ) : (
+              todayOrders.map(order => {
+                const customer = findCustomer(order.customerName);
+                const hasAddress = customer?.address;
+                
+                return (
+                  <div 
+                    key={order.orderNumber}
+                    onClick={() => toggleOrder(order.orderNumber)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      selectedOrders.includes(order.orderNumber)
+                        ? 'bg-orange-600/20 border-orange-500'
+                        : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedOrders.includes(order.orderNumber)}
+                        onChange={() => {}}
+                        className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{order.customerName}</span>
+                          {hasAddress ? (
+                            <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>
+                          )}
+                        </div>
+                        <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
+                        <p className="text-slate-500 text-xs mt-1">
+                          {order.items?.length || 0}종 · {formatPrice(order.totalAmount)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+        
+        {/* 버튼 */}
+        <div className="p-4 border-t border-slate-700 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={generateShippingLabel}
+            disabled={selectedOrders.length === 0}
+            className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+              selectedOrders.length === 0 
+                ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+            }`}
+          >
+            <Download className="w-5 h-5" />
+            CSV 다운로드
+          </button>
+          <button
+            onClick={printShippingLabels}
+            disabled={selectedOrders.length === 0}
+            className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+              selectedOrders.length === 0 
+                ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                : 'bg-orange-600 hover:bg-orange-500 text-white'
+            }`}
+          >
+            <Printer className="w-5 h-5" />
+            인쇄
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ==================== 재고 현황 모달 ====================
 function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice }) {
   const [selectedCategory, setSelectedCategory] = useState('전체');
@@ -1546,15 +1937,18 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }
 }
 
 // 주문 확인 모달
-function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart }) {
+function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart, customers = [] }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [memo, setMemo] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -1575,13 +1969,31 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
       setOrderNumber('');
       setCustomerName('');
       setCustomerPhone('');
+      setCustomerAddress('');
       setMemo('');
       setCopied(false);
       setSaved(false);
+      setSelectedCustomerId(null);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // 거래처 검색 결과
+  const customerSuggestions = customerName.length >= 1
+    ? customers.filter(c => 
+        c.name.toLowerCase().replace(/\s/g, '').includes(customerName.toLowerCase().replace(/\s/g, ''))
+      ).slice(0, 6)
+    : [];
+
+  // 거래처 선택
+  const selectCustomer = (customer) => {
+    setCustomerName(customer.name);
+    setCustomerPhone(customer.phone || '');
+    setCustomerAddress(customer.address || '');
+    setSelectedCustomerId(customer.id);
+    setShowCustomerSuggestions(false);
+  };
 
   // 검색 결과 필터링
   const searchResults = productSearch.length >= 1 
@@ -1741,29 +2153,74 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 category-scroll" onClick={() => setShowSearchResults(false)}>
+        <div className="overflow-y-auto flex-1 category-scroll" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
           <div className="p-5 border-b border-slate-700">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-slate-400 text-sm mb-1.5">고객명</label>
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <label className="block text-slate-400 text-sm mb-1.5 flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  고객명 / 업체명
+                </label>
                 <input
                   type="text"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="고객명 입력 (선택)"
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => { 
+                    setCustomerName(e.target.value); 
+                    setShowCustomerSuggestions(true);
+                    setSelectedCustomerId(null);
+                  }}
+                  onFocus={() => setShowCustomerSuggestions(true)}
+                  placeholder="고객명 또는 업체명 검색..."
+                  className={`w-full px-4 py-2.5 bg-slate-900/50 border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedCustomerId ? 'border-emerald-500' : 'border-slate-600'}`}
                 />
+                {selectedCustomerId && (
+                  <span className="absolute right-3 top-9 text-emerald-400">
+                    <Check className="w-4 h-4" />
+                  </span>
+                )}
+                {/* 거래처 자동완성 */}
+                {showCustomerSuggestions && customerSuggestions.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                    {customerSuggestions.map(customer => (
+                      <button
+                        key={customer.id}
+                        onClick={() => selectCustomer(customer)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
+                      >
+                        <p className="text-white font-medium">{customer.name}</p>
+                        <p className="text-slate-400 text-xs truncate">{customer.address || '주소 미등록'}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
-                <label className="block text-slate-400 text-sm mb-1.5">연락처</label>
+                <label className="block text-slate-400 text-sm mb-1.5 flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  연락처
+                </label>
                 <input
                   type="text"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="연락처 입력 (선택)"
+                  placeholder="연락처 입력"
                   className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+            </div>
+            {/* 주소 필드 */}
+            <div className="mt-3">
+              <label className="block text-slate-400 text-sm mb-1.5 flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                배송 주소
+              </label>
+              <input
+                type="text"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                placeholder="배송 주소 입력 (택배 발송시 필수)"
+                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
             <div className="mt-4 flex items-center gap-6 text-sm">
               <div className="flex items-center gap-2">
@@ -1998,7 +2455,8 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
 }
 
 // ==================== 관리자 페이지 ====================
-function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeleteProduct, onUpdateStock, formatPrice, isLoading, onRefresh }) {
+function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeleteProduct, onUpdateStock, formatPrice, isLoading, onRefresh, customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onRefreshCustomers }) {
+  const [activeTab, setActiveTab] = useState('products'); // products, customers
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -2009,8 +2467,44 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [sortDirection, setSortDirection] = useState('asc');
   const [stockFilter, setStockFilter] = useState('all');
   const [showStockModal, setShowStockModal] = useState(null);
+  
+  // 거래처 관련 state
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '', memo: '' });
+  const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(null);
 
   const categories = ['전체', ...new Set(products.map(p => p.category))];
+
+  // 거래처 추가
+  const handleAddCustomer = async () => {
+    if (!newCustomer.name) return;
+    const success = await onAddCustomer(newCustomer);
+    if (success) {
+      setNewCustomer({ name: '', phone: '', address: '', memo: '' });
+      setShowAddCustomerModal(false);
+    }
+  };
+
+  // 거래처 수정
+  const handleUpdateCustomer = async () => {
+    if (!editingCustomer) return;
+    await onUpdateCustomer(editingCustomer.id, {
+      name: editingCustomer.name,
+      phone: editingCustomer.phone,
+      address: editingCustomer.address,
+      memo: editingCustomer.memo
+    });
+    setEditingCustomer(null);
+  };
+
+  // 필터링된 거래처
+  const filteredCustomers = (customers || []).filter(c => 
+    c.name.toLowerCase().replace(/\s/g, '').includes(customerSearch.toLowerCase().replace(/\s/g, '')) ||
+    (c.address && c.address.toLowerCase().includes(customerSearch.toLowerCase())) ||
+    (c.phone && c.phone.includes(customerSearch))
+  );
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.wholesale || !newProduct.category) return;
@@ -2122,18 +2616,54 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onRefresh} disabled={isLoading} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+            <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
               <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
             </button>
-            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium transition-colors">
-              <Plus className="w-5 h-5" />
-              제품 추가
+            {activeTab === 'products' ? (
+              <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium transition-colors">
+                <Plus className="w-5 h-5" />
+                제품 추가
+              </button>
+            ) : (
+              <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition-colors">
+                <Plus className="w-5 h-5" />
+                거래처 추가
+              </button>
+            )}
+          </div>
+        </div>
+        {/* 탭 메뉴 */}
+        <div className="max-w-7xl mx-auto px-4 pb-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'products' 
+                  ? 'bg-amber-600 text-white' 
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <Package className="w-4 h-4 inline mr-2" />
+              제품 관리 ({products.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('customers')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'customers' 
+                  ? 'bg-emerald-600 text-white' 
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <Building className="w-4 h-4 inline mr-2" />
+              거래처 관리 ({(customers || []).length})
             </button>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto p-4">
+        {activeTab === 'products' ? (
+          <>
         {/* 재고 현황 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div onClick={() => setStockFilter('all')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'all' ? 'ring-2 ring-blue-500' : 'hover:bg-slate-750'}`}>
@@ -2249,6 +2779,171 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             </div>
           )}
         </div>
+          </>
+        ) : (
+          /* 거래처 관리 탭 */
+          <>
+            {/* 거래처 검색 */}
+            <div className="bg-slate-800 rounded-xl p-4 mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="거래처명, 주소, 전화번호 검색..."
+                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <p className="text-slate-400 text-sm mt-2">검색 결과: {filteredCustomers.length}개</p>
+            </div>
+
+            {/* 거래처 목록 */}
+            <div className="bg-slate-800 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-700/50 border-b border-slate-600">
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">업체명</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">연락처</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">주소</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">메모</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-slate-300">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map((customer, index) => (
+                      <tr key={customer.id} className={`border-b border-slate-700 hover:bg-slate-700/50 ${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}`}>
+                        <td className="px-4 py-3">
+                          <span className="text-white font-medium">{customer.name}</span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300">{customer.phone || '-'}</td>
+                        <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">{customer.address || '-'}</td>
+                        <td className="px-4 py-3 text-slate-500 text-sm">{customer.memo || '-'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setEditingCustomer(customer)}
+                              className="p-2 hover:bg-blue-600/20 rounded-lg text-blue-400 transition-colors"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            {deleteCustomerConfirm === customer.id ? (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => { onDeleteCustomer(customer.id); setDeleteCustomerConfirm(null); }}
+                                  className="px-2 py-1 bg-red-600 text-white text-xs rounded"
+                                >
+                                  삭제
+                                </button>
+                                <button
+                                  onClick={() => setDeleteCustomerConfirm(null)}
+                                  className="px-2 py-1 bg-slate-600 text-white text-xs rounded"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setDeleteCustomerConfirm(customer.id)}
+                                className="p-2 hover:bg-red-600/20 rounded-lg text-red-400 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredCustomers.length === 0 && (
+                <div className="p-8 text-center text-slate-400">
+                  등록된 거래처가 없습니다
+                </div>
+              )}
+            </div>
+
+            {/* 거래처 추가 모달 */}
+            {showAddCustomerModal && (
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-emerald-600/20 rounded-xl">
+                      <Building className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">거래처 추가</h3>
+                      <p className="text-slate-400 text-sm">새 거래처 정보를 입력하세요</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">업체명 *</label>
+                      <input type="text" value={newCustomer.name} onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})} placeholder="업체명" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">연락처</label>
+                      <input type="text" value={newCustomer.phone} onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} placeholder="010-1234-5678" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">주소</label>
+                      <input type="text" value={newCustomer.address} onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})} placeholder="배송 주소" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">메모</label>
+                      <input type="text" value={newCustomer.memo} onChange={(e) => setNewCustomer({...newCustomer, memo: e.target.value})} placeholder="참고사항" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button onClick={() => setShowAddCustomerModal(false)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors">취소</button>
+                    <button onClick={handleAddCustomer} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors">추가</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 거래처 수정 모달 */}
+            {editingCustomer && (
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-blue-600/20 rounded-xl">
+                      <Edit3 className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">거래처 수정</h3>
+                      <p className="text-slate-400 text-sm">거래처 정보를 수정합니다</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">업체명 *</label>
+                      <input type="text" value={editingCustomer.name} onChange={(e) => setEditingCustomer({...editingCustomer, name: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">연락처</label>
+                      <input type="text" value={editingCustomer.phone || ''} onChange={(e) => setEditingCustomer({...editingCustomer, phone: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">주소</label>
+                      <input type="text" value={editingCustomer.address || ''} onChange={(e) => setEditingCustomer({...editingCustomer, address: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1.5">메모</label>
+                      <input type="text" value={editingCustomer.memo || ''} onChange={(e) => setEditingCustomer({...editingCustomer, memo: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button onClick={() => setEditingCustomer(null)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors">취소</button>
+                    <button onClick={handleUpdateCustomer} className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-medium transition-colors">저장</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* 제품 추가 모달 */}
@@ -2813,6 +3508,8 @@ export default function PriceCalculator() {
   const [products, setProducts] = useState([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
   const [showStockOverview, setShowStockOverview] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [showShippingModal, setShowShippingModal] = useState(false);
 
   // Lenis 부드러운 스크롤 초기화
   useEffect(() => {
@@ -2931,6 +3628,63 @@ export default function PriceCalculator() {
     } finally {
       setIsProductLoading(false);
     }
+  };
+
+  // 거래처 목록 불러오기
+  const loadCustomers = async () => {
+    try {
+      const data = await supabase.getCustomers();
+      if (data) {
+        setCustomers(data);
+      }
+    } catch (error) {
+      console.log('거래처 목록 불러오기 실패:', error);
+    }
+  };
+
+  // 거래처 추가
+  const addCustomer = async (customer) => {
+    try {
+      const result = await supabase.addCustomer(customer);
+      if (result) {
+        await loadCustomers();
+        showToast('✅ 거래처가 추가되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 거래처 추가 실패', 'error');
+    }
+    return false;
+  };
+
+  // 거래처 수정
+  const updateCustomer = async (id, customer) => {
+    try {
+      const result = await supabase.updateCustomer(id, customer);
+      if (result) {
+        await loadCustomers();
+        showToast('✅ 거래처가 수정되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 거래처 수정 실패', 'error');
+    }
+    return false;
+  };
+
+  // 거래처 삭제
+  const deleteCustomer = async (id) => {
+    try {
+      const result = await supabase.deleteCustomer(id);
+      if (result) {
+        await loadCustomers();
+        showToast('🗑️ 거래처가 삭제되었습니다');
+        return true;
+      }
+    } catch (error) {
+      showToast('❌ 거래처 삭제 실패', 'error');
+    }
+    return false;
   };
 
   // 제품 추가
@@ -3109,6 +3863,7 @@ export default function PriceCalculator() {
 
   useEffect(() => {
     loadOrders();
+    loadCustomers();
   }, []);
 
   const viewOrder = (order) => {
@@ -3176,6 +3931,11 @@ export default function PriceCalculator() {
         formatPrice={formatPrice}
         isLoading={isProductLoading}
         onRefresh={loadProducts}
+        customers={customers}
+        onAddCustomer={addCustomer}
+        onUpdateCustomer={updateCustomer}
+        onDeleteCustomer={deleteCustomer}
+        onRefreshCustomers={loadCustomers}
       />
     );
   }
@@ -3219,6 +3979,7 @@ export default function PriceCalculator() {
         onAddItem={addToCart}
         products={priceData}
         onSaveCart={() => setIsSaveCartModalOpen(true)}
+        customers={customers}
       />
       <SaveCartModal 
         isOpen={isSaveCartModalOpen} 
@@ -3235,6 +3996,13 @@ export default function PriceCalculator() {
         onLoad={loadSavedCart} 
         onDelete={deleteSavedCart} 
         formatPrice={formatPrice} 
+      />
+      <ShippingLabelModal
+        isOpen={showShippingModal}
+        onClose={() => setShowShippingModal(false)}
+        orders={orders}
+        customers={customers}
+        formatPrice={formatPrice}
       />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
@@ -3265,6 +4033,14 @@ export default function PriceCalculator() {
                 title="재고 현황"
               >
                 <Package className="w-5 h-5 text-cyan-400" />
+              </button>
+              
+              <button
+                onClick={() => setShowShippingModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="택배 송장"
+              >
+                <Truck className="w-5 h-5 text-orange-400" />
               </button>
               
               <button
