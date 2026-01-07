@@ -224,6 +224,7 @@ const CustomStyles = () => (
     /* 물리 기반 부드러운 스크롤 */
     * {
       scroll-behavior: smooth;
+      -webkit-tap-highlight-color: transparent; /* 터치 하이라이트 제거 */
     }
     
     html {
@@ -241,6 +242,8 @@ const CustomStyles = () => (
       -moz-user-select: none;
       -ms-user-select: none;
       user-select: none;
+      /* 아이폰 safe area 대응 */
+      padding-bottom: env(safe-area-inset-bottom);
     }
     
     /* 입력 필드와 복사 필요한 데이터만 선택 가능 */
@@ -249,20 +252,65 @@ const CustomStyles = () => (
       -moz-user-select: text;
       -ms-user-select: text;
       user-select: text;
+      /* iOS 줌 방지 */
+      font-size: 16px !important;
     }
     
     /* 버튼, 링크에만 pointer 커서 */
     button, a, [role="button"], .cursor-pointer {
       cursor: pointer;
+      /* 터치 영역 최소 44px (애플 가이드라인) */
+      min-height: 44px;
     }
     
     /* 입력 필드는 text 커서 */
     input, textarea, select {
       cursor: text;
+      /* iOS 줌 방지 */
+      font-size: 16px !important;
     }
     
     input[type="number"] {
       cursor: text;
+    }
+    
+    /* 모바일 최적화 */
+    @media (max-width: 640px) {
+      /* 터치 친화적 버튼 크기 */
+      button {
+        min-height: 44px;
+        min-width: 44px;
+      }
+      
+      /* 모달 풀스크린 최적화 */
+      .fixed.inset-0 > div {
+        max-height: 90vh !important;
+        margin: 16px;
+      }
+      
+      /* 폰트 사이즈 조정 */
+      .text-xs {
+        font-size: 11px !important;
+      }
+      
+      .text-sm {
+        font-size: 13px !important;
+      }
+    }
+    
+    /* 태블릿 최적화 */
+    @media (min-width: 641px) and (max-width: 1024px) {
+      /* 터치 친화적 */
+      button {
+        min-height: 40px;
+      }
+    }
+    
+    /* 아이폰 노치 대응 */
+    @supports (padding: max(0px)) {
+      .fixed.bottom-0 {
+        padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+      }
     }
     
     /* 모든 스크롤 가능 영역에 부드러운 스크롤 적용 */
@@ -281,6 +329,32 @@ const CustomStyles = () => (
     /* 모달 오버레이 스크롤 방지 */
     .fixed.inset-0 {
       overscroll-behavior: contain;
+    }
+    
+    /* 모바일 터치 스크롤 강화 */
+    .mobile-scroll {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      scroll-behavior: auto;
+    }
+    
+    /* 모바일에서 모달 스크롤 영역 */
+    @media (max-width: 768px) {
+      .overflow-y-auto {
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+      }
+      
+      /* 모달 높이 모바일 최적화 */
+      .max-h-\\[90vh\\] {
+        max-height: 85vh !important;
+      }
+      
+      .max-h-\\[calc\\(90vh-200px\\)\\] {
+        max-height: calc(85vh - 180px) !important;
+      }
     }
     
     /* 커스텀 스크롤바 */
@@ -1204,7 +1278,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
           </button>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)] category-scroll overscroll-contain" data-lenis-prevent="true">
+        <div className="overflow-y-auto max-h-[calc(90vh-200px)] category-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="p-6 border-b border-slate-700">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -1359,7 +1433,7 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
           </button>
         </div>
         
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)] overscroll-contain" data-lenis-prevent="true">
+        <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)] overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
           {savedCarts.length === 0 ? (
             <div className="text-center py-8">
               <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -1564,7 +1638,7 @@ function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPric
             </div>
             
             {/* 주문 이력 */}
-            <div className="overflow-y-auto flex-1 p-4">
+            <div className="overflow-y-auto flex-1 p-4 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
               {getCustomerOrders(selectedCustomer.name).length === 0 ? (
                 <div className="text-center py-12">
                   <Receipt className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -1614,7 +1688,7 @@ function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPric
             </div>
             
             {/* 목록 */}
-            <div className="overflow-y-auto flex-1 p-4">
+            <div className="overflow-y-auto flex-1 p-4 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
               {filteredCustomers.length === 0 ? (
                 <div className="text-center py-8">
                   <Building className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -1927,7 +2001,7 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
             <span className="text-orange-400 font-semibold">{selectedOrders.length}건 선택됨</span>
           </div>
           
-          <div className="overflow-y-auto max-h-[40vh] space-y-2 overscroll-contain" data-lenis-prevent>
+          <div className="overflow-y-auto max-h-[40vh] space-y-2 overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
             {filteredOrders.length === 0 ? (
               <div className="text-center py-8">
                 <Truck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -2085,30 +2159,30 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
         </div>
         
         {/* 재고 통계 카드 (클릭 가능) */}
-        <div className="p-4 border-b border-slate-700">
-          <div className="grid grid-cols-4 gap-3">
-            <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
-              <p className="text-slate-400 text-xs mb-1">전체</p>
-              <p className="text-xl font-bold text-white">{stats.total}</p>
+        <div className="p-3 sm:p-4 border-b border-slate-700">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+            <button onClick={() => setStockFilter('all')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
+              <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">전체</p>
+              <p className="text-base sm:text-xl font-bold text-white">{stats.total}</p>
             </button>
-            <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
-              <p className="text-emerald-300 text-xs mb-1">정상</p>
-              <p className="text-xl font-bold text-emerald-400">{stats.normal}</p>
+            <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
+              <p className="text-emerald-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">정상</p>
+              <p className="text-base sm:text-xl font-bold text-emerald-400">{stats.normal}</p>
             </button>
-            <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
-              <p className="text-yellow-300 text-xs mb-1">부족</p>
-              <p className="text-xl font-bold text-yellow-400">{stats.low}</p>
+            <button onClick={() => setStockFilter('low')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
+              <p className="text-yellow-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">부족</p>
+              <p className="text-base sm:text-xl font-bold text-yellow-400">{stats.low}</p>
             </button>
-            <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
-              <p className="text-red-300 text-xs mb-1">품절</p>
-              <p className="text-xl font-bold text-red-400">{stats.out}</p>
+            <button onClick={() => setStockFilter('out')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
+              <p className="text-red-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">품절</p>
+              <p className="text-base sm:text-xl font-bold text-red-400">{stats.out}</p>
             </button>
           </div>
         </div>
         
         {/* 카테고리 필터 & 검색 */}
         <div className="p-4 border-b border-slate-700">
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-3 max-h-32 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setSelectedCategory('전체')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -2142,7 +2216,7 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
         </div>
         
         {/* 제품 목록 */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-320px)] overscroll-contain" data-lenis-prevent="true">
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-320px)] overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
           <p className="text-slate-400 text-sm mb-3">
             {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
             {selectedCategory !== '전체' && ' · '}
@@ -2560,7 +2634,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 category-scroll overscroll-contain" data-lenis-prevent="true" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
+        <div className="overflow-y-auto flex-1 category-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }} onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
           <div className="p-5 border-b border-slate-700">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -4286,17 +4360,23 @@ export default function PriceCalculator() {
 
   // Lenis 부드러운 스크롤 초기화
   useEffect(() => {
+    // 모바일 체크
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+    
     const lenis = new Lenis({
       duration: 1.2,           // 스크롤 지속 시간 (높을수록 부드러움)
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // 물리 기반 이징
       orientation: 'vertical', // 수직 스크롤
       gestureOrientation: 'vertical',
-      smoothWheel: true,       // 마우스 휠 부드럽게
+      smoothWheel: !isMobile,  // 모바일에서는 휠 스크롤 비활성화
+      smoothTouch: false,      // 터치 스크롤은 네이티브로
       wheelMultiplier: 1,      // 휠 속도
       touchMultiplier: 2,      // 터치 속도
       infinite: false,         // 무한 스크롤 끄기
       prevent: (node) => {
         // data-lenis-prevent 속성이 있는 요소 내부에서는 Lenis 비활성화
+        // 또는 모바일에서는 모든 스크롤 영역에서 비활성화
+        if (isMobile) return true;
         return node.closest('[data-lenis-prevent]') !== null;
       }
     });
@@ -5086,7 +5166,7 @@ export default function PriceCalculator() {
                   </div>
                   
                   {isExpanded && (
-                  <div className="p-2 grid grid-cols-2 gap-1.5 max-h-80 overflow-y-auto category-scroll animate-fade-in overscroll-contain" data-lenis-prevent="true">
+                  <div className="p-2 grid grid-cols-2 gap-1.5 max-h-80 overflow-y-auto category-scroll animate-fade-in overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                     {products.map(product => {
                       const cartItem = cart.find(item => item.id === product.id);
                       const cartQuantity = cartItem ? cartItem.quantity : 0;
@@ -5178,7 +5258,7 @@ export default function PriceCalculator() {
                 </button>
               </div>
 
-              <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll overscroll-contain" data-lenis-prevent="true">
+              <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
@@ -5273,7 +5353,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 pb-5 animate-fade-in-up">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 animate-fade-in-up" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-emerald-300/70 text-xs">공급가 {formatPrice(calcExVat(totalAmount))} + VAT</p>
