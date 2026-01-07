@@ -237,20 +237,14 @@ const CustomStyles = () => (
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
       cursor: default;
-    }
-    
-    /* UI 요소 텍스트 선택 방지 */
-    h1, h2, h3, h4, h5, h6, label, button, th, 
-    .select-none, [class*="font-bold"], [class*="font-semibold"],
-    nav, header, footer, aside {
       -webkit-user-select: none;
       -moz-user-select: none;
       -ms-user-select: none;
       user-select: none;
     }
     
-    /* 입력 필드와 데이터는 선택 가능 */
-    input, textarea, td, p, span, pre, code {
+    /* 입력 필드와 복사 필요한 데이터만 선택 가능 */
+    input, textarea, [contenteditable="true"] {
       -webkit-user-select: text;
       -moz-user-select: text;
       -ms-user-select: text;
