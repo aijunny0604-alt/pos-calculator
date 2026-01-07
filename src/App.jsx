@@ -239,6 +239,24 @@ const CustomStyles = () => (
       cursor: default;
     }
     
+    /* UI 요소 텍스트 선택 방지 */
+    h1, h2, h3, h4, h5, h6, label, button, th, 
+    .select-none, [class*="font-bold"], [class*="font-semibold"],
+    nav, header, footer, aside {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    
+    /* 입력 필드와 데이터는 선택 가능 */
+    input, textarea, td, p, span, pre, code {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+    
     /* 버튼, 링크에만 pointer 커서 */
     button, a, [role="button"], .cursor-pointer {
       cursor: pointer;
