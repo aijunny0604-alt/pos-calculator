@@ -2960,9 +2960,9 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   };
 
   const stockStats = useMemo(() => {
-    const outOfStock = products.filter(p => (p.stock || 0) === 0).length;
-    const lowStock = products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length;
-    const normalStock = products.filter(p => (p.stock || 0) > (p.min_stock || 5)).length;
+    const outOfStock = products.filter(p => (p.stock ?? 50) === 0).length;
+    const lowStock = products.filter(p => (p.stock ?? 50) > 0 && (p.stock ?? 50) <= (p.min_stock || 5)).length;
+    const normalStock = products.filter(p => (p.stock ?? 50) > (p.min_stock || 5)).length;
     return { outOfStock, lowStock, normalStock, total: products.length };
   }, [products]);
 
@@ -2972,7 +2972,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
         let matchesStock = true;
-        const stock = p.stock || 0;
+        const stock = p.stock ?? 50;
         const minStock = p.min_stock || 5;
         if (stockFilter === 'out') {
           matchesStock = stock === 0;
@@ -2993,7 +2993,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             comparison = a.wholesale - b.wholesale;
             break;
           case 'stock':
-            comparison = (a.stock || 0) - (b.stock || 0);
+            comparison = (a.stock ?? 50) - (b.stock ?? 50);
             break;
           case 'category':
             comparison = a.category.localeCompare(b.category, 'ko');
@@ -3138,7 +3138,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               </thead>
               <tbody className="divide-y divide-slate-700">
                 {filteredProducts.map(product => {
-                  const stock = product.stock || 0;
+                  const stock = product.stock ?? 50;
                   const minStock = product.min_stock || 5;
                   const isOutOfStock = stock === 0;
                   const isLowStock = stock > 0 && stock <= minStock;
@@ -3418,7 +3418,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                 <div>
                   <label className="block text-slate-300 text-sm font-medium mb-1.5">현재 재고</label>
                   <div className="relative">
-                    <input type="number" value={editingProduct.stock || 0} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} placeholder="0" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 pr-8" />
+                    <input type="number" value={editingProduct.stock ?? 50} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} placeholder="50" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 pr-8" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
                   </div>
                 </div>
@@ -4096,8 +4096,8 @@ export default function PriceCalculator() {
         // 재고 기본값 설정
         const productsWithStock = data.map(p => ({
           ...p,
-          stock: p.stock !== undefined ? p.stock : 50,
-          min_stock: p.min_stock !== undefined ? p.min_stock : 5
+          stock: (p.stock && p.stock > 0) ? p.stock : 50,
+          min_stock: (p.min_stock && p.min_stock > 0) ? p.min_stock : 5
         }));
         setProducts(productsWithStock);
         setIsOnline(true);
