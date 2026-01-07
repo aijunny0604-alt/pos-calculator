@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
@@ -2892,7 +2892,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
 }
 
 // ==================== 관리자 페이지 ====================
-function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeleteProduct, onUpdateStock, formatPrice, isLoading, onRefresh, customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onRefreshCustomers }) {
+function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeleteProduct, onUpdateStock, formatPrice, isLoading, onRefresh, customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onRefreshCustomers, onResetAllStock }) {
   const [activeTab, setActiveTab] = useState('products'); // products, customers
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
@@ -2904,6 +2904,9 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [sortDirection, setSortDirection] = useState('asc');
   const [stockFilter, setStockFilter] = useState('all');
   const [showStockModal, setShowStockModal] = useState(null);
+  const [showResetStockModal, setShowResetStockModal] = useState(false);
+  const [resetStockValue, setResetStockValue] = useState(50);
+  const [isResetting, setIsResetting] = useState(false);
   
   // 거래처 관련 state
   const [customerSearch, setCustomerSearch] = useState('');
@@ -2913,6 +2916,19 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(null);
 
   const categories = ['전체', ...new Set(products.map(p => p.category))];
+  
+  // 재고 일괄 초기화
+  const handleResetAllStock = async () => {
+    setIsResetting(true);
+    try {
+      await onResetAllStock(resetStockValue);
+      setShowResetStockModal(false);
+    } catch (error) {
+      console.error('재고 초기화 실패:', error);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // 거래처 추가
   const handleAddCustomer = async () => {
@@ -3057,10 +3073,19 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             {activeTab === 'products' ? (
-              <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium transition-colors">
-                <Plus className="w-5 h-5" />
-                제품 추가
-              </button>
+              <>
+                <button 
+                  onClick={() => setShowResetStockModal(true)} 
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 font-medium transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  재고 초기화
+                </button>
+                <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium transition-colors">
+                  <Plus className="w-5 h-5" />
+                  제품 추가
+                </button>
+              </>
             ) : (
               <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition-colors">
                 <Plus className="w-5 h-5" />
@@ -3385,24 +3410,150 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 
       {/* 제품 추가 모달 */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-white mb-4">제품 추가</h3>
-            <div className="space-y-3">
-              <input type="text" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} placeholder="제품명 *" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
-              <input type="text" value={newProduct.category} onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} placeholder="카테고리 *" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" value={newProduct.wholesale} onChange={(e) => setNewProduct({...newProduct, wholesale: e.target.value})} placeholder="도매가 *" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
-                <input type="number" value={newProduct.retail} onChange={(e) => setNewProduct({...newProduct, retail: e.target.value})} placeholder="소비자가" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700 shadow-2xl animate-scale-in">
+            {/* 헤더 */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-amber-600/20 rounded-xl">
+                <Plus className="w-6 h-6 text-amber-400" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" value={newProduct.stock} onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})} placeholder="재고 수량" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
-                <input type="number" value={newProduct.min_stock} onChange={(e) => setNewProduct({...newProduct, min_stock: e.target.value})} placeholder="최소 재고 (기본 5)" className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500" />
+              <div>
+                <h3 className="text-xl font-bold text-white">제품 추가</h3>
+                <p className="text-slate-400 text-sm">새 제품을 등록합니다</p>
               </div>
             </div>
+            
+            <div className="space-y-4">
+              {/* 제품명 */}
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                  제품명 <span className="text-red-400">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={newProduct.name} 
+                  onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} 
+                  placeholder="예: 레조 100 150 54" 
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all" 
+                />
+              </div>
+              
+              {/* 카테고리 */}
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                  카테고리 <span className="text-red-400">*</span>
+                </label>
+                <input 
+                  type="text"
+                  list="category-list"
+                  value={newProduct.category} 
+                  onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} 
+                  placeholder="선택 또는 새 카테고리 입력" 
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all" 
+                />
+                <datalist id="category-list">
+                  {categories.map(cat => <option key={cat} value={cat} />)}
+                </datalist>
+              </div>
+              
+              {/* 가격 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                    도매가 <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={newProduct.wholesale} 
+                      onChange={(e) => setNewProduct({...newProduct, wholesale: e.target.value})} 
+                      placeholder="0" 
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">원</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                    소비자가 <span className="text-slate-500 text-xs">(선택)</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={newProduct.retail} 
+                      onChange={(e) => setNewProduct({...newProduct, retail: e.target.value})} 
+                      placeholder="0" 
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">원</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 재고 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                    초기 재고
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={newProduct.stock} 
+                      onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})} 
+                      placeholder="50" 
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                    최소 재고 <span className="text-slate-500 text-xs">(알림 기준)</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={newProduct.min_stock} 
+                      onChange={(e) => setNewProduct({...newProduct, min_stock: e.target.value})} 
+                      placeholder="5" 
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 도움말 */}
+              <div className="bg-slate-700/50 rounded-xl p-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-slate-400 text-xs">
+                  <span className="text-red-400">*</span> 표시는 필수 입력 항목입니다. 
+                  재고를 입력하지 않으면 기본값 50개로 설정됩니다.
+                </p>
+              </div>
+            </div>
+            
+            {/* 버튼 */}
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
-              <button onClick={handleAddProduct} className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium">추가</button>
+              <button 
+                onClick={() => { setShowAddModal(false); setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' }); }} 
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleAddProduct} 
+                disabled={!newProduct.name || !newProduct.wholesale || !newProduct.category}
+                className={`flex-1 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-colors ${
+                  !newProduct.name || !newProduct.wholesale || !newProduct.category
+                    ? 'bg-slate-600 cursor-not-allowed'
+                    : 'bg-amber-600 hover:bg-amber-500'
+                }`}
+              >
+                <Plus className="w-5 h-5" />
+                제품 추가
+              </button>
             </div>
           </div>
         </div>
@@ -3514,6 +3665,113 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             <div className="flex gap-3">
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">취소</button>
               <button onClick={() => { onDeleteProduct(deleteConfirm); setDeleteConfirm(null); }} className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-medium">삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 재고 일괄 초기화 모달 */}
+      {showResetStockModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-slate-700 shadow-2xl animate-scale-in">
+            {/* 헤더 */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-blue-600/20 rounded-xl">
+                <RotateCcw className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">재고 일괄 초기화</h3>
+                <p className="text-slate-400 text-sm">모든 제품의 재고를 설정한 값으로 초기화합니다</p>
+              </div>
+            </div>
+            
+            {/* 현재 상태 표시 */}
+            <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">전체 제품</p>
+                  <p className="text-white font-bold text-lg">{products.length}개</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">품절 제품</p>
+                  <p className="text-red-400 font-bold text-lg">{products.filter(p => (p.stock ?? 50) === 0).length}개</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">재고 부족</p>
+                  <p className="text-yellow-400 font-bold text-lg">{products.filter(p => (p.stock ?? 50) > 0 && (p.stock ?? 50) <= (p.min_stock || 5)).length}개</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 초기화 값 설정 */}
+            <div className="mb-4">
+              <label className="block text-slate-300 text-sm font-medium mb-2">
+                초기화할 재고 수량
+              </label>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="number" 
+                  value={resetStockValue} 
+                  onChange={(e) => setResetStockValue(parseInt(e.target.value) || 0)}
+                  min="0"
+                  className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg font-bold text-center focus:outline-none focus:border-blue-500"
+                />
+                <span className="text-slate-400">개</span>
+              </div>
+              <div className="flex gap-2 mt-2">
+                {[10, 30, 50, 100].map(val => (
+                  <button 
+                    key={val}
+                    onClick={() => setResetStockValue(val)}
+                    className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      resetStockValue === val 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                    }`}
+                  >
+                    {val}개
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* 경고 */}
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-red-400 font-medium text-sm">주의!</p>
+                  <p className="text-red-400/80 text-xs">이 작업은 되돌릴 수 없습니다. 모든 제품의 재고가 {resetStockValue}개로 변경됩니다.</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 버튼 */}
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowResetStockModal(false)} 
+                disabled={isResetting}
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleResetAllStock}
+                disabled={isResetting}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-colors"
+              >
+                {isResetting ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    초기화 중...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-5 h-5" />
+                    {products.length}개 제품 초기화
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -4273,6 +4531,31 @@ export default function PriceCalculator() {
     return false;
   };
 
+  // 재고 일괄 초기화
+  const resetAllStock = async (stockValue) => {
+    try {
+      const sourceProducts = products.length > 0 ? products : priceData;
+      let successCount = 0;
+      
+      for (const product of sourceProducts) {
+        try {
+          await supabase.updateProduct(product.id, { stock: stockValue });
+          successCount++;
+        } catch (err) {
+          console.log('재고 초기화 실패:', product.name, err);
+        }
+      }
+      
+      await loadProducts();
+      showToast(`✅ ${successCount}개 제품 재고가 ${stockValue}개로 초기화되었습니다`);
+      return true;
+    } catch (error) {
+      console.error('재고 일괄 초기화 실패:', error);
+      showToast('❌ 재고 초기화 실패', 'error');
+      return false;
+    }
+  };
+
   // 관리자 로그인 처리
   const handleAdminLogin = () => {
     if (adminPassword === ADMIN_PASSWORD) {
@@ -4540,6 +4823,7 @@ export default function PriceCalculator() {
         onUpdateProduct={updateProduct}
         onDeleteProduct={deleteProduct}
         onUpdateStock={updateStock}
+        onResetAllStock={resetAllStock}
         formatPrice={formatPrice}
         isLoading={isProductLoading}
         onRefresh={loadProducts}
