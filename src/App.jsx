@@ -1359,11 +1359,9 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
 }
 
 // ==================== 장바구니 저장 모달 ====================
-// ==================== 택배 송장 생성 모달 ====================
-function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice }) {
-  const [selectedOrders, setSelectedOrders] = useState([]);
-  const [shippingCost, setShippingCost] = useState(7300);
-  const [senderName, setSenderName] = useState('무브모터스');
+// ==================== 거래처 목록 모달 ====================
+function CustomerListModal({ isOpen, onClose, customers }) {
+  const [searchTerm, setSearchTerm] = useState('');
   
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -1371,6 +1369,133 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  // 모달 열릴 때 body 스크롤 잠금
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+  
+  if (!isOpen) return null;
+  
+  // 검색 필터링
+  const filteredCustomers = (customers || []).filter(c => 
+    c.name.toLowerCase().replace(/\s/g, '').includes(searchTerm.toLowerCase().replace(/\s/g, '')) ||
+    (c.address && c.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (c.phone && c.phone.replace(/\s/g, '').includes(searchTerm.replace(/\s/g, '')))
+  );
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Building className="w-6 h-6 text-white" />
+            <div>
+              <h2 className="text-xl font-bold text-white">거래처 목록</h2>
+              <p className="text-emerald-100 text-sm">총 {customers?.length || 0}개 업체</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        
+        {/* 검색 */}
+        <div className="p-4 border-b border-slate-700">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="업체명, 주소, 전화번호로 검색..."
+              className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <p className="text-slate-400 text-sm mt-2">검색 결과: {filteredCustomers.length}개</p>
+        </div>
+        
+        {/* 목록 */}
+        <div className="overflow-y-auto max-h-[60vh] p-4">
+          {filteredCustomers.length === 0 ? (
+            <div className="text-center py-8">
+              <Building className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">등록된 거래처가 없습니다</p>
+              <p className="text-slate-500 text-sm mt-1">관리자 페이지에서 거래처를 추가하세요</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredCustomers.map(customer => (
+                <div key={customer.id} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-emerald-500/50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-semibold truncate">{customer.name}</h3>
+                      {customer.phone && (
+                        <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
+                          <Phone className="w-3.5 h-3.5" />
+                          {customer.phone}
+                        </p>
+                      )}
+                      {customer.address && (
+                        <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
+                          <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span className="break-all">{customer.address}</span>
+                        </p>
+                      )}
+                      {customer.memo && (
+                        <p className="text-slate-500 text-xs mt-2 italic">메모: {customer.memo}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* 하단 버튼 */}
+        <div className="p-4 border-t border-slate-700">
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== 택배 송장 생성 모달 ====================
+function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice }) {
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [shippingCost, setShippingCost] = useState(7300);
+  const [senderName, setSenderName] = useState('무브모터스');
+  const [dateFilter, setDateFilter] = useState('all'); // today, yesterday, week, all
+  
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
+  // 모달 열릴 때 body 스크롤 잠금
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
   
   useEffect(() => {
     if (!isOpen) {
@@ -1380,21 +1505,36 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
   
   if (!isOpen) return null;
   
-  // 오늘 주문만 필터링
+  // 날짜 필터링
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayOrders = orders.filter(order => {
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  
+  const filteredOrders = orders.filter(order => {
     const orderDate = new Date(order.createdAt);
     orderDate.setHours(0, 0, 0, 0);
-    return orderDate.getTime() === today.getTime() && order.customerName;
+    
+    if (dateFilter === 'today') {
+      return orderDate.getTime() === today.getTime();
+    } else if (dateFilter === 'yesterday') {
+      return orderDate.getTime() === yesterday.getTime();
+    } else if (dateFilter === 'week') {
+      return orderDate >= weekAgo;
+    }
+    return true; // all
   });
   
   // 전체 선택/해제
   const handleSelectAll = () => {
-    if (selectedOrders.length === todayOrders.length) {
+    if (selectedOrders.length === filteredOrders.length) {
       setSelectedOrders([]);
     } else {
-      setSelectedOrders(todayOrders.map(o => o.orderNumber));
+      setSelectedOrders(filteredOrders.map(o => o.orderNumber));
     }
   };
   
@@ -1421,10 +1561,11 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
   };
   
   // 엑셀 생성 및 다운로드
+  // CSV 다운로드
   const generateShippingLabel = () => {
     if (selectedOrders.length === 0) return;
     
-    const selectedData = todayOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
     
     // CSV 형식으로 생성 (엑셀 호환)
     let csv = '\uFEFF'; // BOM for UTF-8
@@ -1453,12 +1594,69 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
     link.download = `택배송장_${date}.csv`;
     link.click();
   };
+
+  // XLSX 다운로드 (엑셀 파일)
+  const generateXlsxLabel = async () => {
+    if (selectedOrders.length === 0) return;
+    
+    const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    
+    // SheetJS 라이브러리 동적 로드
+    if (!window.XLSX) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      document.head.appendChild(script);
+      await new Promise(resolve => script.onload = resolve);
+    }
+    
+    const XLSX = window.XLSX;
+    
+    // 엑셀 데이터 준비
+    const wsData = [
+      ['보내는곳 : ' + senderName],
+      ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처']
+    ];
+    
+    selectedData.forEach((order, index) => {
+      const customer = findCustomer(order.customerName);
+      const mostExpensive = getMostExpensiveItem(order.items);
+      const phone = customer?.phone || order.customerPhone || '';
+      const address = customer?.address || '';
+      
+      // 기본 정보 행
+      wsData.push([index + 1, order.customerName, '착불', '박스1', shippingCost, mostExpensive, phone]);
+      // 주소 행
+      if (address) {
+        wsData.push([address, '', '', '', '', '', '']);
+      }
+    });
+    
+    // 워크시트 및 워크북 생성
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '택배 송장');
+    
+    // 컬럼 너비 설정
+    ws['!cols'] = [
+      { wch: 5 },   // 번호
+      { wch: 20 },  // 받는곳
+      { wch: 8 },   // 배송
+      { wch: 8 },   // 포장
+      { wch: 10 },  // 운임
+      { wch: 25 },  // 품명
+      { wch: 15 }   // 연락처
+    ];
+    
+    // 다운로드
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `택배송장_${date}.xlsx`);
+  };
   
   // 인쇄용 HTML 생성
   const printShippingLabels = () => {
     if (selectedOrders.length === 0) return;
     
-    const selectedData = todayOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
     
     let html = `
       <!DOCTYPE html>
@@ -1537,7 +1735,7 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
             <Truck className="w-6 h-6 text-white" />
             <div>
               <h2 className="text-xl font-bold text-white">택배 송장 생성</h2>
-              <p className="text-orange-100 text-sm">오늘 주문 {todayOrders.length}건</p>
+              <p className="text-orange-100 text-sm">전체 주문 {orders.length}건 / 필터 {filteredOrders.length}건</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
@@ -1547,6 +1745,27 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
         
         {/* 설정 */}
         <div className="p-4 border-b border-slate-700 bg-slate-800/50">
+          {/* 날짜 필터 */}
+          <div className="flex gap-2 mb-4">
+            {[
+              { key: 'today', label: '오늘' },
+              { key: 'yesterday', label: '어제' },
+              { key: 'week', label: '최근 7일' },
+              { key: 'all', label: '전체' }
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => { setDateFilter(key); setSelectedOrders([]); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  dateFilter === key
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-slate-400 text-sm mb-1">보내는 곳</label>
@@ -1575,7 +1794,7 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
             <label className="flex items-center gap-2 cursor-pointer">
               <input 
                 type="checkbox" 
-                checked={todayOrders.length > 0 && selectedOrders.length === todayOrders.length}
+                checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length}
                 onChange={handleSelectAll}
                 className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500"
               />
@@ -1585,13 +1804,14 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
           </div>
           
           <div className="overflow-y-auto max-h-[40vh] space-y-2">
-            {todayOrders.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <div className="text-center py-8">
                 <Truck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-400">오늘 주문 내역이 없습니다</p>
+                <p className="text-slate-400">해당 기간 주문 내역이 없습니다</p>
+                <p className="text-slate-500 text-sm mt-1">다른 날짜 필터를 선택해보세요</p>
               </div>
             ) : (
-              todayOrders.map(order => {
+              filteredOrders.map(order => {
                 const customer = findCustomer(order.customerName);
                 const hasAddress = customer?.address;
                 
@@ -1638,36 +1858,50 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
         </div>
         
         {/* 버튼 */}
-        <div className="p-4 border-t border-slate-700 flex gap-3">
+        <div className="p-4 border-t border-slate-700 space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={generateShippingLabel}
+              disabled={selectedOrders.length === 0}
+              className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                selectedOrders.length === 0 
+                  ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
+            >
+              <Download className="w-5 h-5" />
+              CSV
+            </button>
+            <button
+              onClick={generateXlsxLabel}
+              disabled={selectedOrders.length === 0}
+              className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                selectedOrders.length === 0 
+                  ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              <FileText className="w-5 h-5" />
+              Excel
+            </button>
+            <button
+              onClick={printShippingLabels}
+              disabled={selectedOrders.length === 0}
+              className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                selectedOrders.length === 0 
+                  ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                  : 'bg-orange-600 hover:bg-orange-500 text-white'
+              }`}
+            >
+              <Printer className="w-5 h-5" />
+              인쇄
+            </button>
+          </div>
           <button
             onClick={onClose}
-            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+            className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
           >
-            취소
-          </button>
-          <button
-            onClick={generateShippingLabel}
-            disabled={selectedOrders.length === 0}
-            className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-              selectedOrders.length === 0 
-                ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-            }`}
-          >
-            <Download className="w-5 h-5" />
-            CSV 다운로드
-          </button>
-          <button
-            onClick={printShippingLabels}
-            disabled={selectedOrders.length === 0}
-            className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-              selectedOrders.length === 0 
-                ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                : 'bg-orange-600 hover:bg-orange-500 text-white'
-            }`}
-          >
-            <Printer className="w-5 h-5" />
-            인쇄
+            닫기
           </button>
         </div>
       </div>
@@ -1687,6 +1921,16 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  // 모달 열릴 때 body 스크롤 잠금
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
   
   if (!isOpen) return null;
   
@@ -3093,6 +3337,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   const [customDate, setCustomDate] = useState('');
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showFilterDeleteConfirm, setShowFilterDeleteConfirm] = useState(false); // 필터 기준 전체 삭제
 
   // 날짜 필터링 함수
   const filterByDate = (order) => {
@@ -3185,10 +3430,28 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
     setShowBulkDeleteConfirm(false);
   };
 
-  // 초기화 (검색어만 초기화, 필터는 유지)
-  const handleReset = () => {
-    setSearchTerm('');
+  // 필터 기준 전체 삭제
+  const handleFilterDelete = () => {
+    const orderNumbersToDelete = filteredOrders.map(o => o.orderNumber);
+    if (onDeleteMultiple) {
+      onDeleteMultiple(orderNumbersToDelete);
+    } else {
+      orderNumbersToDelete.forEach(orderNumber => onDeleteOrder(orderNumber));
+    }
     setSelectedOrders([]);
+    setShowFilterDeleteConfirm(false);
+  };
+
+  // 필터 라벨 가져오기
+  const getFilterLabel = () => {
+    switch(dateFilter) {
+      case 'today': return '오늘';
+      case 'yesterday': return '어제';
+      case 'week': return '최근 7일';
+      case 'month': return '최근 1개월';
+      case 'custom': return customDate;
+      default: return '전체';
+    }
   };
 
   return (
@@ -3306,10 +3569,16 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
               />
             )}
             <button
-              onClick={handleReset}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-600 text-slate-300 hover:bg-slate-500 transition-all"
+              onClick={() => setShowFilterDeleteConfirm(true)}
+              disabled={filteredOrders.length === 0}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                filteredOrders.length === 0 
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/40'
+              }`}
             >
-              초기화
+              <Trash2 className="w-4 h-4" />
+              {getFilterLabel()} 삭제 ({filteredOrders.length})
             </button>
           </div>
           
@@ -3474,6 +3743,47 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
           </div>
         </div>
       )}
+
+      {/* 필터 기준 전체 삭제 확인 모달 */}
+      {showFilterDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-red-500/50">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-600/30 rounded-xl">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">⚠️ 주문 일괄 삭제</h3>
+                <p className="text-red-400 text-sm font-medium">{getFilterLabel()} 주문 {filteredOrders.length}건</p>
+              </div>
+            </div>
+            <div className="bg-red-600/10 border border-red-500/30 rounded-xl p-4 mb-6">
+              <p className="text-slate-200 font-medium mb-2">다음 주문이 모두 삭제됩니다:</p>
+              <ul className="text-slate-400 text-sm space-y-1">
+                <li>• 필터: <span className="text-white">{getFilterLabel()}</span></li>
+                <li>• 삭제 대상: <span className="text-red-400 font-bold">{filteredOrders.length}건</span></li>
+                <li>• 총 금액: <span className="text-white">{formatPrice(filteredOrders.reduce((sum, o) => sum + o.totalAmount, 0))}</span></li>
+              </ul>
+              <p className="text-red-400 text-xs mt-3">⚠️ 이 작업은 되돌릴 수 없습니다!</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowFilterDeleteConfirm(false)}
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleFilterDelete}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-5 h-5" />
+                삭제 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3510,6 +3820,7 @@ export default function PriceCalculator() {
   const [showStockOverview, setShowStockOverview] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [showShippingModal, setShowShippingModal] = useState(false);
+  const [showCustomerListModal, setShowCustomerListModal] = useState(false);
 
   // Lenis 부드러운 스크롤 초기화
   useEffect(() => {
@@ -4004,6 +4315,11 @@ export default function PriceCalculator() {
         customers={customers}
         formatPrice={formatPrice}
       />
+      <CustomerListModal
+        isOpen={showCustomerListModal}
+        onClose={() => setShowCustomerListModal(false)}
+        customers={customers}
+      />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="w-full px-4 py-3">
@@ -4028,6 +4344,22 @@ export default function PriceCalculator() {
             
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowAdminLogin(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="관리자"
+              >
+                <Settings className="w-5 h-5 text-amber-400" />
+              </button>
+              
+              <button
+                onClick={() => { loadCustomers(); setShowCustomerListModal(true); }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="거래처 목록"
+              >
+                <Building className="w-5 h-5 text-emerald-400" />
+              </button>
+              
+              <button
                 onClick={() => setShowStockOverview(true)}
                 className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="재고 현황"
@@ -4036,19 +4368,11 @@ export default function PriceCalculator() {
               </button>
               
               <button
-                onClick={() => setShowShippingModal(true)}
+                onClick={() => { loadOrders(); setShowShippingModal(true); }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="택배 송장"
               >
                 <Truck className="w-5 h-5 text-orange-400" />
-              </button>
-              
-              <button
-                onClick={() => setShowAdminLogin(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="관리자"
-              >
-                <Settings className="w-5 h-5 text-amber-400" />
               </button>
               
               <button
