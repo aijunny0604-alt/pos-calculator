@@ -1284,6 +1284,171 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
 }
 
 // ==================== 장바구니 저장 모달 ====================
+// ==================== 재고 현황 모달 ====================
+function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice }) {
+  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [stockFilter, setStockFilter] = useState('all'); // all, normal, low, out
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+  
+  if (!isOpen) return null;
+  
+  // 필터링된 제품
+  const filteredProducts = products.filter(p => {
+    const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
+    const matchesSearch = p.name.toLowerCase().replace(/\s/g, '').includes(searchTerm.toLowerCase().replace(/\s/g, ''));
+    const stock = p.stock || 50;
+    const minStock = p.min_stock || 5;
+    
+    let matchesStock = true;
+    if (stockFilter === 'out') matchesStock = stock === 0;
+    else if (stockFilter === 'low') matchesStock = stock > 0 && stock <= minStock;
+    else if (stockFilter === 'normal') matchesStock = stock > minStock;
+    
+    return matchesCategory && matchesSearch && matchesStock;
+  });
+  
+  // 통계 계산
+  const stats = {
+    total: products.length,
+    normal: products.filter(p => (p.stock || 50) > (p.min_stock || 5)).length,
+    low: products.filter(p => (p.stock || 50) > 0 && (p.stock || 50) <= (p.min_stock || 5)).length,
+    out: products.filter(p => (p.stock || 50) === 0).length
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-700">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Package className="w-6 h-6 text-white" />
+            <div>
+              <h2 className="text-xl font-bold text-white">재고 현황</h2>
+              <p className="text-cyan-100 text-sm">전체 {products.length}개 제품</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        
+        {/* 재고 통계 카드 (클릭 가능) */}
+        <div className="p-4 border-b border-slate-700">
+          <div className="grid grid-cols-4 gap-3">
+            <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
+              <p className="text-slate-400 text-xs mb-1">전체</p>
+              <p className="text-xl font-bold text-white">{stats.total}</p>
+            </button>
+            <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
+              <p className="text-emerald-300 text-xs mb-1">정상</p>
+              <p className="text-xl font-bold text-emerald-400">{stats.normal}</p>
+            </button>
+            <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
+              <p className="text-yellow-300 text-xs mb-1">부족</p>
+              <p className="text-xl font-bold text-yellow-400">{stats.low}</p>
+            </button>
+            <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
+              <p className="text-red-300 text-xs mb-1">품절</p>
+              <p className="text-xl font-bold text-red-400">{stats.out}</p>
+            </button>
+          </div>
+        </div>
+        
+        {/* 카테고리 필터 & 검색 */}
+        <div className="p-4 border-b border-slate-700">
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button
+              onClick={() => setSelectedCategory('전체')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                selectedCategory === '전체' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              전체
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === cat ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="제품 검색..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+            />
+          </div>
+        </div>
+        
+        {/* 제품 목록 */}
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-320px)]">
+          <p className="text-slate-400 text-sm mb-3">
+            {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
+            {selectedCategory !== '전체' && ' · '}
+            검색 결과: <span className="text-white font-semibold">{filteredProducts.length}개</span>
+          </p>
+          
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">해당 조건의 제품이 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {filteredProducts.map(product => {
+                const stock = product.stock || 50;
+                const minStock = product.min_stock || 5;
+                const isOut = stock === 0;
+                const isLow = stock > 0 && stock <= minStock;
+                
+                return (
+                  <div 
+                    key={product.id} 
+                    className={`rounded-lg p-3 border ${
+                      isOut ? 'bg-red-900/20 border-red-500/30' :
+                      isLow ? 'bg-yellow-900/20 border-yellow-500/30' :
+                      'bg-emerald-900/10 border-emerald-500/20'
+                    }`}
+                  >
+                    <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-slate-400 text-xs truncate">{product.category}</p>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        isOut ? 'bg-red-600/30 text-red-400' :
+                        isLow ? 'bg-yellow-600/30 text-yellow-400' :
+                        'bg-emerald-600/30 text-emerald-400'
+                      }`}>
+                        {isOut ? '품절' : `${stock}개`}
+                      </span>
+                    </div>
+                    <p className="text-slate-500 text-xs mt-1">{formatPrice(product.wholesale)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice }) {
   const [cartName, setCartName] = useState('');
   
@@ -1765,58 +1930,66 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button
-              onClick={handleSave}
-              disabled={isSaving || cart.length === 0}
-              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-                saved ? 'bg-green-600 text-white' : 
-                isSaving ? 'bg-slate-600 text-slate-400 cursor-not-allowed' :
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-emerald-600 hover:bg-emerald-700 text-white'
-              }`}
-            >
-              {saved ? <><Check className="w-5 h-5" />저장됨!</> : 
-               isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
-               <><Cloud className="w-5 h-5" />저장</>}
-            </button>
-            <button
-              onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(); }}
-              disabled={cart.length === 0}
-              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-violet-600 hover:bg-violet-500 text-white'
-              }`}
-            >
-              <Save className="w-5 h-5" />담기
-            </button>
-            <button
-              onClick={handleCopy}
-              disabled={cart.length === 0}
-              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-                copied ? 'bg-green-600 text-white' : 
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-slate-700 hover:bg-slate-600 text-white'
-              }`}
-            >
-              {copied ? <><Check className="w-5 h-5" />복사됨!</> : <><Copy className="w-5 h-5" />복사</>}
-            </button>
-            <button
-              onClick={handlePrint}
-              disabled={cart.length === 0}
-              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-slate-700 hover:bg-slate-600 text-white'
-              }`}
-            >
-              <Printer className="w-5 h-5" />인쇄
-            </button>
-            <button
-              onClick={onClose}
-              className="py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium transition-colors"
-            >
-              닫기
-            </button>
+          {/* 버튼 영역 */}
+          <div className="space-y-3">
+            {/* 상단 버튼 - 주요 액션 */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleSave}
+                disabled={isSaving || cart.length === 0}
+                className={`py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                  saved ? 'bg-green-600 text-white' : 
+                  isSaving ? 'bg-slate-600 text-slate-400 cursor-not-allowed' :
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-blue-600 hover:bg-blue-500 text-white'
+                }`}
+              >
+                {saved ? <><Check className="w-5 h-5" />저장 완료!</> : 
+                 isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
+                 <><Upload className="w-5 h-5" />클라우드 저장</>}
+              </button>
+              <button
+                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(); }}
+                disabled={cart.length === 0}
+                className={`py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-amber-600 hover:bg-amber-500 text-white'
+                }`}
+              >
+                <ShoppingBag className="w-5 h-5" />장바구니 담기
+              </button>
+            </div>
+            
+            {/* 하단 버튼 - 보조 액션 */}
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={handleCopy}
+                disabled={cart.length === 0}
+                className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                  copied ? 'bg-green-600 text-white' : 
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-slate-700 hover:bg-slate-600 text-white'
+                }`}
+              >
+                {copied ? <><Check className="w-5 h-5" />완료</> : <><Copy className="w-5 h-5" />복사</>}
+              </button>
+              <button
+                onClick={handlePrint}
+                disabled={cart.length === 0}
+                className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-slate-700 hover:bg-slate-600 text-white'
+                }`}
+              >
+                <Printer className="w-5 h-5" />인쇄
+              </button>
+              <button
+                onClick={onClose}
+                className="py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-medium transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -3406,107 +3579,13 @@ export default function PriceCalculator() {
 
       {/* 재고 현황 모달 */}
       {showStockOverview && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden border border-slate-700">
-            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Package className="w-6 h-6 text-white" />
-                <div>
-                  <h2 className="text-xl font-bold text-white">재고 현황</h2>
-                  <p className="text-cyan-100 text-sm">전체 {priceData.length}개 제품</p>
-                </div>
-              </div>
-              <button onClick={() => setShowStockOverview(false)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-white" />
-              </button>
-            </div>
-            
-            {/* 재고 통계 */}
-            <div className="p-4 border-b border-slate-700">
-              <div className="grid grid-cols-4 gap-3">
-                <div className="bg-slate-700/50 rounded-xl p-3 text-center">
-                  <p className="text-slate-400 text-xs mb-1">전체</p>
-                  <p className="text-xl font-bold text-white">{priceData.length}</p>
-                </div>
-                <div className="bg-emerald-600/20 rounded-xl p-3 text-center">
-                  <p className="text-emerald-300 text-xs mb-1">정상</p>
-                  <p className="text-xl font-bold text-emerald-400">{priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length}</p>
-                </div>
-                <div className="bg-yellow-600/20 rounded-xl p-3 text-center">
-                  <p className="text-yellow-300 text-xs mb-1">부족</p>
-                  <p className="text-xl font-bold text-yellow-400">{priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length}</p>
-                </div>
-                <div className="bg-red-600/20 rounded-xl p-3 text-center">
-                  <p className="text-red-300 text-xs mb-1">품절</p>
-                  <p className="text-xl font-bold text-red-400">{priceData.filter(p => (p.stock || 0) === 0).length}</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* 품절/부족 제품 목록 */}
-            <div className="p-4 overflow-y-auto max-h-[calc(85vh-200px)]">
-              {/* 품절 제품 */}
-              {priceData.filter(p => (p.stock || 0) === 0).length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-red-400 font-semibold mb-2 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    품절 제품 ({priceData.filter(p => (p.stock || 0) === 0).length})
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {priceData.filter(p => (p.stock || 0) === 0).map(product => (
-                      <div key={product.id} className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                        <p className="text-white text-sm font-medium truncate">{product.name}</p>
-                        <p className="text-red-400 text-xs">{product.category}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* 재고 부족 제품 */}
-              {priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-yellow-400 font-semibold mb-2 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    재고 부족 ({priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).length})
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {priceData.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.min_stock || 5)).map(product => (
-                      <div key={product.id} className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
-                        <p className="text-white text-sm font-medium truncate">{product.name}</p>
-                        <div className="flex justify-between items-center mt-1">
-                          <p className="text-yellow-400 text-xs">{product.category}</p>
-                          <span className="text-yellow-400 text-xs font-bold">{product.stock}개</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* 정상 재고 제품 (접을 수 있게) */}
-              <div>
-                <h3 className="text-emerald-400 font-semibold mb-2 flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  정상 재고 ({priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length})
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).slice(0, 20).map(product => (
-                    <div key={product.id} className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-2">
-                      <p className="text-white text-xs font-medium truncate">{product.name}</p>
-                      <span className="text-emerald-400 text-[10px]">{product.stock}개</span>
-                    </div>
-                  ))}
-                  {priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length > 20 && (
-                    <div className="bg-slate-700/30 rounded-lg p-2 flex items-center justify-center">
-                      <span className="text-slate-400 text-xs">+{priceData.filter(p => (p.stock || 0) > (p.min_stock || 5)).length - 20}개 더</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <StockOverviewModal 
+          isOpen={showStockOverview}
+          onClose={() => setShowStockOverview(false)}
+          products={priceData}
+          categories={categories}
+          formatPrice={formatPrice}
+        />
       )}
 
       {/* 관리자 로그인 모달 */}
