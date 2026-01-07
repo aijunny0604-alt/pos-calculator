@@ -4910,17 +4910,21 @@ export default function PriceCalculator() {
       />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
-        <div className="w-full px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
+            {/* 로고 & 타이틀 */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
                 <Package className="w-5 h-5 text-white" />
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <h1 className="text-base font-bold text-amber-400">POS 재고관리 시스템</h1>
               </div>
+              <div className="sm:hidden">
+                <h1 className="text-sm font-bold text-amber-400">POS</h1>
+              </div>
               {/* 온라인 상태 표시 */}
-              <div className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+              <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                 isOnline 
                   ? 'bg-emerald-500/20 text-emerald-400' 
                   : 'bg-red-500/20 text-red-400'
@@ -4930,46 +4934,47 @@ export default function PriceCalculator() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            {/* 버튼들 */}
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
               <button
                 onClick={() => setShowAdminLogin(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="관리자"
               >
-                <Settings className="w-5 h-5 text-amber-400" />
+                <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
               </button>
               
               <button
                 onClick={() => { loadCustomers(); setShowCustomerListModal(true); }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="거래처 목록"
               >
-                <Building className="w-5 h-5 text-emerald-400" />
+                <Building className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
               </button>
               
               <button
                 onClick={() => setShowStockOverview(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="재고 현황"
               >
-                <Package className="w-5 h-5 text-cyan-400" />
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
               </button>
               
               <button
                 onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="택배 송장"
               >
-                <Truck className="w-5 h-5 text-orange-400" />
+                <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
               </button>
               
               <button
                 onClick={() => { setCurrentPage('history'); loadOrders(); }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all hover-lift btn-ripple"
               >
-                <List className="w-5 h-5 text-white" />
+                <List className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 {orders.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 bg-emerald-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                     {orders.length > 99 ? '99+' : orders.length}
                   </span>
                 )}
@@ -4977,12 +4982,12 @@ export default function PriceCalculator() {
               
               <button
                 onClick={() => setIsSavedCartsModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
                 title="저장된 장바구니"
               >
-                <ShoppingBag className="w-5 h-5 text-violet-400" />
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
                 {savedCarts.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 bg-violet-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-violet-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                     {savedCarts.length > 9 ? '9+' : savedCarts.length}
                   </span>
                 )}
