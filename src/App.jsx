@@ -169,7 +169,8 @@ const supabase = {
         body: JSON.stringify(customer)
       });
       if (!response.ok) throw new Error('Failed to add customer');
-      return await response.json();
+      const data = await response.json();
+      return Array.isArray(data) ? data[0] : data;
     } catch (error) {
       console.error('Supabase addCustomer error:', error);
       return null;
@@ -1435,8 +1436,8 @@ function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPric
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onWheel={(e) => e.stopPropagation()}>
-      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700 flex flex-col">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onWheel={(e) => e.stopPropagation()}>
+      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700 flex flex-col shadow-2xl animate-scale-in">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -1697,8 +1698,9 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
   
   // 거래처 정보 찾기
   const findCustomer = (name) => {
-    return customers.find(c => 
-      c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
+    if (!name) return null;
+    return (customers || []).find(c => 
+      c.name && c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
     );
   };
   
@@ -1875,8 +1877,8 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1960,7 +1962,7 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
               </div>
             ) : (
               filteredOrders.map(order => {
-                const customer = findCustomer(order.customerName);
+                const customer = order.customerName ? findCustomer(order.customerName) : null;
                 const hasAddress = customer?.address;
                 
                 return (
@@ -1982,7 +1984,7 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-white font-medium">{order.customerName}</span>
+                          <span className="text-white font-medium">{order.customerName || '고객명 없음'}</span>
                           {hasAddress ? (
                             <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span>
                           ) : (
@@ -2115,8 +2117,8 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-700">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -2465,6 +2467,8 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
       createdAt: today.toISOString(),
       customerName,
       customerPhone,
+      customerAddress,
+      existingCustomerId: selectedCustomerId, // 기존 거래처면 ID 전달
       memo,
       priceType,
       totalAmount: currentTotal,
@@ -2478,7 +2482,14 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
     
     const success = await onSaveOrder(orderData);
     if (success) {
-      alert(`✅ 주문이 저장되었습니다!\n\n주문번호: ${orderNumber}\n총 금액: ${formatPrice(currentTotal)}`);
+      const isNewCustomer = customerName && !selectedCustomerId && 
+        !customers.find(c => c.name.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, ''));
+      
+      let message = `✅ 주문이 저장되었습니다!\n\n주문번호: ${orderNumber}\n총 금액: ${formatPrice(currentTotal)}`;
+      if (isNewCustomer) {
+        message += `\n\n🆕 신규 거래처 "${customerName}"이(가) 자동 등록되었습니다.`;
+      }
+      alert(message);
       onClose();
     }
   };
@@ -2579,19 +2590,40 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
                     <Check className="w-4 h-4" />
                   </span>
                 )}
+                {/* 신규 업체 표시 */}
+                {customerName && !selectedCustomerId && !showCustomerSuggestions && customerSuggestions.length === 0 && (
+                  <span className="absolute right-3 top-9 px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full">
+                    🆕 신규
+                  </span>
+                )}
                 {/* 거래처 자동완성 */}
                 {showCustomerSuggestions && customerSuggestions.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                  <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-56 overflow-y-auto">
                     {customerSuggestions.map(customer => (
                       <button
                         key={customer.id}
                         onClick={() => selectCustomer(customer)}
-                        className="w-full px-4 py-2.5 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
+                        className="w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
                       >
-                        <p className="text-white font-medium">{customer.name}</p>
-                        <p className="text-slate-400 text-xs truncate">{customer.address || '주소 미등록'}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-white font-medium">{customer.name}</p>
+                          {customer.phone && (
+                            <span className="text-emerald-400 text-xs">{customer.phone}</span>
+                          )}
+                        </div>
+                        <p className="text-slate-400 text-xs truncate mt-0.5">{customer.address || '주소 미등록'}</p>
                       </button>
                     ))}
+                  </div>
+                )}
+                {/* 검색 결과 없을 때 신규 등록 안내 */}
+                {showCustomerSuggestions && customerName.length >= 2 && customerSuggestions.length === 0 && (
+                  <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-blue-500/50 rounded-lg shadow-xl p-4">
+                    <p className="text-blue-400 text-sm flex items-center gap-2">
+                      <span className="text-lg">🆕</span>
+                      <span>"{customerName}" - 신규 업체로 자동 등록됩니다</span>
+                    </p>
+                    <p className="text-slate-500 text-xs mt-1">주문 저장 시 거래처 목록에 추가됩니다</p>
                   </div>
                 )}
               </div>
@@ -2732,7 +2764,16 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-8 text-center text-white font-medium">{item.quantity}</span>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            if (val >= 0) onUpdateQuantity(item.id, val);
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          className="w-12 h-7 text-center text-white font-medium bg-slate-800 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
                         <button 
                           onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
                           className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
@@ -4278,6 +4319,32 @@ export default function PriceCalculator() {
       
       const result = await supabase.saveOrder(supabaseOrder);
       if (result) {
+        // 신규 업체 자동 등록 체크
+        if (orderData.customerName && !orderData.existingCustomerId) {
+          // 기존 거래처인지 확인
+          const existingCustomer = customers.find(c => 
+            c.name.toLowerCase().replace(/\s/g, '') === orderData.customerName.toLowerCase().replace(/\s/g, '')
+          );
+          
+          if (!existingCustomer) {
+            // 신규 업체 등록
+            try {
+              const newCustomer = await supabase.addCustomer({
+                name: orderData.customerName,
+                phone: orderData.customerPhone || null,
+                address: orderData.customerAddress || null,
+                memo: `자동 등록 (${new Date().toLocaleDateString()})`
+              });
+              if (newCustomer) {
+                setCustomers(prev => [...prev, newCustomer]);
+                console.log('✅ 신규 거래처 자동 등록:', orderData.customerName);
+              }
+            } catch (err) {
+              console.log('신규 거래처 등록 실패:', err);
+            }
+          }
+        }
+        
         // 새 주문을 목록 앞에 추가
         const newOrder = {
           orderNumber: orderData.orderNumber,
@@ -4698,7 +4765,17 @@ export default function PriceCalculator() {
                                 <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity - 1); }} className="p-1 hover:bg-slate-600 rounded-l">
                                   <Minus className="w-3 h-3 text-white" />
                                 </button>
-                                <span className="w-5 text-center text-white text-xs font-bold">{cartItem.quantity}</span>
+                                <input
+                                  type="number"
+                                  value={cartItem.quantity}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    if (val >= 0) updateQuantity(product.id, val);
+                                  }}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-8 h-5 text-center text-white text-xs font-bold bg-transparent border-none focus:outline-none focus:bg-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
                                 <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity + 1); }} className="p-1 hover:bg-slate-600 rounded-r">
                                   <Plus className="w-3 h-3 text-white" />
                                 </button>
@@ -4765,7 +4842,16 @@ export default function PriceCalculator() {
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="w-6 text-center text-white text-sm font-bold">{item.quantity}</span>
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0;
+                                  if (val >= 0) updateQuantity(item.id, val);
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none focus:bg-emerald-700/50 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
                               <button 
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)} 
                                 className="w-6 h-6 flex items-center justify-center hover:bg-emerald-700 rounded text-emerald-300 transition-colors"
