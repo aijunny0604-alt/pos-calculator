@@ -271,6 +271,18 @@ const CustomStyles = () => (
       scroll-behavior: smooth;
     }
     
+    /* 모달 내부 스크롤 - Lenis 간섭 방지 */
+    [data-lenis-prevent] {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+    
+    /* 모달 오버레이 스크롤 방지 */
+    .fixed.inset-0 {
+      overscroll-behavior: contain;
+    }
+    
     /* 커스텀 스크롤바 */
     ::-webkit-scrollbar {
       width: 8px;
@@ -1192,7 +1204,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
           </button>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)] category-scroll">
+        <div className="overflow-y-auto max-h-[calc(90vh-200px)] category-scroll overscroll-contain" data-lenis-prevent="true">
           <div className="p-6 border-b border-slate-700">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -1347,7 +1359,7 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
           </button>
         </div>
         
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)]">
+        <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)] overscroll-contain" data-lenis-prevent="true">
           {savedCarts.length === 0 ? (
             <div className="text-center py-8">
               <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -1915,7 +1927,7 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
             <span className="text-orange-400 font-semibold">{selectedOrders.length}건 선택됨</span>
           </div>
           
-          <div className="overflow-y-auto max-h-[40vh] space-y-2">
+          <div className="overflow-y-auto max-h-[40vh] space-y-2 overscroll-contain" data-lenis-prevent>
             {filteredOrders.length === 0 ? (
               <div className="text-center py-8">
                 <Truck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -1959,9 +1971,17 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
                           </div>
                           <div>
                             <label className="block text-slate-500 text-xs mb-1">포장</label>
-                            <select value={setting.packaging} onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-sm focus:outline-none focus:border-orange-500">
-                              {packagingOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                            </select>
+                            <input 
+                              type="text"
+                              list={`packaging-options-${order.orderNumber}`}
+                              value={setting.packaging} 
+                              onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
+                              placeholder="박스1"
+                              className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-sm focus:outline-none focus:border-orange-500"
+                            />
+                            <datalist id={`packaging-options-${order.orderNumber}`}>
+                              {packagingOptions.map(opt => <option key={opt} value={opt} />)}
+                            </datalist>
                           </div>
                           <div>
                             <label className="block text-slate-500 text-xs mb-1">택배비</label>
@@ -2028,7 +2048,7 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
     const matchesSearch = p.name.toLowerCase().replace(/\s/g, '').includes(searchTerm.toLowerCase().replace(/\s/g, ''));
-    const stock = p.stock || 50;
+    const stock = p.stock ?? 50;
     const minStock = p.min_stock || 5;
     
     let matchesStock = true;
@@ -2042,9 +2062,9 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
   // 통계 계산
   const stats = {
     total: products.length,
-    normal: products.filter(p => (p.stock || 50) > (p.min_stock || 5)).length,
-    low: products.filter(p => (p.stock || 50) > 0 && (p.stock || 50) <= (p.min_stock || 5)).length,
-    out: products.filter(p => (p.stock || 50) === 0).length
+    normal: products.filter(p => (p.stock ?? 50) > (p.min_stock || 5)).length,
+    low: products.filter(p => (p.stock ?? 50) > 0 && (p.stock ?? 50) <= (p.min_stock || 5)).length,
+    out: products.filter(p => (p.stock ?? 50) === 0).length
   };
   
   return (
@@ -2122,7 +2142,7 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
         </div>
         
         {/* 제품 목록 */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-320px)]">
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-320px)] overscroll-contain" data-lenis-prevent="true">
           <p className="text-slate-400 text-sm mb-3">
             {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
             {selectedCategory !== '전체' && ' · '}
@@ -2137,7 +2157,7 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {filteredProducts.map(product => {
-                const stock = product.stock || 50;
+                const stock = product.stock ?? 50;
                 const minStock = product.min_stock || 5;
                 const isOut = stock === 0;
                 const isLow = stock > 0 && stock <= minStock;
@@ -2540,7 +2560,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 category-scroll" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
+        <div className="overflow-y-auto flex-1 category-scroll overscroll-contain" data-lenis-prevent="true" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
           <div className="p-5 border-b border-slate-700">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -4017,6 +4037,10 @@ export default function PriceCalculator() {
       wheelMultiplier: 1,      // 휠 속도
       touchMultiplier: 2,      // 터치 속도
       infinite: false,         // 무한 스크롤 끄기
+      prevent: (node) => {
+        // data-lenis-prevent 속성이 있는 요소 내부에서는 Lenis 비활성화
+        return node.closest('[data-lenis-prevent]') !== null;
+      }
     });
 
     function raf(time) {
@@ -4072,7 +4096,8 @@ export default function PriceCalculator() {
     };
     
     setSavedCarts(prev => [newCart, ...prev]);
-    showToast(`💾 "${name}" 저장됨!`);
+    setCart([]); // 장바구니 초기화
+    showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
   };
 
   // 저장된 장바구니 불러오기
@@ -4115,11 +4140,11 @@ export default function PriceCalculator() {
     try {
       const data = await supabase.getProducts();
       if (data) {
-        // 재고 기본값 설정
+        // 재고 기본값 설정 (null/undefined만 50, 0은 품절로 유지)
         const productsWithStock = data.map(p => ({
           ...p,
-          stock: (p.stock && p.stock > 0) ? p.stock : 50,
-          min_stock: (p.min_stock && p.min_stock > 0) ? p.min_stock : 5
+          stock: p.stock !== null && p.stock !== undefined ? p.stock : 50,
+          min_stock: p.min_stock !== null && p.min_stock !== undefined ? p.min_stock : 5
         }));
         setProducts(productsWithStock);
         setIsOnline(true);
@@ -4378,9 +4403,12 @@ export default function PriceCalculator() {
         orderData.items.forEach(item => {
           const product = priceData.find(p => p.id === item.id);
           if (product) {
-            product.stock = Math.max(0, (product.stock || 50) - item.quantity);
+            product.stock = Math.max(0, (product.stock ?? 50) - item.quantity);
           }
         });
+        
+        // 주문 완료 후 장바구니 초기화
+        setCart([]);
         
         setIsOnline(true);
         return true;
@@ -4769,7 +4797,7 @@ export default function PriceCalculator() {
                   </div>
                   
                   {isExpanded && (
-                  <div className="p-2 grid grid-cols-2 gap-1.5 max-h-80 overflow-y-auto category-scroll animate-fade-in">
+                  <div className="p-2 grid grid-cols-2 gap-1.5 max-h-80 overflow-y-auto category-scroll animate-fade-in overscroll-contain" data-lenis-prevent="true">
                     {products.map(product => {
                       const cartItem = cart.find(item => item.id === product.id);
                       const cartQuantity = cartItem ? cartItem.quantity : 0;
@@ -4861,7 +4889,7 @@ export default function PriceCalculator() {
                 </button>
               </div>
 
-              <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll">
+              <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll overscroll-contain" data-lenis-prevent="true">
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
