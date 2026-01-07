@@ -1360,24 +1360,49 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
 
 // ==================== 장바구니 저장 모달 ====================
 // ==================== 거래처 목록 모달 ====================
-function CustomerListModal({ isOpen, onClose, customers }) {
+function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPrice }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
   
   // ESC 키로 모달 닫기
   useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    const handleEsc = (e) => { 
+      if (e.key === 'Escape') {
+        if (selectedCustomer) {
+          setSelectedCustomer(null);
+        } else {
+          onClose();
+        }
+      }
+    };
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, selectedCustomer]);
 
-  // 모달 열릴 때 body 스크롤 잠금
+  // 모달 열릴 때 body 스크롤 완전 잠금
   useEffect(() => {
     if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
     }
     return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
       document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
     };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedCustomer(null);
+      setSearchTerm('');
+    }
   }, [isOpen]);
   
   if (!isOpen) return null;
@@ -1388,17 +1413,50 @@ function CustomerListModal({ isOpen, onClose, customers }) {
     (c.address && c.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (c.phone && c.phone.replace(/\s/g, '').includes(searchTerm.replace(/\s/g, '')))
   );
+
+  // 거래처별 주문 이력 가져오기
+  const getCustomerOrders = (customerName) => {
+    return (orders || []).filter(order => 
+      order.customerName && 
+      order.customerName.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, '')
+    ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  };
+
+  // 거래처별 총 주문 금액
+  const getCustomerTotalAmount = (customerName) => {
+    const customerOrders = getCustomerOrders(customerName);
+    return customerOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+  };
+
+  // 날짜 포맷
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+  };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onWheel={(e) => e.stopPropagation()}>
+      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700 flex flex-col">
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <Building className="w-6 h-6 text-white" />
+            {selectedCustomer ? (
+              <button onClick={() => setSelectedCustomer(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                <ChevronLeft className="w-6 h-6 text-white" />
+              </button>
+            ) : (
+              <Building className="w-6 h-6 text-white" />
+            )}
             <div>
-              <h2 className="text-xl font-bold text-white">거래처 목록</h2>
-              <p className="text-emerald-100 text-sm">총 {customers?.length || 0}개 업체</p>
+              <h2 className="text-xl font-bold text-white">
+                {selectedCustomer ? selectedCustomer.name : '거래처 목록'}
+              </h2>
+              <p className="text-emerald-100 text-sm">
+                {selectedCustomer 
+                  ? `주문 ${getCustomerOrders(selectedCustomer.name).length}건 / 총 ${formatPrice(getCustomerTotalAmount(selectedCustomer.name))}`
+                  : `총 ${customers?.length || 0}개 업체`
+                }
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
@@ -1406,66 +1464,143 @@ function CustomerListModal({ isOpen, onClose, customers }) {
           </button>
         </div>
         
-        {/* 검색 */}
-        <div className="p-4 border-b border-slate-700">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="업체명, 주소, 전화번호로 검색..."
-              className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-          <p className="text-slate-400 text-sm mt-2">검색 결과: {filteredCustomers.length}개</p>
-        </div>
-        
-        {/* 목록 */}
-        <div className="overflow-y-auto max-h-[60vh] p-4">
-          {filteredCustomers.length === 0 ? (
-            <div className="text-center py-8">
-              <Building className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">등록된 거래처가 없습니다</p>
-              <p className="text-slate-500 text-sm mt-1">관리자 페이지에서 거래처를 추가하세요</p>
+        {selectedCustomer ? (
+          /* 거래처 주문 이력 */
+          <>
+            {/* 거래처 정보 */}
+            <div className="p-4 border-b border-slate-700 bg-slate-800/50">
+              <div className="flex flex-wrap gap-4 text-sm">
+                {selectedCustomer.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-emerald-400" />
+                    <span className="text-slate-300">{selectedCustomer.phone}</span>
+                  </div>
+                )}
+                {selectedCustomer.address && (
+                  <div className="flex items-center gap-2 flex-1">
+                    <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span className="text-slate-300 truncate">{selectedCustomer.address}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredCustomers.map(customer => (
-                <div key={customer.id} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-emerald-500/50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-semibold truncate">{customer.name}</h3>
-                      {customer.phone && (
-                        <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
-                          <Phone className="w-3.5 h-3.5" />
-                          {customer.phone}
-                        </p>
-                      )}
-                      {customer.address && (
-                        <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
-                          <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                          <span className="break-all">{customer.address}</span>
-                        </p>
-                      )}
-                      {customer.memo && (
-                        <p className="text-slate-500 text-xs mt-2 italic">메모: {customer.memo}</p>
+            
+            {/* 주문 이력 */}
+            <div className="overflow-y-auto flex-1 p-4">
+              {getCustomerOrders(selectedCustomer.name).length === 0 ? (
+                <div className="text-center py-12">
+                  <Receipt className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400">주문 이력이 없습니다</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {getCustomerOrders(selectedCustomer.name).map(order => (
+                    <div key={order.orderNumber} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-400 text-sm">{formatDate(order.createdAt)}</span>
+                        <span className="text-emerald-400 font-bold">{formatPrice(order.totalAmount)}</span>
+                      </div>
+                      <div className="space-y-1">
+                        {(order.items || []).map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span className="text-slate-300">{item.name} x{item.quantity}</span>
+                            <span className="text-slate-400">{formatPrice(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {order.memo && (
+                        <p className="text-slate-500 text-xs mt-2 pt-2 border-t border-slate-600">메모: {order.memo}</p>
                       )}
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          /* 거래처 목록 */
+          <>
+            {/* 검색 */}
+            <div className="p-4 border-b border-slate-700">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="업체명, 주소, 전화번호로 검색..."
+                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <p className="text-slate-400 text-sm mt-2">검색 결과: {filteredCustomers.length}개</p>
+            </div>
+            
+            {/* 목록 */}
+            <div className="overflow-y-auto flex-1 p-4">
+              {filteredCustomers.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400">등록된 거래처가 없습니다</p>
+                  <p className="text-slate-500 text-sm mt-1">관리자 페이지에서 거래처를 추가하세요</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {filteredCustomers.map(customer => {
+                    const orderCount = getCustomerOrders(customer.name).length;
+                    const totalAmount = getCustomerTotalAmount(customer.name);
+                    
+                    return (
+                      <div 
+                        key={customer.id} 
+                        onClick={() => setSelectedCustomer(customer)}
+                        className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-emerald-500/50 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-white font-semibold truncate">{customer.name}</h3>
+                              {orderCount > 0 && (
+                                <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">
+                                  {orderCount}건
+                                </span>
+                              )}
+                            </div>
+                            {customer.phone && (
+                              <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
+                                <Phone className="w-3.5 h-3.5" />
+                                {customer.phone}
+                              </p>
+                            )}
+                            {customer.address && (
+                              <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
+                                <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                                <span className="truncate">{customer.address}</span>
+                              </p>
+                            )}
+                            {totalAmount > 0 && (
+                              <p className="text-blue-400 text-xs mt-2">
+                                총 거래: {formatPrice(totalAmount)}
+                              </p>
+                            )}
+                          </div>
+                          <ChevronLeft className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 rotate-180 transition-colors" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
         
         {/* 하단 버튼 */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-slate-700 flex-shrink-0">
           <button
-            onClick={onClose}
+            onClick={() => selectedCustomer ? setSelectedCustomer(null) : onClose()}
             className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
           >
-            닫기
+            {selectedCustomer ? '← 목록으로' : '닫기'}
           </button>
         </div>
       </div>
@@ -1474,7 +1609,7 @@ function CustomerListModal({ isOpen, onClose, customers }) {
 }
 
 // ==================== 택배 송장 생성 모달 ====================
-function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice }) {
+function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], formatPrice }) {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [shippingCost, setShippingCost] = useState(7300);
   const [senderName, setSenderName] = useState('무브모터스');
@@ -1487,13 +1622,22 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
-  // 모달 열릴 때 body 스크롤 잠금
+  // 모달 열릴 때 body 스크롤 완전 잠금
   useEffect(() => {
     if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
     }
     return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
       document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
     };
   }, [isOpen]);
   
@@ -1505,6 +1649,9 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
   
   if (!isOpen) return null;
   
+  // orders가 없으면 빈 배열 사용
+  const safeOrders = orders || [];
+  
   // 날짜 필터링
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1515,7 +1662,8 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
   
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = safeOrders.filter(order => {
+    if (!order.createdAt) return false;
     const orderDate = new Date(order.createdAt);
     orderDate.setHours(0, 0, 0, 0);
     
@@ -1735,7 +1883,7 @@ function ShippingLabelModal({ isOpen, onClose, orders, customers, formatPrice })
             <Truck className="w-6 h-6 text-white" />
             <div>
               <h2 className="text-xl font-bold text-white">택배 송장 생성</h2>
-              <p className="text-orange-100 text-sm">전체 주문 {orders.length}건 / 필터 {filteredOrders.length}건</p>
+              <p className="text-orange-100 text-sm">전체 주문 {safeOrders.length}건 / 필터 {filteredOrders.length}건</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
@@ -1922,13 +2070,22 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
-  // 모달 열릴 때 body 스크롤 잠금
+  // 모달 열릴 때 body 스크롤 완전 잠금
   useEffect(() => {
     if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
     }
     return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
       document.body.style.overflow = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
     };
   }, [isOpen]);
   
@@ -4319,6 +4476,8 @@ export default function PriceCalculator() {
         isOpen={showCustomerListModal}
         onClose={() => setShowCustomerListModal(false)}
         customers={customers}
+        orders={orders}
+        formatPrice={formatPrice}
       />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
