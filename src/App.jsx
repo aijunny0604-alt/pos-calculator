@@ -321,30 +321,40 @@ const CustomStyles = () => (
     
     /* 모달 내부 스크롤 - Lenis 간섭 방지 */
     [data-lenis-prevent] {
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y;
+      overscroll-behavior: contain !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
     }
     
     /* 모달 오버레이 스크롤 방지 */
     .fixed.inset-0 {
-      overscroll-behavior: contain;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    
+    /* 모달 내부 컨텐츠는 스크롤 허용 */
+    .fixed.inset-0 .modal-scroll-area {
+      overscroll-behavior: contain !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
     }
     
     /* 모바일 터치 스크롤 강화 */
     .mobile-scroll {
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      touch-action: pan-y;
-      scroll-behavior: auto;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain !important;
+      touch-action: pan-y !important;
+      scroll-behavior: auto !important;
     }
     
     /* 모바일에서 모달 스크롤 영역 */
     @media (max-width: 768px) {
-      .overflow-y-auto {
+      /* 모달 스크롤 영역 강화 */
+      .modal-scroll-area {
         -webkit-overflow-scrolling: touch !important;
         overscroll-behavior: contain !important;
         touch-action: pan-y !important;
+        overflow-y: auto !important;
       }
       
       /* 모달 높이 모바일 최적화 */
@@ -354,6 +364,14 @@ const CustomStyles = () => (
       
       .max-h-\\[calc\\(90vh-200px\\)\\] {
         max-height: calc(85vh - 180px) !important;
+      }
+      
+      /* body 스크롤 잠금 시 */
+      body.modal-open {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
+        height: 100% !important;
       }
     }
     
@@ -2293,7 +2311,11 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
         </div>
 
         {/* 스크롤 가능 영역 */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div 
+          className="flex-1 overflow-y-auto px-4 py-4 modal-scroll-area" 
+          data-lenis-prevent="true"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        >
           {/* 설정 영역 */}
           <div className="bg-slate-700/50 rounded-xl p-4 mb-4 border border-slate-600">
             {/* 날짜 필터 */}
@@ -2747,17 +2769,29 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   // 모달 열릴 때 body 스크롤 방지 (모바일 최적화)
   useEffect(() => {
     const scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-    document.body.style.overflow = 'hidden';
+    const body = document.body;
+    
+    // body에 modal-open 클래스 추가
+    body.classList.add('modal-open');
+    body.style.top = `-${scrollY}px`;
+    
+    // 터치 이벤트 방지 핸들러
+    const preventTouchMove = (e) => {
+      const target = e.target;
+      // 스크롤 가능한 영역 내부에서는 허용
+      if (target.closest('.modal-scroll-area') || target.closest('[data-lenis-prevent]')) {
+        return;
+      }
+      e.preventDefault();
+    };
+    
+    document.addEventListener('touchmove', preventTouchMove, { passive: false });
     
     return () => {
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
+      body.classList.remove('modal-open');
+      body.style.top = '';
       window.scrollTo(0, scrollY);
+      document.removeEventListener('touchmove', preventTouchMove);
     };
   }, []);
 
@@ -2892,9 +2926,13 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const searchResults = getSearchResults();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
       {/* 배경 오버레이 */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
+        onClick={onBack}
+        onTouchMove={(e) => e.preventDefault()}
+      />
       
       <div className="relative bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
         {/* 헤더 - 고정 */}
@@ -2956,7 +2994,11 @@ MVB 64 Y R 2개`}
         </div>
 
         {/* 분석 결과 - 스크롤 영역 */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div 
+          className="flex-1 overflow-y-auto px-4 pb-4 modal-scroll-area" 
+          data-lenis-prevent="true"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        >
 
         {/* 분석 결과 */}
         {analyzedItems.length > 0 && (
@@ -3183,10 +3225,30 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
 
   // 모달 열릴 때 배경 스크롤 방지
   useEffect(() => {
-    const originalStyle = window.getComputedStyle(document.body).overflow;
-    document.body.style.overflow = 'hidden';
+    const scrollY = window.scrollY;
+    const body = document.body;
+    
+    // body에 modal-open 클래스 추가
+    body.classList.add('modal-open');
+    body.style.top = `-${scrollY}px`;
+    
+    // 터치 이벤트 방지 핸들러
+    const preventTouchMove = (e) => {
+      const target = e.target;
+      // 스크롤 가능한 영역 내부에서는 허용
+      if (target.closest('.modal-scroll-area') || target.closest('[data-lenis-prevent]')) {
+        return;
+      }
+      e.preventDefault();
+    };
+    
+    document.addEventListener('touchmove', preventTouchMove, { passive: false });
+    
     return () => {
-      document.body.style.overflow = originalStyle;
+      body.classList.remove('modal-open');
+      body.style.top = '';
+      window.scrollTo(0, scrollY);
+      document.removeEventListener('touchmove', preventTouchMove);
     };
   }, []);
 
@@ -3356,8 +3418,18 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overscroll-none" onClick={onBack}>
-      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
+    <div 
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+      style={{ touchAction: 'none' }}
+      onClick={onBack}
+      onTouchMove={(e) => {
+        // 스크롤 영역 내부가 아니면 이벤트 방지
+        if (!e.target.closest('.modal-scroll-area')) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -3382,7 +3454,12 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }} onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
+        <div 
+          className="flex-1 overflow-y-auto px-4 py-4 modal-scroll-area" 
+          data-lenis-prevent="true"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }} 
+          onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}
+        >
         {/* 고객 정보 */}
         <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -5143,21 +5220,26 @@ export default function PriceCalculator() {
     // 모바일 체크
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
     
+    // 모바일에서는 Lenis를 사용하지 않음 (네이티브 스크롤 사용)
+    if (isMobile) {
+      return;
+    }
+    
     const lenis = new Lenis({
       duration: 1.2,           // 스크롤 지속 시간 (높을수록 부드러움)
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // 물리 기반 이징
       orientation: 'vertical', // 수직 스크롤
       gestureOrientation: 'vertical',
-      smoothWheel: !isMobile,  // 모바일에서는 휠 스크롤 비활성화
+      smoothWheel: true,       // 휠 스크롤 부드럽게
       smoothTouch: false,      // 터치 스크롤은 네이티브로
       wheelMultiplier: 1,      // 휠 속도
       touchMultiplier: 2,      // 터치 속도
       infinite: false,         // 무한 스크롤 끄기
       prevent: (node) => {
         // data-lenis-prevent 속성이 있는 요소 내부에서는 Lenis 비활성화
-        // 또는 모바일에서는 모든 스크롤 영역에서 비활성화
-        if (isMobile) return true;
-        return node.closest('[data-lenis-prevent]') !== null;
+        // 모달, 드롭다운 등에서 사용
+        return node.closest('[data-lenis-prevent]') !== null ||
+               node.closest('.fixed.inset-0') !== null;
       }
     });
 
@@ -5904,9 +5986,15 @@ export default function PriceCalculator() {
                 )}
               </button>
               
-              {/* 장바구니 - 모바일 */}
+              {/* 장바구니 - 모바일 (직접 주문 확인으로 이동) */}
               <button
-                onClick={() => setActiveTab(activeTab === 'cart' ? 'catalog' : 'cart')}
+                onClick={() => {
+                  if (cart.length > 0) {
+                    setIsOrderModalOpen(true);
+                  } else {
+                    showToast('장바구니가 비어있습니다', 'error');
+                  }
+                }}
                 className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg hover-lift btn-ripple"
                 title="장바구니"
               >
@@ -6007,7 +6095,7 @@ export default function PriceCalculator() {
       <div className="w-full px-4 pt-[140px] sm:pt-[160px] pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
-          <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
+          <div className="flex-1">
 
             <div className="mb-2 text-slate-400 text-xs">
               {filteredProducts.length}개 제품
@@ -6126,21 +6214,18 @@ export default function PriceCalculator() {
             )}
           </div>
 
-          {/* 장바구니 - 데스크톱에서 오른쪽 상단 고정 */}
-          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-[85px] md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
-            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
+          {/* 장바구니 - 데스크톱에서만 오른쪽 상단 고정 (모바일에서는 숨김) */}
+          <div className="hidden md:block fixed md:top-[85px] md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40">
+            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-emerald-400" />
                   <h2 className="text-sm font-semibold text-white">주문 목록</h2>
                   <span className="text-xs text-emerald-300 bg-emerald-800/50 px-2 py-0.5 rounded-full">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
                 </div>
-                <button onClick={() => setActiveTab('catalog')} className="md:hidden p-1 hover:bg-emerald-800/50 rounded btn-ripple">
-                  <X className="w-4 h-4 text-emerald-400" />
-                </button>
               </div>
 
-              <div className="max-h-52 md:max-h-[calc(100vh-280px)] overflow-y-auto order-scroll mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+              <div className="max-h-[calc(100vh-280px)] overflow-y-auto order-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
@@ -6235,14 +6320,20 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 animate-fade-in-up" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 z-30 animate-fade-in-up" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-emerald-300/70 text-xs">공급가 {formatPrice(calcExVat(totalAmount))} + VAT</p>
             <p className="text-white text-xl font-bold">{formatPrice(totalAmount)}</p>
           </div>
           <button 
-            onClick={() => cart.length > 0 ? setIsOrderModalOpen(true) : setActiveTab('cart')} 
+            onClick={() => {
+              if (cart.length > 0) {
+                setIsOrderModalOpen(true);
+              } else {
+                showToast('장바구니가 비어있습니다', 'error');
+              }
+            }} 
             className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 btn-ripple hover-lift transition-all shadow-lg shadow-emerald-900/50"
           >
             <Calculator className="w-5 h-5" />
