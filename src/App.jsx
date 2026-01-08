@@ -605,6 +605,31 @@ const CustomStyles = () => (
       100% { width: 100%; }
     }
     
+    @keyframes shake-error {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+      20%, 40%, 60%, 80% { transform: translateX(8px); }
+    }
+    
+    @keyframes flash-red {
+      0%, 100% { 
+        border-color: rgba(255,0,64,0.5);
+        box-shadow: 0 0 40px rgba(255,0,64,0.3);
+      }
+      25%, 75% { 
+        border-color: rgba(255,0,64,1);
+        box-shadow: 0 0 60px rgba(255,0,64,0.8), inset 0 0 30px rgba(255,0,64,0.2);
+      }
+    }
+    
+    .animate-shake-error {
+      animation: shake-error 0.5s ease-in-out;
+    }
+    
+    .animate-flash-red {
+      animation: flash-red 0.5s ease-in-out;
+    }
+    
     .animate-glitch {
       animation: glitch 0.3s ease-in-out infinite;
     }
@@ -5831,6 +5856,7 @@ export default function PriceCalculator() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [showAccessGranted, setShowAccessGranted] = useState(false);
+  const [loginError, setLoginError] = useState(false);
   const [products, setProducts] = useState([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
   const [showStockOverview, setShowStockOverview] = useState(false);
@@ -5899,6 +5925,18 @@ export default function PriceCalculator() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 2000);
   };
+
+  // 관리자 로그인 모달 ESC 키 처리
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && showAdminLogin) {
+        setShowAdminLogin(false);
+        setAdminPassword('');
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showAdminLogin]);
 
   // 저장된 장바구니 불러오기
   useEffect(() => {
@@ -6145,6 +6183,13 @@ export default function PriceCalculator() {
 
   // 관리자 로그인 처리
   const handleAdminLogin = () => {
+    // 비밀번호가 비어있으면 에러
+    if (!adminPassword.trim()) {
+      setLoginError(true);
+      setTimeout(() => setLoginError(false), 500);
+      return;
+    }
+    
     if (adminPassword === ADMIN_PASSWORD) {
       setShowAdminLogin(false);
       setShowAccessGranted(true);
@@ -6158,9 +6203,10 @@ export default function PriceCalculator() {
         setShowAccessGranted(false);
       }, 2000);
     } else {
-      showToast('❌ ACCESS DENIED', 'error');
-      // 틀렸을 때 글리치 효과를 위해 잠시 흔들림
+      // 틀렸을 때 에러 애니메이션
+      setLoginError(true);
       setAdminPassword('');
+      setTimeout(() => setLoginError(false), 500);
     }
   };
 
@@ -6986,7 +7032,13 @@ export default function PriceCalculator() {
 
       {/* 관리자 로그인 모달 - 시크릿 테마 */}
       {showAdminLogin && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div 
+          className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { setShowAdminLogin(false); setAdminPassword(''); }
+          }}
+          tabIndex={-1}
+        >
           {/* 배경 매트릭스 효과 */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
             {[...Array(20)].map((_, i) => (
@@ -7006,15 +7058,15 @@ export default function PriceCalculator() {
           </div>
           
           {/* 모달 컨테이너 */}
-          <div className="relative max-w-md w-full">
+          <div className={`relative max-w-md w-full ${loginError ? 'animate-shake-error' : ''}`}>
             {/* 스캔라인 효과 */}
             <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none secret-scanline" />
             
             {/* 메인 모달 */}
             <div 
-              className="relative bg-gradient-to-b from-slate-900 via-slate-900 to-black rounded-2xl p-8 border-2 border-red-500/50 shadow-2xl animate-border-glow"
+              className={`relative bg-gradient-to-b from-slate-900 via-slate-900 to-black rounded-2xl p-8 border-2 shadow-2xl ${loginError ? 'animate-flash-red border-red-500' : 'border-red-500/50 animate-border-glow'}`}
               style={{
-                boxShadow: '0 0 40px rgba(255,0,64,0.3), inset 0 0 60px rgba(0,0,0,0.5)'
+                boxShadow: loginError ? '0 0 60px rgba(255,0,64,0.8)' : '0 0 40px rgba(255,0,64,0.3), inset 0 0 60px rgba(0,0,0,0.5)'
               }}
             >
               {/* 코너 장식 */}
@@ -7028,10 +7080,10 @@ export default function PriceCalculator() {
                 {/* 아이콘 */}
                 <div className="relative inline-block mb-4">
                   <div 
-                    className="w-20 h-20 rounded-full bg-gradient-to-br from-red-600/20 to-red-900/40 flex items-center justify-center border border-red-500/50"
-                    style={{ boxShadow: '0 0 30px rgba(255,0,64,0.4)' }}
+                    className={`w-20 h-20 rounded-full bg-gradient-to-br from-red-600/20 to-red-900/40 flex items-center justify-center border ${loginError ? 'border-red-500 animate-pulse' : 'border-red-500/50'}`}
+                    style={{ boxShadow: loginError ? '0 0 50px rgba(255,0,64,0.8)' : '0 0 30px rgba(255,0,64,0.4)' }}
                   >
-                    <Lock className="w-10 h-10 text-red-500 animate-pulse" />
+                    <Lock className={`w-10 h-10 text-red-500 ${loginError ? 'animate-pulse' : ''}`} />
                   </div>
                   {/* 회전하는 링 */}
                   <div 
@@ -7042,26 +7094,26 @@ export default function PriceCalculator() {
                 
                 {/* 타이틀 */}
                 <h3 
-                  className="text-2xl font-bold text-red-500 mb-2 tracking-wider font-mono"
+                  className={`text-2xl font-bold mb-2 tracking-wider font-mono ${loginError ? 'text-red-400 animate-pulse' : 'text-red-500'}`}
                   style={{ textShadow: '0 0 10px rgba(255,0,64,0.8)' }}
                 >
-                  [ RESTRICTED ACCESS ]
+                  {loginError ? '[ ACCESS DENIED ]' : '[ RESTRICTED ACCESS ]'}
                 </h3>
                 <p className="text-slate-500 text-sm font-mono tracking-widest">
-                  AUTHENTICATION REQUIRED
+                  {loginError ? 'INVALID CREDENTIALS' : 'AUTHENTICATION REQUIRED'}
                 </p>
                 
                 {/* 경고 텍스트 */}
-                <div className="mt-4 py-2 px-4 bg-red-900/20 rounded-lg border border-red-500/30 inline-block">
-                  <p className="text-red-400 text-xs font-mono animate-pulse">
-                    ⚠ UNAUTHORIZED ACCESS PROHIBITED
+                <div className={`mt-4 py-2 px-4 rounded-lg border inline-block ${loginError ? 'bg-red-600/30 border-red-500/50' : 'bg-red-900/20 border-red-500/30'}`}>
+                  <p className={`text-xs font-mono ${loginError ? 'text-red-300 animate-pulse' : 'text-red-400 animate-pulse'}`}>
+                    {loginError ? '⛔ AUTHENTICATION FAILED' : '⚠ UNAUTHORIZED ACCESS PROHIBITED'}
                   </p>
                 </div>
               </div>
               
               {/* 입력 필드 */}
               <div className="relative mb-6">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500 font-mono text-sm">
+                <div className={`absolute left-4 top-1/2 -translate-y-1/2 font-mono text-sm ${loginError ? 'text-red-400' : 'text-red-500'}`}>
                   {'>>'}
                 </div>
                 <input
@@ -7072,8 +7124,8 @@ export default function PriceCalculator() {
                     if (e.key === 'Enter') handleAdminLogin();
                     if (e.key === 'Escape') { setShowAdminLogin(false); setAdminPassword(''); }
                   }}
-                  placeholder="ENTER PASSCODE..."
-                  className="w-full pl-12 pr-4 py-4 bg-black/50 border-2 border-red-500/30 rounded-xl text-red-400 font-mono tracking-widest placeholder-slate-600 focus:outline-none focus:border-red-500 focus:shadow-lg transition-all"
+                  placeholder={loginError ? "TRY AGAIN..." : "ENTER PASSCODE..."}
+                  className={`w-full pl-12 pr-4 py-4 bg-black/50 border-2 rounded-xl text-red-400 font-mono tracking-widest placeholder-slate-600 focus:outline-none focus:shadow-lg transition-all ${loginError ? 'border-red-500 bg-red-900/20' : 'border-red-500/30 focus:border-red-500'}`}
                   style={{ 
                     caretColor: '#ff0040',
                     textShadow: '0 0 5px rgba(255,0,64,0.5)'
