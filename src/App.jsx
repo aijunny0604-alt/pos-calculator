@@ -5620,53 +5620,56 @@ export default function PriceCalculator() {
         </div>
       </header>
 
-      <div className="w-full px-4 py-3 pb-48 md:pb-3 md:pr-[420px] lg:pr-[440px]">
+      {/* 검색바 - 완전 고정 */}
+      <div className="fixed top-12 sm:top-14 left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
+        <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="제품명 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="전체">전체</option>
+              {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+            
+            <div className="flex bg-slate-900/50 rounded-lg p-0.5">
+              <button
+                onClick={() => setPriceType('wholesale')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                도매가
+              </button>
+              <button
+                onClick={() => setPriceType('retail')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                소비자가
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full px-4 pt-20 sm:pt-24 pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
-            {/* 검색바 - 제품 목록 위에 sticky */}
-            <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 mb-3 border border-blue-600/50 shadow-lg shadow-blue-900/20 sticky top-12 sm:top-14 z-20">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="제품명 검색..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="전체">전체</option>
-                  {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-                
-                <div className="flex bg-slate-900/50 rounded-lg p-0.5">
-                  <button
-                    onClick={() => setPriceType('wholesale')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    도매가
-                  </button>
-                  <button
-                    onClick={() => setPriceType('retail')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    소비자가
-                  </button>
-                </div>
-              </div>
-            </div>
 
             <div className="mb-2 text-slate-400 text-xs">
               {filteredProducts.length}개 제품
@@ -5785,9 +5788,9 @@ export default function PriceCalculator() {
             )}
           </div>
 
-          {/* 장바구니 - 데스크톱에서 오른쪽 고정 */}
-          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-14 md:bottom-4 md:left-auto md:right-4 md:w-[400px] lg:w-[420px] z-40`}>
-            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right md:h-full md:flex md:flex-col">
+          {/* 장바구니 - 데스크톱에서 오른쪽 상단 고정 */}
+          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-14 md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
+            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-emerald-400" />
@@ -5799,7 +5802,7 @@ export default function PriceCalculator() {
                 </button>
               </div>
 
-              <div className="max-h-52 md:max-h-none md:flex-1 overflow-y-auto order-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="max-h-52 md:max-h-[calc(100vh-280px)] overflow-y-auto order-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
