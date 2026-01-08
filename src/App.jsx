@@ -1388,46 +1388,28 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
 }
 
 // ==================== 저장된 장바구니 모달 ====================
-function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDeleteAll, formatPrice }) {
+// ==================== 저장된 장바구니 페이지 ====================
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice, onBack }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [selectedItems, setSelectedItems] = useState([]); // 선택된 항목들
-  const [selectMode, setSelectMode] = useState(false); // 선택 모드
-  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false); // 전체 삭제 확인
-  
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
-  // 모달 열릴 때 body 스크롤 완전 잠금
+  // ESC 키로 뒤로가기
   useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      const scrollY = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (selectMode) {
+          setSelectMode(false);
+          setSelectedItems([]);
+        } else {
+          onBack();
+        }
+      }
     };
-  }, [isOpen]);
-
-  // 모달 닫힐 때 선택 모드 초기화
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectMode(false);
-      setSelectedItems([]);
-      setShowDeleteAllConfirm(false);
-    }
-  }, [isOpen]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack, selectMode]);
   
   // 항목 선택/해제
   const toggleSelect = (index) => {
@@ -1447,99 +1429,104 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDele
   
   // 선택 삭제
   const deleteSelected = () => {
-    // 인덱스를 내림차순으로 정렬해서 삭제 (뒤에서부터 삭제해야 인덱스 꼬이지 않음)
     const sortedIndices = [...selectedItems].sort((a, b) => b - a);
     sortedIndices.forEach(index => onDelete(index));
     setSelectedItems([]);
     setSelectMode(false);
   };
   
-  if (!isOpen) return null;
-  
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl border border-slate-700 animate-scale-in">
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Save className="w-6 h-6 text-white" />
-            <h2 className="text-xl font-bold text-white">저장된 장바구니</h2>
-            <span className="text-violet-200 text-sm">({savedCarts.length}개)</span>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-            <X className="w-5 h-5 text-white" />
-          </button>
-        </div>
-        
-        {/* 액션 버튼 영역 */}
-        {savedCarts.length > 0 && (
-          <div className="px-4 py-2 bg-slate-900/50 border-b border-slate-700 flex items-center justify-between gap-2">
-            {selectMode ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleSelectAll}
-                    className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
-                  >
-                    {selectedItems.length === savedCarts.length ? '전체 해제' : '전체 선택'}
-                  </button>
-                  <span className="text-slate-400 text-xs">{selectedItems.length}개 선택됨</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Save className="w-6 h-6 text-violet-400" />
+                <div>
+                  <h1 className="text-lg font-bold text-white">저장된 장바구니</h1>
+                  <p className="text-violet-400 text-xs">{savedCarts.length}개</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={deleteSelected}
-                    disabled={selectedItems.length === 0}
-                    className={`text-xs px-3 py-1 rounded flex items-center gap-1 ${
-                      selectedItems.length > 0 
-                        ? 'bg-red-600 hover:bg-red-500 text-white' 
-                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    선택 삭제
-                  </button>
-                  <button
-                    onClick={() => { setSelectMode(false); setSelectedItems([]); }}
-                    className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
-                  >
-                    취소
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
+              </div>
+            </div>
+            
+            {/* 액션 버튼 */}
+            {savedCarts.length > 0 && !selectMode && (
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectMode(true)}
-                  className="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-1"
                 >
                   <Check className="w-3 h-3" />
-                  선택 삭제
+                  선택
                 </button>
                 <button
                   onClick={() => setShowDeleteAllConfirm(true)}
-                  className="text-xs px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg flex items-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" />
-                  전체 삭제
+                  전체삭제
                 </button>
-              </>
+              </div>
             )}
           </div>
-        )}
+          
+          {/* 선택 모드 바 */}
+          {selectMode && (
+            <div className="mt-3 flex items-center justify-between bg-violet-900/30 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleSelectAll}
+                  className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
+                >
+                  {selectedItems.length === savedCarts.length ? '전체 해제' : '전체 선택'}
+                </button>
+                <span className="text-violet-300 text-xs">{selectedItems.length}개 선택됨</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={deleteSelected}
+                  disabled={selectedItems.length === 0}
+                  className={`text-xs px-3 py-1 rounded flex items-center gap-1 ${
+                    selectedItems.length > 0 
+                      ? 'bg-red-600 hover:bg-red-500 text-white' 
+                      : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                  삭제
+                </button>
+                <button
+                  onClick={() => { setSelectMode(false); setSelectedItems([]); }}
+                  className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
 
+      <div className="w-full px-4 py-4">
         {/* 전체 삭제 확인 */}
         {showDeleteAllConfirm && (
-          <div className="px-4 py-3 bg-red-900/30 border-b border-red-600/30">
-            <p className="text-red-400 text-sm mb-2">모든 저장된 장바구니를 삭제하시겠습니까?</p>
+          <div className="mb-4 p-4 bg-red-900/30 rounded-xl border border-red-600/30">
+            <p className="text-red-400 text-sm mb-3">모든 저장된 장바구니를 삭제하시겠습니까?</p>
             <div className="flex gap-2">
               <button 
                 onClick={() => { onDeleteAll(); setShowDeleteAllConfirm(false); }}
-                className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium"
               >
                 전체 삭제
               </button>
               <button 
                 onClick={() => setShowDeleteAllConfirm(false)}
-                className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
+                className="flex-1 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm"
               >
                 취소
               </button>
@@ -1547,105 +1534,97 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDele
           </div>
         )}
         
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-200px)] overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {savedCarts.length === 0 ? (
-            <div className="text-center py-8">
-              <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">저장된 장바구니가 없습니다</p>
-              <p className="text-slate-500 text-sm mt-1">장바구니를 저장하면 여기에 표시됩니다</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {savedCarts.map((cart, index) => (
-                <div 
-                  key={index} 
-                  className={`bg-slate-700/50 rounded-xl p-4 transition-colors ${
-                    selectMode && selectedItems.includes(index) 
-                      ? 'ring-2 ring-violet-500 bg-violet-900/20' 
-                      : 'hover:bg-slate-700'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {/* 체크박스 (선택 모드일 때만) */}
-                    {selectMode && (
-                      <button
-                        onClick={() => toggleSelect(index)}
-                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                          selectedItems.includes(index)
-                            ? 'bg-violet-500 border-violet-500'
-                            : 'border-slate-500 hover:border-violet-400'
-                        }`}
-                      >
-                        {selectedItems.includes(index) && <Check className="w-3 h-3 text-white" />}
-                      </button>
+        {savedCarts.length === 0 ? (
+          <div className="text-center py-16">
+            <ShoppingCart className="w-16 h-16 text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400">저장된 장바구니가 없습니다</p>
+            <p className="text-slate-500 text-sm mt-1">장바구니를 저장하면 여기에 표시됩니다</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {savedCarts.map((cart, index) => (
+              <div 
+                key={index} 
+                className={`bg-slate-800 rounded-xl p-4 border transition-all ${
+                  selectMode && selectedItems.includes(index) 
+                    ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50' 
+                    : 'border-slate-700 hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* 체크박스 (선택 모드일 때만) */}
+                  {selectMode && (
+                    <button
+                      onClick={() => toggleSelect(index)}
+                      className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                        selectedItems.includes(index)
+                          ? 'bg-violet-500 border-violet-500'
+                          : 'border-slate-500 hover:border-violet-400'
+                      }`}
+                    >
+                      {selectedItems.includes(index) && <Check className="w-3 h-3 text-white" />}
+                    </button>
+                  )}
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="min-w-0">
+                        <h3 className="text-white font-semibold truncate">{cart.name}</h3>
+                        <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
+                      </div>
+                      <p className="text-emerald-400 font-bold text-sm ml-2">{formatPrice(cart.total)}</p>
+                    </div>
+                    
+                    <div className="bg-slate-900/50 rounded-lg p-2 mb-3">
+                      <p className="text-slate-400 text-sm truncate">
+                        {cart.items.map(item => `${item.name}(${item.quantity})`).join(', ')}
+                      </p>
+                      <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
+                    </div>
+                    
+                    {!selectMode && (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => { onLoad(cart); onBack(); }}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          불러오기
+                        </button>
+                        <button 
+                          onClick={() => setDeleteConfirm(index)}
+                          className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                     
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="text-white font-semibold">{cart.name}</h3>
-                          <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
-                        </div>
-                        <p className="text-emerald-400 font-bold">{formatPrice(cart.total)}</p>
-                      </div>
-                      
-                      <div className="bg-slate-800/50 rounded-lg p-2 mb-3">
-                        <p className="text-slate-400 text-sm truncate">
-                          {cart.items.map(item => `${item.name}(${item.quantity})`).join(', ')}
-                        </p>
-                        <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
-                      </div>
-                      
-                      {!selectMode && (
+                    {deleteConfirm === index && !selectMode && (
+                      <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
+                        <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => { onLoad(cart); onClose(); }}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
+                            onClick={() => { onDelete(index); setDeleteConfirm(null); }}
+                            className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
                           >
-                            <Download className="w-4 h-4" />
-                            불러오기
+                            삭제
                           </button>
                           <button 
-                            onClick={() => setDeleteConfirm(index)}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
+                            onClick={() => setDeleteConfirm(null)}
+                            className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            취소
                           </button>
                         </div>
-                      )}
-                      
-                      {deleteConfirm === index && !selectMode && (
-                        <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
-                          <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => { onDelete(index); setDeleteConfirm(null); }}
-                              className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
-                            >
-                              삭제
-                            </button>
-                            <button 
-                              onClick={() => setDeleteConfirm(null)}
-                              className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        <div className="bg-slate-900 px-6 py-4">
-          <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors">
-            닫기
-          </button>
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1656,6 +1635,21 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDele
 function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
+
+  // ESC 키로 뒤로가기
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (selectedCustomer) {
+          setSelectedCustomer(null);
+        } else {
+          onBack();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack, selectedCustomer]);
   
   // 검색 필터링
   const filteredCustomers = (customers || []).filter(c => 
@@ -1859,46 +1853,24 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   );
 }
 
-// ==================== 택배 송장 생성 모달 ====================
-function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], formatPrice }) {
+// ==================== 택배 송장 생성 페이지 ====================
+function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack }) {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [defaultShippingCost, setDefaultShippingCost] = useState(7300);
   const [senderName, setSenderName] = useState('무브모터스');
   const [dateFilter, setDateFilter] = useState('all');
   const [orderSettings, setOrderSettings] = useState({});
-  
-  useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
 
+  // ESC 키로 뒤로가기
   useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      const scrollY = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onBack();
+      }
     };
-  }, [isOpen]);
-  
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedOrders([]);
-      setOrderSettings({});
-    }
-  }, [isOpen]);
-  
-  if (!isOpen) return null;
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
   
   const safeOrders = orders || [];
   const today = new Date();
@@ -2060,125 +2032,141 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
   const packagingOptions = ['박스1', '박스2', '박스3', '나체1', '나체2', '나체3'];
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
-        <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Truck className="w-6 h-6 text-white" />
-            <div>
-              <h2 className="text-xl font-bold text-white">택배 송장 생성</h2>
-              <p className="text-orange-100 text-sm">전체 주문 {safeOrders.length}건 / 필터 {filteredOrders.length}건</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Truck className="w-6 h-6 text-orange-400" />
+                <div>
+                  <h1 className="text-lg font-bold text-white">택배 송장 생성</h1>
+                  <p className="text-orange-400 text-xs">전체 {safeOrders.length}건 / 필터 {filteredOrders.length}건</p>
+                </div>
+              </div>
             </div>
+            <span className="text-orange-400 font-semibold text-sm">{selectedOrders.length}건 선택</span>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors"><X className="w-5 h-5 text-white" /></button>
         </div>
-        
-        <div className="p-4 border-b border-slate-700 bg-slate-800/50">
-          <div className="flex gap-2 mb-4">
+      </header>
+
+      <div className="w-full px-4 py-4">
+        {/* 설정 영역 */}
+        <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
+          {/* 날짜 필터 */}
+          <div className="flex flex-wrap gap-2 mb-4">
             {[{ key: 'today', label: '오늘' }, { key: 'yesterday', label: '어제' }, { key: 'week', label: '최근 7일' }, { key: 'all', label: '전체' }].map(({ key, label }) => (
               <button key={key} onClick={() => { setDateFilter(key); setSelectedOrders([]); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${dateFilter === key ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>{label}</button>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          
+          {/* 보내는 곳 & 기본 택배비 */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 text-sm mb-1">보내는 곳</label>
-              <input type="text" value={senderName} onChange={(e) => setSenderName(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
+              <label className="block text-slate-400 text-xs mb-1">보내는 곳</label>
+              <input type="text" value={senderName} onChange={(e) => setSenderName(e.target.value)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
-              <label className="block text-slate-400 text-sm mb-1">기본 택배비</label>
-              <input type="number" value={defaultShippingCost} onChange={(e) => setDefaultShippingCost(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500" />
+              <label className="block text-slate-400 text-xs mb-1">기본 택배비</label>
+              <input type="number" value={defaultShippingCost} onChange={(e) => setDefaultShippingCost(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
         </div>
         
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500" />
-              <span className="text-slate-300 text-sm">전체 선택</span>
-            </label>
-            <span className="text-orange-400 font-semibold">{selectedOrders.length}건 선택됨</span>
+        {/* 전체 선택 */}
+        <div className="flex items-center justify-between mb-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500" />
+            <span className="text-slate-300 text-sm">전체 선택</span>
+          </label>
+        </div>
+        
+        {/* 주문 목록 */}
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-16">
+            <Truck className="w-16 h-16 text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400">해당 기간 주문 내역이 없습니다</p>
+            <p className="text-slate-500 text-sm mt-1">다른 날짜 필터를 선택해보세요</p>
           </div>
-          
-          <div className="overflow-y-auto max-h-[40vh] space-y-2 overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {filteredOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <Truck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-400">해당 기간 주문 내역이 없습니다</p>
-                <p className="text-slate-500 text-sm mt-1">다른 날짜 필터를 선택해보세요</p>
-              </div>
-            ) : (
-              filteredOrders.map(order => {
-                const customer = order.customerName ? findCustomer(order.customerName) : null;
-                const hasAddress = customer?.address;
-                const setting = getOrderSetting(order.orderNumber);
-                const isSelected = selectedOrders.includes(order.orderNumber);
-                
-                return (
-                  <div key={order.orderNumber} className={`rounded-lg border transition-all ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'}`}>
-                    <div className="p-3 cursor-pointer" onClick={() => toggleOrder(order.orderNumber)}>
-                      <div className="flex items-start gap-3">
-                        <input type="checkbox" checked={isSelected} onChange={() => {}} className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-medium ${setting.paymentType === '선불' ? 'text-yellow-400 font-bold' : 'text-white'}`}>{order.customerName || '고객명 없음'}</span>
-                            {setting.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
-                            {hasAddress ? <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span> : <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>}
-                          </div>
-                          <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
-                          <p className="text-slate-500 text-xs mt-1">{order.items?.length || 0}종 · {formatPrice(order.totalAmount)}</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {filteredOrders.map(order => {
+              const customer = order.customerName ? findCustomer(order.customerName) : null;
+              const hasAddress = customer?.address;
+              const setting = getOrderSetting(order.orderNumber);
+              const isSelected = selectedOrders.includes(order.orderNumber);
+              
+              return (
+                <div key={order.orderNumber} className={`rounded-xl border transition-all ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                  <div className="p-3 cursor-pointer" onClick={() => toggleOrder(order.orderNumber)}>
+                    <div className="flex items-start gap-3">
+                      <input type="checkbox" checked={isSelected} onChange={() => {}} className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-medium ${setting.paymentType === '선불' ? 'text-yellow-400 font-bold' : 'text-white'}`}>{order.customerName || '고객명 없음'}</span>
+                          {setting.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
+                          {hasAddress ? <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span> : <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>}
                         </div>
-                        <div className="text-right"><p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p></div>
+                        <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
+                        <p className="text-slate-500 text-xs mt-1">{order.items?.length || 0}종 · {formatPrice(order.totalAmount)}</p>
+                      </div>
+                      <div className="text-right"><p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p></div>
+                    </div>
+                  </div>
+                  
+                  {isSelected && (
+                    <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-slate-500 text-xs mb-1">배송 방식</label>
+                          <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500">
+                            <option value="착불">착불</option>
+                            <option value="선불">선불</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 text-xs mb-1">포장</label>
+                          <input 
+                            type="text"
+                            list={`packaging-options-${order.orderNumber}`}
+                            value={setting.packaging} 
+                            onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
+                            placeholder="박스1"
+                            className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500"
+                          />
+                          <datalist id={`packaging-options-${order.orderNumber}`}>
+                            {packagingOptions.map(opt => <option key={opt} value={opt} />)}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 text-xs mb-1">택배비</label>
+                          <input type="number" value={setting.shippingCost} onChange={(e) => updateOrderSetting(order.orderNumber, 'shippingCost', parseInt(e.target.value) || 0)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" />
+                        </div>
                       </div>
                     </div>
-                    
-                    {isSelected && (
-                      <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-slate-500 text-xs mb-1">배송 방식</label>
-                            <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-sm focus:outline-none focus:border-orange-500">
-                              <option value="착불">착불</option>
-                              <option value="선불">선불</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-slate-500 text-xs mb-1">포장</label>
-                            <input 
-                              type="text"
-                              list={`packaging-options-${order.orderNumber}`}
-                              value={setting.packaging} 
-                              onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
-                              placeholder="박스1"
-                              className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-sm focus:outline-none focus:border-orange-500"
-                            />
-                            <datalist id={`packaging-options-${order.orderNumber}`}>
-                              {packagingOptions.map(opt => <option key={opt} value={opt} />)}
-                            </datalist>
-                          </div>
-                          <div>
-                            <label className="block text-slate-500 text-xs mb-1">택배비</label>
-                            <input type="number" value={setting.shippingCost} onChange={(e) => updateOrderSetting(order.orderNumber, 'shippingCost', parseInt(e.target.value) || 0)} className="w-full px-2 py-1.5 bg-slate-600 border border-slate-500 rounded text-white text-sm focus:outline-none focus:border-orange-500" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
-        
-        <div className="p-4 border-t border-slate-700 space-y-2">
-          <div className="flex gap-2">
-            <button onClick={generateShippingLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}><Download className="w-5 h-5" />CSV</button>
-            <button onClick={generateXlsxLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><FileText className="w-5 h-5" />Excel</button>
-            <button onClick={printShippingLabels} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-500 text-white'}`}><Printer className="w-5 h-5" />인쇄</button>
-          </div>
-          <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors">닫기</button>
+        )}
+      </div>
+      
+      {/* 하단 고정 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 z-40">
+        <div className="flex gap-2">
+          <button onClick={generateShippingLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}><Download className="w-5 h-5" />CSV</button>
+          <button onClick={generateXlsxLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><FileText className="w-5 h-5" />Excel</button>
+          <button onClick={printShippingLabels} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-500 text-white'}`}><Printer className="w-5 h-5" />인쇄</button>
         </div>
       </div>
+      
+      {/* 하단 버튼 공간 확보 */}
+      <div className="h-20"></div>
     </div>
   );
 }
@@ -2188,6 +2176,17 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [stockFilter, setStockFilter] = useState('all'); // all, normal, low, out
   const [searchTerm, setSearchTerm] = useState('');
+
+  // ESC 키로 뒤로가기
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
   
   // 필터링된 제품
   const filteredProducts = products.filter(p => {
@@ -2345,49 +2344,35 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   );
 }
 
-function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice, customerName = '' }) {
+// ==================== 장바구니 저장 페이지 ====================
+function SaveCartPage({ onSave, cart, priceType, formatPrice, customerName = '', onBack }) {
   const [cartName, setCartName] = useState('');
   
   useEffect(() => {
-    if (isOpen) {
-      // 고객명이 있으면 고객명으로, 없으면 날짜로
-      if (customerName && customerName.trim()) {
-        setCartName(customerName.trim());
-      } else {
-        const now = new Date();
-        const defaultName = `${now.getMonth() + 1}월 ${now.getDate()}일 ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
-        setCartName(defaultName);
-      }
+    // 고객명이 있으면 고객명으로, 없으면 날짜로
+    if (customerName && customerName.trim()) {
+      setCartName(customerName.trim());
+    } else {
+      const now = new Date();
+      const defaultName = `${now.getMonth() + 1}월 ${now.getDate()}일 ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+      setCartName(defaultName);
     }
-  }, [isOpen, customerName]);
-  
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  }, [customerName]);
 
-  // 모달 열릴 때 body 스크롤 완전 잠금
+  // ESC/Enter 키 이벤트
   useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      const scrollY = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onBack();
+      } else if (e.key === 'Enter' && cartName.trim()) {
+        e.preventDefault();
+        onSave(cartName.trim());
+        onBack();
+      }
     };
-  }, [isOpen]);
-  
-  if (!isOpen) return null;
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack, onSave, cartName]);
   
   const total = cart.reduce((sum, item) => {
     const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
@@ -2397,91 +2382,98 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice, 
   const handleSave = () => {
     if (!cartName.trim()) return;
     onSave(cartName.trim());
-    onClose();
+    onBack();
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-slate-700 animate-scale-in">
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
           <div className="flex items-center gap-3">
-            <Save className="w-6 h-6 text-white" />
-            <h2 className="text-xl font-bold text-white">장바구니 저장</h2>
+            <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <ArrowLeft className="w-5 h-5 text-slate-300" />
+            </button>
+            <div className="flex items-center gap-2">
+              <Save className="w-6 h-6 text-violet-400" />
+              <h1 className="text-lg font-bold text-white">장바구니 저장</h1>
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-            <X className="w-5 h-5 text-white" />
-          </button>
         </div>
-        
-        <div className="p-6">
-          <div className="mb-4">
+      </header>
+
+      <div className="w-full px-4 py-6">
+        <div className="max-w-md mx-auto">
+          <div className="mb-6">
             <label className="block text-slate-400 text-sm mb-2">저장 이름</label>
             <input
               type="text"
               value={cartName}
               onChange={(e) => setCartName(e.target.value)}
               placeholder="고객명 또는 저장명 입력"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
               autoFocus
               onFocus={(e) => e.target.select()}
             />
           </div>
           
-          <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
+          <div className="bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700">
             <div className="flex justify-between items-center mb-2">
               <span className="text-slate-400">상품</span>
               <span className="text-white">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">합계</span>
-              <span className="text-emerald-400 font-bold text-lg">{formatPrice(total)}</span>
+              <span className="text-emerald-400 font-bold text-xl">{formatPrice(total)}</span>
             </div>
           </div>
           
-          <div className="bg-slate-900/50 rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
+          <div className="bg-slate-900/50 rounded-xl p-4 mb-6 border border-slate-700 max-h-48 overflow-y-auto">
             <p className="text-slate-400 text-sm">
               {cart.map(item => `${item.name}(${item.quantity})`).join(', ')}
             </p>
           </div>
-        </div>
-        
-        <div className="bg-slate-900 px-6 py-4 flex gap-3">
-          <button
-            onClick={handleSave}
-            disabled={!cartName.trim()}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-xl text-white font-semibold transition-colors"
-          >
-            <Save className="w-5 h-5" />
-            저장하기
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
-          >
-            취소
-          </button>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={handleSave}
+              disabled={!cartName.trim()}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-xl text-white font-semibold transition-colors"
+            >
+              <Save className="w-5 h-5" />
+              저장하기
+            </button>
+            <button
+              onClick={onBack}
+              className="flex-1 py-3.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
+            >
+              취소
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ==================== 텍스트 분석 모달 (AI 주문 인식) ====================
-function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice, priceType, initialText = '' }) {
-  const [inputText, setInputText] = useState('');
+// ==================== AI 주문 인식 페이지 ====================
+function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initialText = '', onBack }) {
+  const [inputText, setInputText] = useState(initialText || '');
   const [analyzedItems, setAnalyzedItems] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [searchingIndex, setSearchingIndex] = useState(null); // 검색 중인 항목 인덱스
+  const [searchingIndex, setSearchingIndex] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // initialText가 있으면 자동으로 입력
+  // ESC 키로 뒤로가기
   useEffect(() => {
-    if (isOpen && initialText) {
-      setInputText(initialText);
-    }
-  }, [isOpen, initialText]);
-
-  if (!isOpen) return null;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
 
   // 텍스트 분석 함수
   const analyzeText = () => {
@@ -2496,15 +2488,14 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
       const cleanLine = line.trim();
       if (!cleanLine) return;
 
-      // 수량 추출 (숫자 + 개/세트/ea 등)
       const qtyPatterns = [
         /(\d+)\s*개/,
         /(\d+)\s*세트/,
         /(\d+)\s*ea/i,
         /(\d+)\s*EA/,
-        /(\d+)\s*$/, // 줄 끝의 숫자
-        /^(\d+)\s+/, // 줄 시작의 숫자
-        /[x×]\s*(\d+)/i, // x3, ×2 형태
+        /(\d+)\s*$/,
+        /^(\d+)\s+/,
+        /[x×]\s*(\d+)/i,
       ];
 
       let quantity = 1;
@@ -2519,7 +2510,6 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
         }
       }
 
-      // 검색 텍스트 정리 (숫자, 특수문자 등)
       searchText = searchText
         .replace(/[,.\-_\/\\]/g, ' ')
         .replace(/\s+/g, ' ')
@@ -2527,7 +2517,6 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
 
       if (!searchText) return;
 
-      // 제품 매칭 (키워드 기반)
       const keywords = searchText.toLowerCase().split(' ').filter(k => k.length > 0);
       
       let bestMatch = null;
@@ -2537,14 +2526,12 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
         const productName = product.name.toLowerCase();
         let score = 0;
 
-        // 각 키워드가 제품명에 포함되는지 확인
         keywords.forEach(keyword => {
           if (productName.includes(keyword)) {
-            score += keyword.length; // 긴 키워드일수록 높은 점수
+            score += keyword.length;
           }
         });
 
-        // 전체 검색어가 포함되면 보너스
         if (productName.includes(searchText.toLowerCase())) {
           score += 10;
         }
@@ -2561,7 +2548,7 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
         quantity,
         matchedProduct: bestMatch,
         score: bestScore,
-        selected: bestScore > 0 // 매칭된 것만 기본 선택
+        selected: bestScore > 0
       });
     });
 
@@ -2569,14 +2556,12 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     setIsAnalyzing(false);
   };
 
-  // 선택 토글
   const toggleSelect = (index) => {
     setAnalyzedItems(prev => prev.map((item, i) => 
       i === index ? { ...item, selected: !item.selected } : item
     ));
   };
 
-  // 수량 변경
   const updateQuantity = (index, qty) => {
     if (qty < 1) return;
     setAnalyzedItems(prev => prev.map((item, i) => 
@@ -2584,7 +2569,6 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     ));
   };
 
-  // 항목 삭제
   const removeItem = (index) => {
     setAnalyzedItems(prev => prev.filter((_, i) => i !== index));
     if (searchingIndex === index) {
@@ -2593,7 +2577,6 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     }
   };
 
-  // 제품 수동 선택 (검색으로 찾은 제품)
   const selectProduct = (index, product) => {
     setAnalyzedItems(prev => prev.map((item, i) => 
       i === index ? { ...item, matchedProduct: product, selected: true, score: 100 } : item
@@ -2602,288 +2585,278 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     setSearchQuery('');
   };
 
-  // 검색 결과 필터링 (띄어쓰기 무시)
   const getSearchResults = () => {
     if (!searchQuery.trim()) return [];
-    // 띄어쓰기, 하이픈 등 제거하고 소문자로
     const query = searchQuery.toLowerCase().replace(/[\s\-_]/g, '');
     return products.filter(p => {
       const productName = p.name.toLowerCase().replace(/[\s\-_]/g, '');
       return productName.includes(query);
-    }).slice(0, 8); // 최대 8개
+    }).slice(0, 8);
   };
 
-  // 장바구니에 담기
   const addSelectedToCart = () => {
     const selectedItems = analyzedItems.filter(item => item.selected && item.matchedProduct);
     selectedItems.forEach(item => {
       onAddToCart(item.matchedProduct, item.quantity);
     });
-    onClose();
-    setInputText('');
-    setAnalyzedItems([]);
-    setSearchingIndex(null);
-    setSearchQuery('');
+    onBack();
   };
 
   const selectedCount = analyzedItems.filter(item => item.selected && item.matchedProduct).length;
   const searchResults = getSearchResults();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
-        {/* 헤더 */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-white" />
-            <div>
-              <h2 className="text-lg font-bold text-white">AI 주문 인식</h2>
-              <p className="text-purple-100 text-xs">메모를 붙여넣으면 자동으로 제품을 찾아드려요</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-yellow-400" />
+                <div>
+                  <h1 className="text-lg font-bold text-white">AI 주문 인식</h1>
+                  <p className="text-yellow-400 text-xs">메모를 붙여넣으면 자동으로 제품을 찾아드려요</p>
+                </div>
+              </div>
             </div>
+            {selectedCount > 0 && (
+              <span className="text-purple-400 text-sm font-medium">{selectedCount}개 선택</span>
+            )}
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-            <X className="w-6 h-6 text-white" />
-          </button>
         </div>
+      </header>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {/* 입력 영역 */}
-          <div>
-            <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              메모 입력 (줄 단위로 분석)
-            </label>
-            <textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={`예시:
+      <div className="w-full px-4 py-4 pb-24">
+        {/* 입력 영역 */}
+        <div className="mb-4">
+          <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            메모 입력 (줄 단위로 분석)
+          </label>
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={`예시:
 카본 93 듀얼 1세트
 54파이 밴딩 45 6개
 2m 환봉 1개 12파이
 MVB 64 Y R 2개`}
-              rows={6}
-              className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
-            />
-          </div>
-
-          {/* 분석 버튼 */}
-          <button
-            onClick={analyzeText}
-            disabled={!inputText.trim() || isAnalyzing}
-            className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-              !inputText.trim() || isAnalyzing
-                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
-            }`}
-          >
-            {isAnalyzing ? (
-              <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
-            ) : (
-              <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
-            )}
-          </button>
-
-          {/* 분석 결과 */}
-          {analyzedItems.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-white font-medium flex items-center gap-2">
-                  <Package className="w-4 h-4 text-purple-400" />
-                  분석 결과 ({analyzedItems.length}줄)
-                </h3>
-                <span className="text-sm text-purple-400">{selectedCount}개 선택됨</span>
-              </div>
-
-              <div className="space-y-2 max-h-72 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-                {analyzedItems.map((item, index) => (
-                  <div 
-                    key={index}
-                    className={`p-3 rounded-xl border transition-all ${
-                      item.matchedProduct 
-                        ? item.selected 
-                          ? 'bg-purple-900/30 border-purple-500/50' 
-                          : 'bg-slate-700/30 border-slate-600/50'
-                        : 'bg-red-900/20 border-red-500/30'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* 체크박스 */}
-                      <button
-                        onClick={() => item.matchedProduct && toggleSelect(index)}
-                        disabled={!item.matchedProduct}
-                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                          !item.matchedProduct 
-                            ? 'border-slate-600 bg-slate-700 cursor-not-allowed'
-                            : item.selected 
-                              ? 'border-purple-500 bg-purple-500' 
-                              : 'border-slate-500 hover:border-purple-400'
-                        }`}
-                      >
-                        {item.selected && item.matchedProduct && <Check className="w-3 h-3 text-white" />}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        {/* 원본 텍스트 */}
-                        <p className="text-slate-400 text-xs mb-1 truncate">"{item.originalText}"</p>
-                        
-                        {item.matchedProduct ? (
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-white font-medium truncate">{item.matchedProduct.name}</p>
-                                {/* 제품 변경 버튼 */}
-                                <button
-                                  onClick={() => { 
-                                    setSearchingIndex(searchingIndex === index ? null : index); 
-                                    setSearchQuery(item.searchText);
-                                  }}
-                                  className="px-2 py-0.5 text-xs bg-slate-600 hover:bg-purple-600 text-white rounded flex-shrink-0 transition-colors flex items-center gap-1"
-                                >
-                                  <Edit3 className="w-3 h-3" />
-                                  변경
-                                </button>
-                              </div>
-                              <p className={`text-sm ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
-                                {formatPrice(priceType === 'wholesale' ? item.matchedProduct.wholesale : (item.matchedProduct.retail || item.matchedProduct.wholesale))}
-                              </p>
-                            </div>
-                            
-                            {/* 수량 조절 + 삭제 */}
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
-                                <button 
-                                  onClick={() => updateQuantity(index, item.quantity - 1)}
-                                  className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
-                                >
-                                  <Minus className="w-3 h-3 text-white" />
-                                </button>
-                                <input
-                                  type="number"
-                                  value={item.quantity}
-                                  onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                                  className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <button 
-                                  onClick={() => updateQuantity(index, item.quantity + 1)}
-                                  className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
-                                >
-                                  <Plus className="w-3 h-3 text-white" />
-                                </button>
-                              </div>
-                              <button 
-                                onClick={() => removeItem(index)}
-                                className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
-                                title="삭제"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          /* 매칭 실패 - 검색 UI */
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-red-400 text-sm">❌ 못 찾음</span>
-                                <button
-                                  onClick={() => { 
-                                    setSearchingIndex(searchingIndex === index ? null : index); 
-                                    setSearchQuery(item.searchText);
-                                  }}
-                                  className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg flex items-center gap-1"
-                                >
-                                  <Search className="w-3 h-3" />
-                                  직접 검색
-                                </button>
-                              </div>
-                              <button 
-                                onClick={() => removeItem(index)}
-                                className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
-                                title="삭제"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 검색 드롭다운 */}
-                        {searchingIndex === index && (
-                          <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-600" data-lenis-prevent="true">
-                            <div className="relative mb-2">
-                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                              <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="제품명 검색..."
-                                autoFocus
-                                className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                              />
-                            </div>
-                            {searchResults.length > 0 ? (
-                              <div className="max-h-40 overflow-y-auto space-y-1 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-                                {searchResults.map(product => (
-                                  <button
-                                    key={product.id}
-                                    onClick={() => selectProduct(index, product)}
-                                    className="w-full p-2 text-left hover:bg-slate-700 rounded-lg transition-colors"
-                                  >
-                                    <p className="text-white text-sm truncate">{product.name}</p>
-                                    <p className={`text-xs ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
-                                      {formatPrice(priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale))}
-                                    </p>
-                                  </button>
-                                ))}
-                              </div>
-                            ) : searchQuery.trim() ? (
-                              <p className="text-slate-500 text-sm text-center py-2">검색 결과 없음</p>
-                            ) : (
-                              <p className="text-slate-500 text-sm text-center py-2">검색어를 입력하세요</p>
-                            )}
-                            <button
-                              onClick={() => { setSearchingIndex(null); setSearchQuery(''); }}
-                              className="w-full mt-2 py-1.5 text-xs text-slate-400 hover:text-white"
-                            >
-                              닫기
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            rows={5}
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
+          />
         </div>
 
-        {/* 하단 버튼 */}
+        {/* 분석 버튼 */}
+        <button
+          onClick={analyzeText}
+          disabled={!inputText.trim() || isAnalyzing}
+          className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all mb-4 ${
+            !inputText.trim() || isAnalyzing
+              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+          }`}
+        >
+          {isAnalyzing ? (
+            <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
+          ) : (
+            <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
+          )}
+        </button>
+
+        {/* 분석 결과 */}
         {analyzedItems.length > 0 && (
-          <div className="p-4 border-t border-slate-700 bg-slate-800/50">
-            <button
-              onClick={addSelectedToCart}
-              disabled={selectedCount === 0}
-              className={`w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-                selectedCount === 0
-                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white'
-              }`}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              {selectedCount}개 제품 장바구니에 담기
-            </button>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-medium flex items-center gap-2">
+                <Package className="w-4 h-4 text-purple-400" />
+                분석 결과 ({analyzedItems.length}줄)
+              </h3>
+            </div>
+
+            <div className="space-y-2">
+              {analyzedItems.map((item, index) => (
+                <div 
+                  key={index}
+                  className={`p-3 rounded-xl border transition-all ${
+                    item.matchedProduct 
+                      ? item.selected 
+                        ? 'bg-purple-900/30 border-purple-500/50' 
+                        : 'bg-slate-800 border-slate-700'
+                      : 'bg-red-900/20 border-red-500/30'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <button
+                      onClick={() => item.matchedProduct && toggleSelect(index)}
+                      disabled={!item.matchedProduct}
+                      className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        !item.matchedProduct 
+                          ? 'border-slate-600 bg-slate-700 cursor-not-allowed'
+                          : item.selected 
+                            ? 'border-purple-500 bg-purple-500' 
+                            : 'border-slate-500 hover:border-purple-400'
+                      }`}
+                    >
+                      {item.selected && item.matchedProduct && <Check className="w-3 h-3 text-white" />}
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-400 text-xs mb-1 truncate">"{item.originalText}"</p>
+                      
+                      {item.matchedProduct ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-white font-medium truncate">{item.matchedProduct.name}</p>
+                              <button
+                                onClick={() => { 
+                                  setSearchingIndex(searchingIndex === index ? null : index); 
+                                  setSearchQuery(item.searchText);
+                                }}
+                                className="px-2 py-0.5 text-xs bg-slate-600 hover:bg-purple-600 text-white rounded flex-shrink-0 transition-colors flex items-center gap-1"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                변경
+                              </button>
+                            </div>
+                            <p className={`text-sm ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                              {formatPrice(priceType === 'wholesale' ? item.matchedProduct.wholesale : (item.matchedProduct.retail || item.matchedProduct.wholesale))}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+                              <button 
+                                onClick={() => updateQuantity(index, item.quantity - 1)}
+                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-700 rounded"
+                              >
+                                <Minus className="w-3 h-3 text-white" />
+                              </button>
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
+                                className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <button 
+                                onClick={() => updateQuantity(index, item.quantity + 1)}
+                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-700 rounded"
+                              >
+                                <Plus className="w-3 h-3 text-white" />
+                              </button>
+                            </div>
+                            <button 
+                              onClick={() => removeItem(index)}
+                              className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400 text-sm">❌ 못 찾음</span>
+                              <button
+                                onClick={() => { 
+                                  setSearchingIndex(searchingIndex === index ? null : index); 
+                                  setSearchQuery(item.searchText);
+                                }}
+                                className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg flex items-center gap-1"
+                              >
+                                <Search className="w-3 h-3" />
+                                직접 검색
+                              </button>
+                            </div>
+                            <button 
+                              onClick={() => removeItem(index)}
+                              className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 검색 드롭다운 */}
+                      {searchingIndex === index && (
+                        <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-600">
+                          <div className="relative mb-2">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="제품명 검색..."
+                              autoFocus
+                              className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          {searchResults.length > 0 ? (
+                            <div className="max-h-40 overflow-y-auto space-y-1">
+                              {searchResults.map(product => (
+                                <button
+                                  key={product.id}
+                                  onClick={() => selectProduct(index, product)}
+                                  className="w-full p-2 text-left hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                  <p className="text-white text-sm truncate">{product.name}</p>
+                                  <p className={`text-xs ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                                    {formatPrice(priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale))}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                          ) : searchQuery.trim() ? (
+                            <p className="text-slate-500 text-sm text-center py-2">검색 결과 없음</p>
+                          ) : (
+                            <p className="text-slate-500 text-sm text-center py-2">검색어를 입력하세요</p>
+                          )}
+                          <button
+                            onClick={() => { setSearchingIndex(null); setSearchQuery(''); }}
+                            className="w-full mt-2 py-1.5 text-xs text-slate-400 hover:text-white"
+                          >
+                            닫기
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
+
+      {/* 하단 고정 버튼 */}
+      {analyzedItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 z-40">
+          <button
+            onClick={addSelectedToCart}
+            disabled={selectedCount === 0}
+            className={`w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+              selectedCount === 0
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white'
+            }`}
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {selectedCount}개 제품 장바구니에 담기
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// 주문 확인 모달
-function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart, customers = [] }) {
+// ==================== 주문 확인 페이지 ====================
+function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart, customers = [], onBack }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -2896,53 +2869,25 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
-  // ESC 키로 모달 닫기
+  // 처음 마운트시 주문번호 생성
   useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-
-  // 모달 열릴 때 body 스크롤 완전 잠금
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      const scrollY = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
-    };
-  }, [isOpen]);
-
-  // 모달이 열릴 때 한 번만 주문번호 생성
-  useEffect(() => {
-    if (isOpen && !orderNumber) {
+    if (!orderNumber) {
       const today = new Date();
       const newOrderNumber = `ORD-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
       setOrderNumber(newOrderNumber);
     }
-    // 모달이 닫힐 때 주문번호 초기화 (다음에 열릴 때 새로 생성)
-    if (!isOpen) {
-      setOrderNumber('');
-      setCustomerName('');
-      setCustomerPhone('');
-      setCustomerAddress('');
-      setMemo('');
-      setCopied(false);
-      setSaved(false);
-      setSelectedCustomerId(null);
-    }
-  }, [isOpen]);
+  }, []);
 
-  if (!isOpen) return null;
+  // ESC 키로 뒤로가기
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
 
   // 거래처 검색 결과
   const customerSuggestions = customerName.length >= 1
@@ -3030,7 +2975,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
       customerName,
       customerPhone,
       customerAddress,
-      existingCustomerId: selectedCustomerId, // 기존 거래처면 ID 전달
+      existingCustomerId: selectedCustomerId,
       memo,
       priceType,
       totalAmount: currentTotal,
@@ -3052,7 +2997,7 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
         message += `\n\n🆕 신규 거래처 "${customerName}"이(가) 자동 등록되었습니다.`;
       }
       alert(message);
-      onClose();
+      onBack();
     }
   };
 
@@ -3108,387 +3053,338 @@ function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice
     `);
     printWindow.document.close();
   };
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <FileText className="w-7 h-7 text-white" />
-            <div>
-              <h2 className="text-xl font-bold text-white">주문서</h2>
-              <p className="text-blue-100 text-sm">{orderNumber}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
+              </button>
+              <div className="flex items-center gap-2">
+                <FileText className="w-6 h-6 text-blue-400" />
+                <div>
+                  <h1 className="text-lg font-bold text-white">주문서</h1>
+                  <p className="text-blue-400 text-xs">{orderNumber}</p>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-white">{formatPrice(currentTotal)}</p>
+              <p className="text-slate-400 text-xs">{totalQuantity}개</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-            <X className="w-6 h-6 text-white" />
-          </button>
         </div>
+      </header>
 
-        <div className="overflow-y-auto flex-1 category-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }} onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
-          <div className="p-5 border-b border-slate-700">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="relative" onClick={(e) => e.stopPropagation()}>
-                <label className="block text-slate-400 text-sm mb-1.5 flex items-center gap-2">
-                  <Building className="w-4 h-4" />
-                  고객명 / 업체명
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => { 
-                    setCustomerName(e.target.value); 
-                    setShowCustomerSuggestions(true);
-                    setSelectedCustomerId(null);
-                  }}
-                  onFocus={() => setShowCustomerSuggestions(true)}
-                  placeholder="고객명 또는 업체명 검색..."
-                  className={`w-full px-4 py-2.5 bg-slate-900/50 border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedCustomerId ? 'border-emerald-500' : 'border-slate-600'}`}
-                />
-                {selectedCustomerId && (
-                  <span className="absolute right-3 top-9 text-emerald-400">
-                    <Check className="w-4 h-4" />
-                  </span>
-                )}
-                {/* 신규 업체 표시 */}
-                {customerName && !selectedCustomerId && !showCustomerSuggestions && customerSuggestions.length === 0 && (
-                  <span className="absolute right-3 top-9 px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full">
-                    🆕 신규
-                  </span>
-                )}
-                {/* 거래처 자동완성 */}
-                {showCustomerSuggestions && customerSuggestions.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-56 overflow-y-auto">
-                    {customerSuggestions.map(customer => (
-                      <button
-                        key={customer.id}
-                        onClick={() => selectCustomer(customer)}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="text-white font-medium">{customer.name}</p>
-                          {customer.phone && (
-                            <span className="text-emerald-400 text-xs">{customer.phone}</span>
-                          )}
-                        </div>
-                        <p className="text-slate-400 text-xs truncate mt-0.5">{customer.address || '주소 미등록'}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {/* 검색 결과 없을 때 신규 등록 안내 */}
-                {showCustomerSuggestions && customerName.length >= 2 && customerSuggestions.length === 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-blue-500/50 rounded-lg shadow-xl p-4">
-                    <p className="text-blue-400 text-sm flex items-center gap-2">
-                      <span className="text-lg">🆕</span>
-                      <span>"{customerName}" - 신규 업체로 자동 등록됩니다</span>
-                    </p>
-                    <p className="text-slate-500 text-xs mt-1">주문 저장 시 거래처 목록에 추가됩니다</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-slate-400 text-sm mb-1.5 flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  연락처
-                </label>
-                <input
-                  type="text"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="연락처 입력"
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            {/* 주소 필드 */}
-            <div className="mt-3">
-              <label className="block text-slate-400 text-sm mb-1.5 flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                배송 주소
+      <div className="w-full px-4 py-4 pb-48" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
+        {/* 고객 정보 */}
+        <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <label className="block text-slate-400 text-xs mb-1 flex items-center gap-1">
+                <Building className="w-3 h-3" />
+                고객명 / 업체명
               </label>
               <input
                 type="text"
-                value={customerAddress}
-                onChange={(e) => setCustomerAddress(e.target.value)}
-                placeholder="배송 주소 입력 (택배 발송시 필수)"
-                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={customerName}
+                onChange={(e) => { 
+                  setCustomerName(e.target.value); 
+                  setShowCustomerSuggestions(true);
+                  setSelectedCustomerId(null);
+                }}
+                onFocus={() => setShowCustomerSuggestions(true)}
+                placeholder="고객명 또는 업체명 검색..."
+                className={`w-full px-3 py-2 bg-slate-900/50 border rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedCustomerId ? 'border-emerald-500' : 'border-slate-600'}`}
               />
-            </div>
-            <div className="mt-4 flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">주문일자:</span>
-                <span className="text-white">{formatDate(today.toISOString())}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">단가기준:</span>
-                <span className={`px-2.5 py-1 rounded text-sm font-medium ${
-                  priceType === 'wholesale' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
-                }`}>
-                  {priceType === 'wholesale' ? '도매가' : '소비자가'}
+              {selectedCustomerId && (
+                <span className="absolute right-3 top-7 text-emerald-400">
+                  <Check className="w-4 h-4" />
                 </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="px-5 py-4">
-            {/* 제품 추가 검색 */}
-            <div className="relative mb-4" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-3 bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                <Search className="w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => {
-                    setProductSearch(e.target.value);
-                    setShowSearchResults(true);
-                  }}
-                  onFocus={() => setShowSearchResults(true)}
-                  placeholder="제품 추가 검색..."
-                  className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none"
-                />
-                {productSearch && (
-                  <button 
-                    onClick={() => {
-                      setProductSearch('');
-                      setShowSearchResults(false);
-                    }}
-                    className="p-0.5 hover:bg-slate-700 rounded"
-                  >
-                    <X className="w-4 h-4 text-slate-400" />
-                  </button>
-                )}
-              </div>
-              
-              {/* 검색 결과 드롭다운 */}
-              {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-10 max-h-64 overflow-y-auto order-scroll">
-                  {searchResults.map(product => {
-                    const isInCart = cart.some(item => item.id === product.id);
-                    const price = priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
-                    return (
-                      <div 
-                        key={product.id}
-                        onClick={() => {
-                          if (!isInCart) {
-                            onAddItem(product);
-                            setProductSearch('');
-                            setShowSearchResults(false);
-                          }
-                        }}
-                        className={`flex items-center justify-between px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/50 last:border-0 ${isInCart ? 'opacity-50' : ''}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{product.name}</p>
-                          <p className="text-slate-500 text-xs">{product.category}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-blue-400 text-sm font-medium">{formatPrice(price)}</span>
-                          {isInCart ? (
-                            <span className="text-xs text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded">추가됨</span>
-                          ) : (
-                            <Plus className="w-5 h-5 text-emerald-400" />
-                          )}
-                        </div>
+              )}
+              {customerName && !selectedCustomerId && !showCustomerSuggestions && customerSuggestions.length === 0 && (
+                <span className="absolute right-3 top-7 px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full">
+                  🆕 신규
+                </span>
+              )}
+              {showCustomerSuggestions && customerSuggestions.length > 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                  {customerSuggestions.map(customer => (
+                    <button
+                      key={customer.id}
+                      onClick={() => selectCustomer(customer)}
+                      className="w-full px-3 py-2.5 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-white font-medium text-sm">{customer.name}</p>
+                        {customer.phone && (
+                          <span className="text-emerald-400 text-xs">{customer.phone}</span>
+                        )}
                       </div>
-                    );
-                  })}
+                      <p className="text-slate-400 text-xs truncate mt-0.5">{customer.address || '주소 미등록'}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showCustomerSuggestions && customerName.length >= 2 && customerSuggestions.length === 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-slate-800 border border-blue-500/50 rounded-lg shadow-xl p-3">
+                  <p className="text-blue-400 text-sm flex items-center gap-2">
+                    <span>🆕</span>
+                    <span>"{customerName}" - 신규 업체로 자동 등록됩니다</span>
+                  </p>
                 </div>
               )}
             </div>
+            <div>
+              <label className="block text-slate-400 text-xs mb-1 flex items-center gap-1">
+                <Phone className="w-3 h-3" />
+                연락처
+              </label>
+              <input
+                type="text"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="연락처 입력"
+                className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className="block text-slate-400 text-xs mb-1 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              배송 주소
+            </label>
+            <input
+              type="text"
+              value={customerAddress}
+              onChange={(e) => setCustomerAddress(e.target.value)}
+              placeholder="배송 주소 입력 (택배 발송시 필수)"
+              className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
 
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <Package className="w-5 h-5 text-blue-400" />
-              주문 상품 ({cart.length}종 / {totalQuantity}개)
-            </h3>
-            
-            <div className="bg-slate-900/50 rounded-xl overflow-hidden border border-slate-700/50">
-              {/* PC 헤더 */}
-              <div className="hidden sm:grid grid-cols-12 gap-3 px-4 py-3 bg-slate-700/50 text-slate-300 text-sm font-medium">
-                <div className="col-span-5">상품명</div>
-                <div className="col-span-2 text-right">단가</div>
-                <div className="col-span-3 text-center">수량</div>
-                <div className="col-span-2 text-right">금액</div>
+        {/* 제품 추가 검색 */}
+        <div className="relative mb-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2 bg-slate-800 border border-slate-600 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-blue-500">
+            <Search className="w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => {
+                setProductSearch(e.target.value);
+                setShowSearchResults(true);
+              }}
+              onFocus={() => setShowSearchResults(true)}
+              placeholder="제품 추가 검색..."
+              className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
+            />
+            {productSearch && (
+              <button onClick={() => { setProductSearch(''); setShowSearchResults(false); }}>
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            )}
+          </div>
+          
+          {showSearchResults && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
+              {searchResults.map(product => {
+                const isInCart = cart.some(item => item.id === product.id);
+                const price = priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
+                return (
+                  <div 
+                    key={product.id}
+                    onClick={() => {
+                      if (!isInCart) {
+                        onAddItem(product);
+                        setProductSearch('');
+                        setShowSearchResults(false);
+                      }
+                    }}
+                    className={`flex items-center justify-between px-3 py-2.5 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/50 last:border-0 ${isInCart ? 'opacity-50' : ''}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-slate-500 text-xs">{product.category}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-400 text-sm font-medium">{formatPrice(price)}</span>
+                      {isInCart ? (
+                        <span className="text-xs text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded">추가됨</span>
+                      ) : (
+                        <Plus className="w-4 h-4 text-emerald-400" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 상품 목록 */}
+        <div className="mb-4">
+          <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+            <Package className="w-4 h-4 text-blue-400" />
+            주문 상품 ({cart.length}종 / {totalQuantity}개)
+          </h3>
+          
+          <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+            {cart.length === 0 ? (
+              <div className="p-8 text-center">
+                <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-400">주문 상품이 없습니다</p>
               </div>
-              
-              <div className="divide-y divide-slate-700/50 max-h-64 overflow-y-auto order-scroll mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+            ) : (
+              <div className="divide-y divide-slate-700">
                 {cart.map((item) => {
                   const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
                   return (
-                    <div key={item.id} className="px-3 sm:px-4 py-3 hover:bg-slate-700/30">
-                      {/* 모바일 레이아웃 */}
-                      <div className="sm:hidden space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-white text-sm font-medium flex-1">{item.name}</p>
-                          <button 
-                            onClick={() => onRemoveItem(item.id)}
-                            className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-slate-400 text-xs">{formatPrice(price)} × {item.quantity}</p>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
-                              <button 
-                                onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                                className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="w-8 text-center text-white text-sm font-medium">{item.quantity}</span>
-                              <button 
-                                onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                                className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                            </div>
-                            <p className="text-blue-400 font-bold text-sm min-w-[80px] text-right">{formatPrice(price * item.quantity)}</p>
-                          </div>
-                        </div>
+                    <div key={item.id} className="p-3">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-white text-sm font-medium flex-1">{item.name}</p>
+                        <button 
+                          onClick={() => onRemoveItem(item.id)}
+                          className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                      
-                      {/* PC 레이아웃 */}
-                      <div className="hidden sm:grid grid-cols-12 gap-3 items-center">
-                        <div className="col-span-5 text-white text-sm truncate pr-2">{item.name}</div>
-                        <div className="col-span-2 text-right text-slate-300 text-sm">{formatPrice(price)}</div>
-                        <div className="col-span-3 flex items-center justify-center gap-1">
-                          <button 
-                            onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                            className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value) || 0;
-                              if (val >= 0) onUpdateQuantity(item.id, val);
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            className="w-12 h-7 text-center text-white font-medium bg-slate-800 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <button 
-                            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                            className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => onRemoveItem(item.id)}
-                            className="w-7 h-7 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors ml-1"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                      <div className="flex items-center justify-between">
+                        <p className="text-slate-400 text-xs">{formatPrice(price)}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-0.5">
+                            <button 
+                              onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                              className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                if (val >= 0) onUpdateQuantity(item.id, val);
+                              }}
+                              onFocus={(e) => e.target.select()}
+                              className="w-10 h-7 text-center text-white text-sm font-medium bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button 
+                              onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                              className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <p className="text-blue-400 font-bold text-sm min-w-[70px] text-right">{formatPrice(price * item.quantity)}</p>
                         </div>
-                        <div className="col-span-2 text-right text-blue-400 font-semibold">{formatPrice(price * item.quantity)}</div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              
-              {cart.length === 0 && (
-                <div className="p-10 text-center">
-                  <ShoppingCart className="w-14 h-14 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">주문 상품이 없습니다</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-slate-400 text-sm mb-1.5">메모</label>
-              <textarea
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="추가 메모 입력 (선택)"
-                rows={2}
-                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="border-t border-slate-700 p-5 bg-slate-900/50 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-slate-400">
-              <p>총 수량: <span className="text-white font-semibold text-lg">{totalQuantity}개</span></p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-slate-400 space-y-0.5 mb-1">
-                <span>공급가액 {formatPrice(exVat)}</span>
-                <span className="mx-2">+</span>
-                <span>부가세 {formatPrice(vat)}</span>
-              </div>
-              <p className="text-3xl font-bold text-white">{formatPrice(currentTotal)}</p>
-            </div>
-          </div>
+        {/* 메모 */}
+        <div className="mb-4">
+          <label className="block text-slate-400 text-xs mb-1">메모</label>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="추가 메모 입력 (선택)"
+            rows={2}
+            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+        </div>
 
-          {/* 버튼 영역 */}
-          <div className="space-y-3">
-            {/* 상단 버튼 - 주요 액션 */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={handleSave}
-                disabled={isSaving || cart.length === 0}
-                className={`py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-                  saved ? 'bg-green-600 text-white' : 
-                  isSaving ? 'bg-slate-600 text-slate-400 cursor-not-allowed' :
-                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                  'bg-blue-600 hover:bg-blue-500 text-white'
-                }`}
-              >
-                {saved ? <><Check className="w-5 h-5" />저장 완료!</> : 
-                 isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
-                 <><Check className="w-5 h-5" />주문 완료</>}
-              </button>
-              <button
-                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(customerName); }}
-                disabled={cart.length === 0}
-                className={`py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                  'bg-amber-600 hover:bg-amber-500 text-white'
-                }`}
-              >
-                <ShoppingBag className="w-5 h-5" />장바구니 담기
-              </button>
-            </div>
-            
-            {/* 하단 버튼 - 보조 액션 */}
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={handleCopy}
-                disabled={cart.length === 0}
-                className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-                  copied ? 'bg-green-600 text-white' : 
-                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                  'bg-slate-700 hover:bg-slate-600 text-white'
-                }`}
-              >
-                {copied ? <><Check className="w-5 h-5" />완료</> : <><Copy className="w-5 h-5" />복사</>}
-              </button>
-              <button
-                onClick={handlePrint}
-                disabled={cart.length === 0}
-                className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                  'bg-slate-700 hover:bg-slate-600 text-white'
-                }`}
-              >
-                <Printer className="w-5 h-5" />인쇄
-              </button>
-              <button
-                onClick={onClose}
-                className="py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-medium transition-colors"
-              >
-                닫기
-              </button>
-            </div>
+        {/* 금액 요약 */}
+        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-400 text-sm">공급가액</span>
+            <span className="text-white">{formatPrice(exVat)}</span>
+          </div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-slate-400 text-sm">부가세 (10%)</span>
+            <span className="text-white">{formatPrice(vat)}</span>
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t border-slate-600">
+            <span className="text-white font-semibold">총 금액</span>
+            <span className="text-2xl font-bold text-emerald-400">{formatPrice(currentTotal)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 하단 고정 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 z-40">
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isSaving || cart.length === 0}
+              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                saved ? 'bg-green-600 text-white' : 
+                isSaving ? 'bg-slate-600 text-slate-400 cursor-not-allowed' :
+                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              {saved ? <><Check className="w-5 h-5" />저장 완료!</> : 
+               isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
+               <><Check className="w-5 h-5" />주문 완료</>}
+            </button>
+            <button
+              onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(customerName); }}
+              disabled={cart.length === 0}
+              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-amber-600 hover:bg-amber-500 text-white'
+              }`}
+            >
+              <ShoppingBag className="w-5 h-5" />담기
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={handleCopy}
+              disabled={cart.length === 0}
+              className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-1 text-sm transition-all ${
+                copied ? 'bg-green-600 text-white' : 
+                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-slate-700 hover:bg-slate-600 text-white'
+              }`}
+            >
+              {copied ? <><Check className="w-4 h-4" />완료</> : <><Copy className="w-4 h-4" />복사</>}
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={cart.length === 0}
+              className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-1 text-sm transition-colors ${
+                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                'bg-slate-700 hover:bg-slate-600 text-white'
+              }`}
+            >
+              <Printer className="w-4 h-4" />인쇄
+            </button>
+            <button
+              onClick={onBack}
+              className="py-2.5 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-medium text-sm transition-colors"
+            >
+              닫기
+            </button>
           </div>
         </div>
       </div>
@@ -3519,6 +3415,33 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '', memo: '' });
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(null);
+
+  // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) {
+          setShowAddModal(false);
+        } else if (editingProduct) {
+          setEditingProduct(null);
+        } else if (showAddCustomerModal) {
+          setShowAddCustomerModal(false);
+        } else if (editingCustomer) {
+          setEditingCustomer(null);
+        } else if (showResetStockModal) {
+          setShowResetStockModal(false);
+        } else if (deleteConfirm) {
+          setDeleteConfirm(null);
+        } else if (deleteCustomerConfirm) {
+          setDeleteCustomerConfirm(null);
+        } else {
+          onBack();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm]);
 
   const categories = ['전체', ...new Set(products.map(p => p.category))];
   
@@ -3676,27 +3599,27 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors" title="새로고침">
                 <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               {activeTab === 'products' ? (
                 <>
                   <button 
                     onClick={() => setShowResetStockModal(true)} 
-                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-xs sm:text-sm font-medium transition-colors"
+                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors"
                   >
-                    <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden xs:inline">재고 초기화</span>
+                    <RotateCcw className="w-4 h-4" />
+                    재고 초기화
                   </button>
-                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-xs sm:text-sm font-medium transition-colors">
-                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="hidden xs:inline">제품 추가</span>
+                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-sm font-medium transition-colors">
+                    <Plus className="w-4 h-4" />
+                    제품추가
                   </button>
                 </>
               ) : (
-                <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-xs sm:text-sm font-medium transition-colors">
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden xs:inline">거래처 추가</span>
+                <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
+                  <Plus className="w-4 h-4" />
+                  거래처추가
                 </button>
               )}
             </div>
@@ -4396,6 +4319,27 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showFilterDeleteConfirm, setShowFilterDeleteConfirm] = useState(false); // 필터 기준 전체 삭제
+
+  // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (deleteConfirm) {
+          setDeleteConfirm(null);
+        } else if (showBulkDeleteConfirm) {
+          setShowBulkDeleteConfirm(false);
+        } else if (showFilterDeleteConfirm) {
+          setShowFilterDeleteConfirm(false);
+        } else if (selectedOrders.length > 0) {
+          setSelectedOrders([]);
+        } else {
+          onBack();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack, deleteConfirm, showBulkDeleteConfirm, showFilterDeleteConfirm, selectedOrders]);
 
   // 날짜 필터링 함수
   const filterByDate = (order) => {
@@ -5540,12 +5484,36 @@ export default function PriceCalculator() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <CustomStyles />
-      <OrderModal
-        isOpen={isOrderModalOpen}
-        onClose={() => setIsOrderModalOpen(false)}
+  // 저장된 장바구니 페이지
+  if (isSavedCartsModalOpen) {
+    return (
+      <SavedCartsPage
+        savedCarts={savedCarts}
+        onLoad={loadSavedCart}
+        onDelete={deleteSavedCart}
+        onDeleteAll={deleteSavedCartAll}
+        formatPrice={formatPrice}
+        onBack={() => setIsSavedCartsModalOpen(false)}
+      />
+    );
+  }
+
+  // 택배 송장 페이지
+  if (showShippingModal) {
+    return (
+      <ShippingLabelPage
+        orders={orders}
+        customers={customers}
+        formatPrice={formatPrice}
+        onBack={() => setShowShippingModal(false)}
+      />
+    );
+  }
+
+  // 주문 확인 페이지
+  if (isOrderModalOpen) {
+    return (
+      <OrderPage
         cart={cart}
         priceType={priceType}
         totalAmount={totalAmount}
@@ -5558,38 +5526,31 @@ export default function PriceCalculator() {
         products={priceData}
         onSaveCart={(name) => { setSaveCartCustomerName(name || ''); setIsSaveCartModalOpen(true); }}
         customers={customers}
+        onBack={() => setIsOrderModalOpen(false)}
       />
-      <SaveCartModal 
-        isOpen={isSaveCartModalOpen} 
-        onClose={() => setIsSaveCartModalOpen(false)} 
-        onSave={saveCartWithName} 
-        cart={cart} 
-        priceType={priceType} 
+    );
+  }
+
+  // 장바구니 저장 페이지
+  if (isSaveCartModalOpen) {
+    return (
+      <SaveCartPage
+        onSave={saveCartWithName}
+        cart={cart}
+        priceType={priceType}
         formatPrice={formatPrice}
         customerName={saveCartCustomerName}
+        onBack={() => setIsSaveCartModalOpen(false)}
       />
-      <SavedCartsModal 
-        isOpen={isSavedCartsModalOpen} 
-        onClose={() => setIsSavedCartsModalOpen(false)} 
-        savedCarts={savedCarts} 
-        onLoad={loadSavedCart} 
-        onDelete={deleteSavedCart}
-        onDeleteAll={deleteSavedCartAll}
-        formatPrice={formatPrice} 
-      />
-      <ShippingLabelModal
-        isOpen={showShippingModal}
-        onClose={() => setShowShippingModal(false)}
-        orders={orders}
-        customers={customers}
-        formatPrice={formatPrice}
-      />
-      <TextAnalyzeModal
-        isOpen={showTextAnalyzeModal}
-        onClose={() => setShowTextAnalyzeModal(false)}
+    );
+  }
+
+  // AI 주문 인식 페이지
+  if (showTextAnalyzeModal) {
+    return (
+      <TextAnalyzePage
         products={products.length > 0 ? products : priceData}
         onAddToCart={(product, qty) => {
-          // 이미 장바구니에 있으면 수량 추가
           const existing = cart.find(item => item.id === product.id);
           if (existing) {
             setCart(cart.map(item => 
@@ -5604,7 +5565,14 @@ export default function PriceCalculator() {
         }}
         formatPrice={formatPrice}
         priceType={priceType}
+        onBack={() => setShowTextAnalyzeModal(false)}
       />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <CustomStyles />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
