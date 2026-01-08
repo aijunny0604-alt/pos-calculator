@@ -1897,7 +1897,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
 // ==================== 택배 송장 생성 모달 ====================
 function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack }) {
   const [selectedOrders, setSelectedOrders] = useState([]);
-  const [senderName, setSenderName] = useState('무브모터스');
+  const [senderList] = useState(['무브모터스', '엠파츠']); // 보내는 곳 목록
   const [dateFilter, setDateFilter] = useState('all');
   const [orderSettings, setOrderSettings] = useState({});
   
@@ -1958,12 +1958,22 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   
   const getOrderSetting = (orderNumber) => {
     const defaultPackaging = '박스1';
-    return orderSettings[orderNumber] || { paymentType: '착불', packaging: defaultPackaging, shippingCost: shippingCosts[defaultPackaging] || 7300 };
+    return orderSettings[orderNumber] || { 
+      paymentType: '착불', 
+      packaging: defaultPackaging, 
+      shippingCost: shippingCosts[defaultPackaging] || 7300,
+      sender: senderList[0] // 기본 보내는 곳
+    };
   };
   
   const updateOrderSetting = (orderNumber, field, value) => {
     setOrderSettings(prev => {
-      const current = prev[orderNumber] || { paymentType: '착불', packaging: '박스1', shippingCost: shippingCosts['박스1'] || 7300 };
+      const current = prev[orderNumber] || { 
+        paymentType: '착불', 
+        packaging: '박스1', 
+        shippingCost: shippingCosts['박스1'] || 7300,
+        sender: senderList[0]
+      };
       let updated = { ...current, [field]: value };
       
       // 포장 옵션이 변경되면 해당 배송비로 자동 업데이트
@@ -2002,18 +2012,37 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const generateShippingLabel = () => {
     if (selectedOrders.length === 0) return;
     const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
-    let csv = '\uFEFF';
-    csv += '보내는곳 : ' + senderName + '\n';
-    csv += '번호,받는곳,배송,포장,운임,품명,연락처\n';
-    selectedData.forEach((order, index) => {
-      const customer = findCustomer(order.customerName);
-      const mostExpensive = getMostExpensiveItem(order.items);
-      const phone = customer?.phone || order.customerPhone || '';
-      const address = customer?.address || '';
+    
+    // 보내는 곳별로 그룹화
+    const groupedBySender = {};
+    selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber);
-      csv += `${index + 1},${order.customerName},${setting.paymentType},${setting.packaging},${setting.shippingCost},${mostExpensive},${phone}\n`;
-      if (address) csv += `${address}\n`;
+      const sender = setting.sender || senderList[0];
+      if (!groupedBySender[sender]) {
+        groupedBySender[sender] = [];
+      }
+      groupedBySender[sender].push(order);
     });
+    
+    let csv = '\uFEFF';
+    
+    // 각 보내는 곳별로 데이터 생성
+    Object.keys(groupedBySender).forEach((sender, senderIndex) => {
+      if (senderIndex > 0) csv += '\n'; // 그룹 간 빈 줄
+      csv += '보내는곳 : ' + sender + '\n';
+      csv += '번호,받는곳,배송,포장,운임,품명,연락처\n';
+      
+      groupedBySender[sender].forEach((order, index) => {
+        const customer = findCustomer(order.customerName);
+        const mostExpensive = getMostExpensiveItem(order.items);
+        const phone = customer?.phone || order.customerPhone || '';
+        const address = customer?.address || '';
+        const setting = getOrderSetting(order.orderNumber);
+        csv += `${index + 1},${order.customerName},${setting.paymentType},${setting.packaging},${setting.shippingCost},${mostExpensive},${phone}\n`;
+        if (address) csv += `${address}\n`;
+      });
+    });
+    
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -2063,96 +2092,124 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     ];
     
     const thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    
-    // 헤더
-    worksheet.mergeCells('A1:G1');
-    const headerRow = worksheet.getRow(1);
-    headerRow.getCell(1).value = '보내는곳 : ' + senderName;
-    headerRow.getCell(1).font = { bold: true, size: 15, name: 'Malgun Gothic' };
-    headerRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    headerRow.getCell(1).border = thinBorder;
-    headerRow.height = 38;
-    
-    // 컬럼 헤더
     const headers = ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처'];
-    const colHeaderRow = worksheet.getRow(2);
-    headers.forEach((header, idx) => {
-      const cell = colHeaderRow.getCell(idx + 1);
-      cell.value = header;
-      cell.font = { bold: true, size: 14, name: 'Malgun Gothic' };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = thinBorder;
-    });
-    colHeaderRow.height = 28;
     
-    let rowNum = 3;
-    selectedData.forEach((order, index) => {
-      const customer = order.customerName ? findCustomer(order.customerName) : null;
-      const mostExpensive = getMostExpensiveItem(order.items);
-      const phone = customer?.phone || order.customerPhone || '';
-      const address = customer?.address || '';
+    // 보내는 곳별로 그룹화
+    const groupedBySender = {};
+    selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber);
-      const isPrepaid = setting.paymentType === '선불';
-      
-      // 포장과 운임 쉼표로 분리
-      const packagingValue = String(setting.packaging || '');
-      const shippingCostValue = String(setting.shippingCost || '');
-      
-      // 쉼표가 있으면 줄바꿈 문자로 치환
-      const packagingDisplay = packagingValue.includes(',') 
-        ? packagingValue.split(',').join('\n') 
-        : packagingValue;
-      
-      const shippingDisplay = shippingCostValue.includes(',') 
-        ? shippingCostValue.split(',').join('\n') 
-        : shippingCostValue;
-      
-      const dataRow = worksheet.getRow(rowNum);
-      const rowData = [
-        index + 1, 
-        order.customerName || '', 
-        setting.paymentType, 
-        packagingDisplay, 
-        shippingDisplay, 
-        mostExpensive, 
-        phone
-      ];
-      
-      rowData.forEach((value, idx) => {
-        const cell = dataRow.getCell(idx + 1);
-        cell.value = value;
-        cell.font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
-        cell.alignment = { 
-          horizontal: 'center', 
-          vertical: 'middle',
-          wrapText: true  // 줄바꿈 활성화
-        };
-        cell.border = thinBorder;
-      });
-      
-      // 쉼표가 여러 개면 행 높이 증가
-      const maxLines = Math.max(
-        (packagingValue.match(/,/g) || []).length + 1,
-        (shippingCostValue.match(/,/g) || []).length + 1
-      );
-      dataRow.height = Math.max(40, 25 * maxLines);
-      rowNum++;
-      
-      // 주소 행 추가 (줄바꿈 적용)
-      if (address) {
-        worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
-        const addrRow = worksheet.getRow(rowNum);
-        addrRow.getCell(1).value = address;
-        addrRow.getCell(1).font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
-        addrRow.getCell(1).alignment = { 
-          horizontal: 'center', 
-          vertical: 'middle',
-          wrapText: true  // 줄바꿈 활성화
-        };
-        addrRow.getCell(1).border = thinBorder;
-        addrRow.height = 32;
+      const sender = setting.sender || senderList[0];
+      if (!groupedBySender[sender]) {
+        groupedBySender[sender] = [];
+      }
+      groupedBySender[sender].push(order);
+    });
+    
+    let rowNum = 1;
+    
+    // 각 보내는 곳별로 데이터 생성
+    Object.keys(groupedBySender).forEach((sender, senderIndex) => {
+      // 그룹 간 빈 줄 추가 (첫 그룹 제외)
+      if (senderIndex > 0) {
         rowNum++;
       }
+      
+      // 보내는 곳 헤더
+      worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
+      const senderHeaderRow = worksheet.getRow(rowNum);
+      senderHeaderRow.getCell(1).value = '보내는곳 : ' + sender;
+      senderHeaderRow.getCell(1).font = { bold: true, size: 15, name: 'Malgun Gothic' };
+      senderHeaderRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      senderHeaderRow.getCell(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE8F5E9' } // 연한 초록색 배경
+      };
+      senderHeaderRow.getCell(1).border = thinBorder;
+      senderHeaderRow.height = 38;
+      rowNum++;
+      
+      // 컬럼 헤더
+      const colHeaderRow = worksheet.getRow(rowNum);
+      headers.forEach((header, idx) => {
+        const cell = colHeaderRow.getCell(idx + 1);
+        cell.value = header;
+        cell.font = { bold: true, size: 14, name: 'Malgun Gothic' };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = thinBorder;
+      });
+      colHeaderRow.height = 28;
+      rowNum++;
+      
+      // 해당 보내는 곳의 주문 데이터
+      groupedBySender[sender].forEach((order, index) => {
+        const customer = order.customerName ? findCustomer(order.customerName) : null;
+        const mostExpensive = getMostExpensiveItem(order.items);
+        const phone = customer?.phone || order.customerPhone || '';
+        const address = customer?.address || '';
+        const setting = getOrderSetting(order.orderNumber);
+        const isPrepaid = setting.paymentType === '선불';
+        
+        // 포장과 운임 쉼표로 분리
+        const packagingValue = String(setting.packaging || '');
+        const shippingCostValue = String(setting.shippingCost || '');
+        
+        // 쉼표가 있으면 줄바꿈 문자로 치환
+        const packagingDisplay = packagingValue.includes(',') 
+          ? packagingValue.split(',').join('\n') 
+          : packagingValue;
+        
+        const shippingDisplay = shippingCostValue.includes(',') 
+          ? shippingCostValue.split(',').join('\n') 
+          : shippingCostValue;
+        
+        const dataRow = worksheet.getRow(rowNum);
+        const rowData = [
+          index + 1, 
+          order.customerName || '', 
+          setting.paymentType, 
+          packagingDisplay, 
+          shippingDisplay, 
+          mostExpensive, 
+          phone
+        ];
+        
+        rowData.forEach((value, idx) => {
+          const cell = dataRow.getCell(idx + 1);
+          cell.value = value;
+          cell.font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
+          cell.alignment = { 
+            horizontal: 'center', 
+            vertical: 'middle',
+            wrapText: true  // 줄바꿈 활성화
+          };
+          cell.border = thinBorder;
+        });
+        
+        // 쉼표가 여러 개면 행 높이 증가
+        const maxLines = Math.max(
+          (packagingValue.match(/,/g) || []).length + 1,
+          (shippingCostValue.match(/,/g) || []).length + 1
+        );
+        dataRow.height = Math.max(40, 25 * maxLines);
+        rowNum++;
+        
+        // 주소 행 추가 (줄바꿈 적용)
+        if (address) {
+          worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
+          const addrRow = worksheet.getRow(rowNum);
+          addrRow.getCell(1).value = address;
+          addrRow.getCell(1).font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
+          addrRow.getCell(1).alignment = { 
+            horizontal: 'center', 
+            vertical: 'middle',
+            wrapText: true  // 줄바꿈 활성화
+          };
+          addrRow.getCell(1).border = thinBorder;
+          addrRow.height = 32;
+          rowNum++;
+        }
+      });
     });
     
     const buffer = await workbook.xlsx.writeBuffer();
@@ -2166,6 +2223,18 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const printShippingLabels = () => {
     if (selectedOrders.length === 0) return;
     const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    
+    // 보내는 곳별로 그룹화
+    const groupedBySender = {};
+    selectedData.forEach(order => {
+      const setting = getOrderSetting(order.orderNumber);
+      const sender = setting.sender || senderList[0];
+      if (!groupedBySender[sender]) {
+        groupedBySender[sender] = [];
+      }
+      groupedBySender[sender].push(order);
+    });
+    
     let html = `<!DOCTYPE html>
 <html>
 <head>
@@ -2208,6 +2277,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       font-weight: bold;
       text-align: center;
       padding: 12px;
+      background-color: #e8f5e9;
     }
     .prepaid {
       font-weight: bold;
@@ -2231,11 +2301,15 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     }
   </style>
 </head>
-<body>
+<body>`;
+
+    // 각 보내는 곳별로 테이블 생성
+    Object.keys(groupedBySender).forEach((sender) => {
+      html += `
   <table>
     <thead>
       <tr>
-        <td colspan="7" class="header">보내는곳 : ${senderName}</td>
+        <td colspan="7" class="header">보내는곳 : ${sender}</td>
       </tr>
       <tr>
         <th class="col-num">번호</th>
@@ -2248,33 +2322,38 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       </tr>
     </thead>
     <tbody>`;
-    selectedData.forEach((order, index) => {
-      const customer = findCustomer(order.customerName);
-      const mostExpensive = getMostExpensiveItem(order.items);
-      const phone = customer?.phone || order.customerPhone || '';
-      const address = customer?.address || '';
-      const setting = getOrderSetting(order.orderNumber);
-      const isPrepaid = setting.paymentType === '선불';
-      const rowClass = isPrepaid ? 'prepaid' : '';
+    
+      groupedBySender[sender].forEach((order, index) => {
+        const customer = findCustomer(order.customerName);
+        const mostExpensive = getMostExpensiveItem(order.items);
+        const phone = customer?.phone || order.customerPhone || '';
+        const address = customer?.address || '';
+        const setting = getOrderSetting(order.orderNumber);
+        const isPrepaid = setting.paymentType === '선불';
+        const rowClass = isPrepaid ? 'prepaid' : '';
+        
+        // 포장과 운임을 쉼표로 구분하여 줄바꿈 처리
+        const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
+        const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
+        
+        html += `<tr class="${rowClass}">
+          <td class="col-num">${index + 1}</td>
+          <td class="col-name">${order.customerName || ''}</td>
+          <td class="col-payment">${setting.paymentType}</td>
+          <td class="col-pack">${packagingDisplay}</td>
+          <td class="col-cost">${shippingDisplay}</td>
+          <td class="col-item">${mostExpensive}</td>
+          <td class="col-phone">${phone}</td>
+        </tr>`;
+        if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
+      });
       
-      // 포장과 운임을 쉼표로 구분하여 줄바꿈 처리
-      const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
-      const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
-      
-      html += `<tr class="${rowClass}">
-        <td class="col-num">${index + 1}</td>
-        <td class="col-name">${order.customerName || ''}</td>
-        <td class="col-payment">${setting.paymentType}</td>
-        <td class="col-pack">${packagingDisplay}</td>
-        <td class="col-cost">${shippingDisplay}</td>
-        <td class="col-item">${mostExpensive}</td>
-        <td class="col-phone">${phone}</td>
-      </tr>`;
-      if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
-    });
-    html += `
+      html += `
     </tbody>
-  </table>
+  </table>`;
+    });
+    
+    html += `
   <script>
     window.onload = function() { 
       window.print(); 
@@ -2325,10 +2404,16 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
               ))}
             </div>
             
-            {/* 보내는 곳 */}
+            {/* 보내는 곳 목록 안내 */}
             <div className="mb-3">
-              <label className="block text-slate-400 text-xs mb-1">보내는 곳</label>
-              <input type="text" value={senderName} onChange={(e) => setSenderName(e.target.value)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+              <label className="block text-slate-400 text-xs mb-1">보내는 곳 (주문별 선택 가능)</label>
+              <div className="flex flex-wrap gap-2">
+                {senderList.map(sender => (
+                  <span key={sender} className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-sm border border-slate-600">
+                    📦 {sender}
+                  </span>
+                ))}
+              </div>
             </div>
             
             {/* 포장별 배송비 설정 토글 */}
@@ -2389,6 +2474,14 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`font-medium ${setting.paymentType === '선불' ? 'text-yellow-400 font-bold' : 'text-white'}`}>{order.customerName || '고객명 없음'}</span>
+                            {/* 보내는 곳 배지 */}
+                            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                              (setting.sender || senderList[0]) === '엠파츠' 
+                                ? 'bg-purple-600/30 text-purple-300' 
+                                : 'bg-cyan-600/30 text-cyan-300'
+                            }`}>
+                              {setting.sender || senderList[0]}
+                            </span>
                             {setting.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
                             {hasAddress ? <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span> : <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>}
                           </div>
@@ -2401,7 +2494,17 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                     
                     {isSelected && (
                       <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div>
+                            <label className="block text-slate-500 text-xs mb-1">📦 보내는 곳</label>
+                            <select 
+                              value={setting.sender || senderList[0]} 
+                              onChange={(e) => updateOrderSetting(order.orderNumber, 'sender', e.target.value)} 
+                              className="w-full px-2 py-1.5 bg-orange-600/20 border border-orange-500/50 rounded text-orange-300 text-sm font-medium focus:outline-none focus:border-orange-400"
+                            >
+                              {senderList.map(sender => <option key={sender} value={sender}>{sender}</option>)}
+                            </select>
+                          </div>
                           <div>
                             <label className="block text-slate-500 text-xs mb-1">배송 방식</label>
                             <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500">
@@ -2420,7 +2523,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                             </select>
                           </div>
                           <div>
-                            <label className="block text-slate-500 text-xs mb-1">택배비 (쉼표로 구분 가능)</label>
+                            <label className="block text-slate-500 text-xs mb-1">택배비</label>
                             <input 
                               type="text" 
                               value={setting.shippingCost} 
@@ -2431,7 +2534,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                                   updateOrderSetting(order.orderNumber, 'shippingCost', value);
                                 }
                               }} 
-                              placeholder="7300 또는 7300,7300"
+                              placeholder="7300"
                               className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" 
                             />
                           </div>
@@ -2499,96 +2602,101 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="w-full px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={onBack}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-300" />
-              </button>
-              <div className="flex items-center gap-2">
-                <Package className="w-6 h-6 text-cyan-400" />
-                <div>
-                  <h1 className="text-lg font-bold text-white">재고 현황</h1>
-                  <p className="text-cyan-400 text-xs">전체 {products.length}개 제품</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      {/* 고정 상단 영역 */}
+      <div className="flex-shrink-0 sticky top-0 z-40 bg-slate-900">
+        {/* 헤더 */}
+        <header className="bg-slate-800/95 backdrop-blur-md border-b border-slate-700">
+          <div className="w-full px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={onBack}
+                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5 text-slate-300" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <Package className="w-6 h-6 text-cyan-400" />
+                  <div>
+                    <h1 className="text-lg font-bold text-white">재고 현황</h1>
+                    <p className="text-cyan-400 text-xs">전체 {products.length}개 제품</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* 고정 영역: 통계 + 검색 + 필터 */}
-      <div className="sticky top-[52px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-900/95 backdrop-blur-md pb-2">
-        <div className="w-full px-4 pt-4">
-          {/* 재고 통계 카드 */}
-          <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-4">
-            <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
-              <p className="text-slate-400 text-xs sm:text-sm mb-1">전체</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{stats.total}</p>
-            </button>
-            <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
-              <p className="text-emerald-300 text-xs sm:text-sm mb-1">정상</p>
-              <p className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.normal}</p>
-            </button>
-            <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
-              <p className="text-yellow-300 text-xs sm:text-sm mb-1">부족</p>
-              <p className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.low}</p>
-            </button>
-            <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
-              <p className="text-red-300 text-xs sm:text-sm mb-1">품절</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-400">{stats.out}</p>
-            </button>
-          </div>
-          
-          {/* 검색 & 카테고리 필터 */}
-          <div className="bg-slate-800/80 rounded-xl p-4 border border-slate-700">
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="제품 검색..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <button
-                onClick={() => setSelectedCategory('전체')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === '전체' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                전체
+        {/* 통계 + 검색 + 필터 */}
+        <div className="bg-slate-900 border-b border-slate-700/50 shadow-lg">
+          <div className="w-full px-4 py-4">
+            {/* 재고 통계 카드 */}
+            <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-4">
+              <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">전체</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{stats.total}</p>
               </button>
-              {categories.map(cat => (
+              <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
+                <p className="text-emerald-300 text-xs sm:text-sm mb-1">정상</p>
+                <p className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.normal}</p>
+              </button>
+              <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
+                <p className="text-yellow-300 text-xs sm:text-sm mb-1">부족</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.low}</p>
+              </button>
+              <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
+                <p className="text-red-300 text-xs sm:text-sm mb-1">품절</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-400">{stats.out}</p>
+              </button>
+            </div>
+            
+            {/* 검색 & 카테고리 필터 */}
+            <div className="bg-slate-800/80 rounded-xl p-4 border border-slate-700">
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="제품 검색..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => setSelectedCategory('전체')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    selectedCategory === cat ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    selectedCategory === '전체' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  {cat}
+                  전체
                 </button>
-              ))}
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      selectedCategory === cat ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="w-full px-4 py-4">
-        <p className="text-slate-400 text-sm mb-3">
-          {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
-          {selectedCategory !== '전체' && ' · '}
-          검색 결과: <span className="text-white font-semibold">{filteredProducts.length}개</span>
-        </p>
+      {/* 스크롤 영역: 제품 목록 */}
+      <div className="flex-1 overflow-y-auto" data-lenis-prevent="true">
+        <div className="w-full px-4 py-4">
+          <p className="text-slate-400 text-sm mb-3">
+            {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
+            {selectedCategory !== '전체' && ' · '}
+            검색 결과: <span className="text-white font-semibold">{filteredProducts.length}개</span>
+          </p>
         
         {/* 제품 목록 */}
         {filteredProducts.length === 0 ? (
@@ -2630,6 +2738,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
             })}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
@@ -3612,61 +3721,68 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
             주문 상품 ({cart.length}종 / {totalQuantity}개)
           </h3>
           
-          <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+          <div className="space-y-2">
             {cart.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
                 <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-2" />
                 <p className="text-slate-400">주문 상품이 없습니다</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-700">
-                {cart.map((item) => {
-                  const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-                  return (
-                    <div key={item.id} className="p-3">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-white text-sm font-medium flex-1">{item.name}</p>
+              cart.map((item) => {
+                const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+                const itemTotal = price * item.quantity;
+                return (
+                  <div key={item.id} className="bg-slate-800/80 rounded-xl p-4 border border-slate-700 hover:border-slate-600 transition-colors">
+                    {/* 상단: 상품명 + 삭제 버튼 */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{item.name}</p>
+                        <p className="text-blue-400 text-sm mt-0.5">
+                          @{formatPrice(price)}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => onRemoveItem(item.id)}
+                        className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    {/* 하단: 수량 조절 + 소계 */}
+                    <div className="flex items-center justify-between bg-slate-900/50 rounded-lg p-2">
+                      <div className="flex items-center gap-1">
                         <button 
-                          onClick={() => onRemoveItem(item.id)}
-                          className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400"
+                          onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                          className="w-9 h-9 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            if (val >= 0) onUpdateQuantity(item.id, val);
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          className="w-14 h-9 text-center text-white text-lg font-bold bg-slate-800 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button 
+                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                          className="w-9 h-9 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-slate-400 text-xs">{formatPrice(price)}</p>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-0.5">
-                            <button 
-                              onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                              className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                if (val >= 0) onUpdateQuantity(item.id, val);
-                              }}
-                              onFocus={(e) => e.target.select()}
-                              className="w-10 h-7 text-center text-white text-sm font-medium bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                            <button 
-                              onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                              className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded text-white"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <p className="text-blue-400 font-bold text-sm min-w-[70px] text-right">{formatPrice(price * item.quantity)}</p>
-                        </div>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-xs">소계</p>
+                        <p className="text-emerald-400 font-bold text-lg">{formatPrice(itemTotal)}</p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
