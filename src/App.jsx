@@ -1700,9 +1700,9 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      {/* 헤더 - 고정 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 flex-shrink-0 z-40">
         <div className="w-full px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1731,12 +1731,10 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
         </div>
       </header>
 
-      <div className="w-full px-4 py-4">
-        {selectedCustomer ? (
-          /* 거래처 주문 이력 */
-          <>
-            {/* 거래처 정보 */}
-            <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
+      {/* 거래처 정보/검색 영역 - 고정 */}
+      {selectedCustomer ? (
+        <div className="flex-shrink-0 px-4 pt-4">
+          <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
               <div className="flex flex-wrap gap-4 text-sm">
                 {selectedCustomer.phone && (
                   <div className="flex items-center gap-2">
@@ -1757,12 +1755,35 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                 </p>
               )}
             </div>
-            
-            {/* 주문 이력 */}
-            <p className="text-slate-400 text-sm mb-3">
+            <p className="text-slate-400 text-sm mb-3 px-1">
               주문 이력: <span className="text-white font-semibold">{getCustomerOrders(selectedCustomer.name).length}건</span>
             </p>
-            
+          </div>
+      ) : (
+        <div className="flex-shrink-0 px-4 pt-4">
+          <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="업체명, 주소, 전화번호로 검색..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+          <p className="text-slate-400 text-sm mb-3 px-1">
+            검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
+          </p>
+        </div>
+      )}
+
+      {/* 스크롤 가능한 콘텐츠 영역 */}
+      <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {selectedCustomer ? (
+          /* 주문 이력 스크롤 */
+          <>
             {getCustomerOrders(selectedCustomer.name).length === 0 ? (
               <div className="text-center py-12">
                 <Receipt className="w-16 h-16 text-slate-600 mx-auto mb-3" />
@@ -1793,27 +1814,8 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
             )}
           </>
         ) : (
-          /* 거래처 목록 */
+          /* 거래처 목록 스크롤 */
           <>
-            {/* 검색 */}
-            <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="업체명, 주소, 전화번호로 검색..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-            
-            <p className="text-slate-400 text-sm mb-3">
-              검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
-            </p>
-            
-            {/* 목록 */}
             {filteredCustomers.length === 0 ? (
               <div className="text-center py-12">
                 <Building className="w-16 h-16 text-slate-600 mx-auto mb-3" />
@@ -2013,25 +2015,58 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     const ExcelJS = window.ExcelJS;
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('택배 송장');
-    worksheet.columns = [{ width: 7.5 }, { width: 25.5 }, { width: 12.2 }, { width: 12.4 }, { width: 17.4 }, { width: 30.6 }, { width: 24.1 }];
+    
+    // A4 가로 방향 페이지 설정
+    worksheet.pageSetup = {
+      paperSize: 9, // A4
+      orientation: 'landscape', // 가로 방향
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.25,
+        right: 0.25,
+        top: 0.25,
+        bottom: 0.25,
+        header: 0.1,
+        footer: 0.1
+      }
+    };
+    
+    // 컬럼 너비 설정
+    worksheet.columns = [
+      { width: 6 },    // 번호
+      { width: 20 },   // 받는곳
+      { width: 10 },   // 배송
+      { width: 10 },   // 포장
+      { width: 16 },   // 운임
+      { width: 25 },   // 품명
+      { width: 20 }    // 연락처
+    ];
+    
     const thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    
+    // 헤더
     worksheet.mergeCells('A1:G1');
     const headerRow = worksheet.getRow(1);
     headerRow.getCell(1).value = '보내는곳 : ' + senderName;
-    headerRow.getCell(1).font = { bold: true, size: 14 };
+    headerRow.getCell(1).font = { bold: true, size: 14, name: 'Malgun Gothic' };
     headerRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.getCell(1).border = thinBorder;
     headerRow.height = 35;
+    
+    // 컬럼 헤더
     const headers = ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처'];
     const colHeaderRow = worksheet.getRow(2);
     headers.forEach((header, idx) => {
       const cell = colHeaderRow.getCell(idx + 1);
       cell.value = header;
-      cell.font = { bold: true, size: 14 };
+      cell.font = { bold: true, size: 13, name: 'Malgun Gothic' };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = thinBorder;
     });
     colHeaderRow.height = 26;
+    
     let rowNum = 3;
     selectedData.forEach((order, index) => {
       const customer = order.customerName ? findCustomer(order.customerName) : null;
@@ -2040,28 +2075,49 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       const address = customer?.address || '';
       const setting = getOrderSetting(order.orderNumber);
       const isPrepaid = setting.paymentType === '선불';
+      
       const dataRow = worksheet.getRow(rowNum);
-      const rowData = [index + 1, order.customerName || '', setting.paymentType, setting.packaging, setting.shippingCost, mostExpensive, phone];
+      const rowData = [
+        index + 1, 
+        order.customerName || '', 
+        setting.paymentType, 
+        setting.packaging, 
+        setting.shippingCost, 
+        mostExpensive, 
+        phone
+      ];
+      
       rowData.forEach((value, idx) => {
         const cell = dataRow.getCell(idx + 1);
         cell.value = value;
-        cell.font = { size: 11, bold: isPrepaid };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = { size: 11, bold: isPrepaid, name: 'Malgun Gothic' };
+        cell.alignment = { 
+          horizontal: 'center', 
+          vertical: 'middle',
+          wrapText: true  // 줄바꿈 활성화
+        };
         cell.border = thinBorder;
       });
       dataRow.height = 38;
       rowNum++;
+      
+      // 주소 행 추가 (줄바꿈 적용)
       if (address) {
         worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
         const addrRow = worksheet.getRow(rowNum);
         addrRow.getCell(1).value = address;
-        addrRow.getCell(1).font = { size: 11, bold: isPrepaid };
-        addrRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        addrRow.getCell(1).font = { size: 11, bold: isPrepaid, name: 'Malgun Gothic' };
+        addrRow.getCell(1).alignment = { 
+          horizontal: 'center', 
+          vertical: 'middle',
+          wrapText: true  // 줄바꿈 활성화
+        };
         addrRow.getCell(1).border = thinBorder;
         addrRow.height = 30;
         rowNum++;
       }
     });
+    
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
@@ -2073,7 +2129,88 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const printShippingLabels = () => {
     if (selectedOrders.length === 0) return;
     const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
-    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>택배 송장</title><style>body{font-family:'Malgun Gothic',sans-serif;padding:20px}table{width:100%;border-collapse:collapse;margin-bottom:30px}th,td{border:1px solid #000;padding:8px;text-align:center}th{background-color:#f0f0f0}.header{font-size:16px;font-weight:bold;text-align:center;padding:15px}.prepaid{font-weight:bold}@media print{body{padding:0}}</style></head><body><table><thead><tr><td colspan="7" class="header">보내는곳 : ${senderName}</td></tr><tr><th style="width:5%">번호</th><th style="width:20%">받는곳</th><th style="width:8%">배송</th><th style="width:10%">포장</th><th style="width:10%">운임</th><th style="width:32%">품명</th><th style="width:15%">연락처</th></tr></thead><tbody>`;
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>택배 송장</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0.5cm;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Malgun Gothic', sans-serif;
+      font-size: 11pt;
+      padding: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      table-layout: fixed;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 6px 4px;
+      text-align: center;
+      word-wrap: break-word;
+      vertical-align: middle;
+    }
+    th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    .header {
+      font-size: 14pt;
+      font-weight: bold;
+      text-align: center;
+      padding: 12px;
+    }
+    .prepaid {
+      font-weight: bold;
+    }
+    .col-num { width: 5%; }
+    .col-name { width: 18%; }
+    .col-payment { width: 8%; }
+    .col-pack { width: 10%; }
+    .col-cost { width: 12%; }
+    .col-item { width: 30%; }
+    .col-phone { width: 17%; }
+    .address-row {
+      text-align: center;
+      padding: 8px;
+      word-break: keep-all;
+      line-height: 1.4;
+    }
+    @media print {
+      body { padding: 0; }
+      @page { margin: 0.5cm; }
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <thead>
+      <tr>
+        <td colspan="7" class="header">보내는곳 : ${senderName}</td>
+      </tr>
+      <tr>
+        <th class="col-num">번호</th>
+        <th class="col-name">받는곳</th>
+        <th class="col-payment">배송</th>
+        <th class="col-pack">포장</th>
+        <th class="col-cost">운임</th>
+        <th class="col-item">품명</th>
+        <th class="col-phone">연락처</th>
+      </tr>
+    </thead>
+    <tbody>`;
     selectedData.forEach((order, index) => {
       const customer = findCustomer(order.customerName);
       const mostExpensive = getMostExpensiveItem(order.items);
@@ -2082,10 +2219,27 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       const setting = getOrderSetting(order.orderNumber);
       const isPrepaid = setting.paymentType === '선불';
       const rowClass = isPrepaid ? 'prepaid' : '';
-      html += `<tr class="${rowClass}"><td>${index + 1}</td><td>${order.customerName || ''}</td><td>${setting.paymentType}</td><td>${setting.packaging}</td><td>${setting.shippingCost}</td><td>${mostExpensive}</td><td>${phone}</td></tr>`;
-      if (address) html += `<tr class="${rowClass}"><td colspan="7">${address}</td></tr>`;
+      html += `<tr class="${rowClass}">
+        <td class="col-num">${index + 1}</td>
+        <td class="col-name">${order.customerName || ''}</td>
+        <td class="col-payment">${setting.paymentType}</td>
+        <td class="col-pack">${setting.packaging}</td>
+        <td class="col-cost">${setting.shippingCost}</td>
+        <td class="col-item">${mostExpensive}</td>
+        <td class="col-phone">${phone}</td>
+      </tr>`;
+      if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
     });
-    html += `</tbody></table><script>window.onload = function() { window.print(); }</script></body></html>`;
+    html += `
+    </tbody>
+  </table>
+  <script>
+    window.onload = function() { 
+      window.print(); 
+    }
+  </script>
+</body>
+</html>`;
     const printWindow = window.open('', '_blank');
     printWindow.document.write(html);
     printWindow.document.close();
@@ -2220,8 +2374,20 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                             </select>
                           </div>
                           <div>
-                            <label className="block text-slate-500 text-xs mb-1">택배비</label>
-                            <input type="number" value={setting.shippingCost} onChange={(e) => updateOrderSetting(order.orderNumber, 'shippingCost', parseInt(e.target.value) || 0)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" />
+                            <label className="block text-slate-500 text-xs mb-1">택배비 (쉼표로 구분 가능)</label>
+                            <input 
+                              type="text" 
+                              value={setting.shippingCost} 
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // 숫자와 쉼표만 허용
+                                if (value === '' || /^[\d,]+$/.test(value)) {
+                                  updateOrderSetting(order.orderNumber, 'shippingCost', value);
+                                }
+                              }} 
+                              placeholder="7300 또는 7300,7300"
+                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" 
+                            />
                           </div>
                         </div>
                       </div>
@@ -2685,66 +2851,66 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const searchResults = getSearchResults();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="w-full px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-slate-300" />
-              </button>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-yellow-400" />
-                <div>
-                  <h1 className="text-lg font-bold text-white">AI 주문 인식</h1>
-                  <p className="text-yellow-400 text-xs">메모를 붙여넣으면 자동으로 제품을 찾아드려요</p>
-                </div>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+      
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-white" />
+            <div>
+              <h1 className="text-lg font-bold text-white">AI 주문 인식</h1>
+              <p className="text-purple-100 text-xs">메모를 붙여넣으면 자동으로 제품을 찾아드려요</p>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
             {selectedCount > 0 && (
-              <span className="text-purple-400 text-sm font-medium">{selectedCount}개 선택</span>
+              <span className="px-3 py-1 bg-white/20 text-white text-sm font-medium rounded-lg">{selectedCount}개 선택</span>
             )}
+            <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+              <X className="w-5 h-5 text-white" />
+            </button>
           </div>
         </div>
-      </header>
 
-      <div className="w-full px-4 py-4 pb-24">
-        {/* 입력 영역 */}
-        <div className="mb-4">
-          <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            메모 입력 (줄 단위로 분석)
-          </label>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={`예시:
+        {/* 스크롤 가능 영역 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* 입력 영역 */}
+          <div className="mb-4">
+            <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              메모 입력 (줄 단위로 분석)
+            </label>
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={`예시:
 카본 93 듀얼 1세트
 54파이 밴딩 45 6개
 2m 환봉 1개 12파이
 MVB 64 Y R 2개`}
-            rows={5}
-            className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
-          />
-        </div>
+              rows={5}
+              className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
+            />
+          </div>
 
-        {/* 분석 버튼 */}
-        <button
-          onClick={analyzeText}
-          disabled={!inputText.trim() || isAnalyzing}
-          className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all mb-4 ${
-            !inputText.trim() || isAnalyzing
-              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
-          }`}
-        >
-          {isAnalyzing ? (
-            <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
-          ) : (
-            <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
-          )}
-        </button>
+          {/* 분석 버튼 */}
+          <button
+            onClick={analyzeText}
+            disabled={!inputText.trim() || isAnalyzing}
+            className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all mb-4 ${
+              !inputText.trim() || isAnalyzing
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30'
+            }`}
+          >
+            {isAnalyzing ? (
+              <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
+            ) : (
+              <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
+            )}
+          </button>
 
         {/* 분석 결과 */}
         {analyzedItems.length > 0 && (
@@ -2911,25 +3077,26 @@ MVB 64 Y R 2개`}
             </div>
           </div>
         )}
-      </div>
-
-      {/* 하단 고정 버튼 */}
-      {analyzedItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 z-40">
-          <button
-            onClick={addSelectedToCart}
-            disabled={selectedCount === 0}
-            className={`w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-              selectedCount === 0
-                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white'
-            }`}
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {selectedCount}개 제품 장바구니에 담기
-          </button>
         </div>
-      )}
+
+        {/* 하단 버튼 영역 */}
+        {analyzedItems.length > 0 && (
+          <div className="border-t border-slate-700 p-4 flex-shrink-0 bg-slate-800">
+            <button
+              onClick={addSelectedToCart}
+              disabled={selectedCount === 0}
+              className={`w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                selectedCount === 0
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg'
+              }`}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {selectedCount}개 제품 장바구니에 담기
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
