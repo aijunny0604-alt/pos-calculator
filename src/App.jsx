@@ -1700,9 +1700,9 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   };
   
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* 헤더 - 고정 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 flex-shrink-0 z-40">
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
         <div className="w-full px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1731,10 +1731,33 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
         </div>
       </header>
 
-      {/* 거래처 정보/검색 영역 - 고정 */}
-      {selectedCustomer ? (
-        <div className="flex-shrink-0 px-4 pt-4">
-          <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
+      {/* 검색 영역 - 고정 */}
+      {!selectedCustomer && (
+        <div className="sticky top-[52px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent px-4 pt-4 pb-2">
+          <div className="bg-slate-800/50 rounded-xl p-4 mb-2 border border-slate-700">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="업체명, 주소, 전화번호로 검색..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+          <p className="text-slate-400 text-sm mb-2 px-1">
+            검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
+          </p>
+        </div>
+      )}
+
+      <div className="w-full px-4 py-4">
+        {selectedCustomer ? (
+          /* 거래처 주문 이력 */
+          <>
+            {/* 거래처 정보 */}
+            <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
               <div className="flex flex-wrap gap-4 text-sm">
                 {selectedCustomer.phone && (
                   <div className="flex items-center gap-2">
@@ -1755,35 +1778,12 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                 </p>
               )}
             </div>
-            <p className="text-slate-400 text-sm mb-3 px-1">
+            
+            {/* 주문 이력 */}
+            <p className="text-slate-400 text-sm mb-3">
               주문 이력: <span className="text-white font-semibold">{getCustomerOrders(selectedCustomer.name).length}건</span>
             </p>
-          </div>
-      ) : (
-        <div className="flex-shrink-0 px-4 pt-4">
-          <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="업체명, 주소, 전화번호로 검색..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-          <p className="text-slate-400 text-sm mb-3 px-1">
-            검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
-          </p>
-        </div>
-      )}
-
-      {/* 스크롤 가능한 콘텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
-        {selectedCustomer ? (
-          /* 주문 이력 스크롤 */
-          <>
+            
             {getCustomerOrders(selectedCustomer.name).length === 0 ? (
               <div className="text-center py-12">
                 <Receipt className="w-16 h-16 text-slate-600 mx-auto mb-3" />
@@ -1814,7 +1814,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
             )}
           </>
         ) : (
-          /* 거래처 목록 스크롤 */
+          /* 거래처 목록 */
           <>
             {filteredCustomers.length === 0 ? (
               <div className="text-center py-12">
@@ -2024,24 +2024,24 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       fitToWidth: 1,
       fitToHeight: 0,
       margins: {
-        left: 0.25,
-        right: 0.25,
-        top: 0.25,
-        bottom: 0.25,
+        left: 0.2,
+        right: 0.2,
+        top: 0.2,
+        bottom: 0.2,
         header: 0.1,
         footer: 0.1
       }
     };
     
-    // 컬럼 너비 설정
+    // 컬럼 너비 설정 - 더 넓게 조정
     worksheet.columns = [
-      { width: 6 },    // 번호
-      { width: 20 },   // 받는곳
-      { width: 10 },   // 배송
-      { width: 10 },   // 포장
-      { width: 16 },   // 운임
-      { width: 25 },   // 품명
-      { width: 20 }    // 연락처
+      { width: 7 },    // 번호
+      { width: 22 },   // 받는곳
+      { width: 11 },   // 배송
+      { width: 13 },   // 포장
+      { width: 18 },   // 운임
+      { width: 28 },   // 품명
+      { width: 22 }    // 연락처
     ];
     
     const thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -2050,10 +2050,10 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     worksheet.mergeCells('A1:G1');
     const headerRow = worksheet.getRow(1);
     headerRow.getCell(1).value = '보내는곳 : ' + senderName;
-    headerRow.getCell(1).font = { bold: true, size: 14, name: 'Malgun Gothic' };
+    headerRow.getCell(1).font = { bold: true, size: 15, name: 'Malgun Gothic' };
     headerRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.getCell(1).border = thinBorder;
-    headerRow.height = 35;
+    headerRow.height = 38;
     
     // 컬럼 헤더
     const headers = ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처'];
@@ -2061,11 +2061,11 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     headers.forEach((header, idx) => {
       const cell = colHeaderRow.getCell(idx + 1);
       cell.value = header;
-      cell.font = { bold: true, size: 13, name: 'Malgun Gothic' };
+      cell.font = { bold: true, size: 14, name: 'Malgun Gothic' };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = thinBorder;
     });
-    colHeaderRow.height = 26;
+    colHeaderRow.height = 28;
     
     let rowNum = 3;
     selectedData.forEach((order, index) => {
@@ -2076,13 +2076,26 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       const setting = getOrderSetting(order.orderNumber);
       const isPrepaid = setting.paymentType === '선불';
       
+      // 포장과 운임 쉼표로 분리
+      const packagingValue = String(setting.packaging || '');
+      const shippingCostValue = String(setting.shippingCost || '');
+      
+      // 쉼표가 있으면 줄바꿈 문자로 치환
+      const packagingDisplay = packagingValue.includes(',') 
+        ? packagingValue.split(',').join('\n') 
+        : packagingValue;
+      
+      const shippingDisplay = shippingCostValue.includes(',') 
+        ? shippingCostValue.split(',').join('\n') 
+        : shippingCostValue;
+      
       const dataRow = worksheet.getRow(rowNum);
       const rowData = [
         index + 1, 
         order.customerName || '', 
         setting.paymentType, 
-        setting.packaging, 
-        setting.shippingCost, 
+        packagingDisplay, 
+        shippingDisplay, 
         mostExpensive, 
         phone
       ];
@@ -2090,7 +2103,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       rowData.forEach((value, idx) => {
         const cell = dataRow.getCell(idx + 1);
         cell.value = value;
-        cell.font = { size: 11, bold: isPrepaid, name: 'Malgun Gothic' };
+        cell.font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
         cell.alignment = { 
           horizontal: 'center', 
           vertical: 'middle',
@@ -2098,7 +2111,13 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
         };
         cell.border = thinBorder;
       });
-      dataRow.height = 38;
+      
+      // 쉼표가 여러 개면 행 높이 증가
+      const maxLines = Math.max(
+        (packagingValue.match(/,/g) || []).length + 1,
+        (shippingCostValue.match(/,/g) || []).length + 1
+      );
+      dataRow.height = Math.max(40, 25 * maxLines);
       rowNum++;
       
       // 주소 행 추가 (줄바꿈 적용)
@@ -2106,14 +2125,14 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
         worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
         const addrRow = worksheet.getRow(rowNum);
         addrRow.getCell(1).value = address;
-        addrRow.getCell(1).font = { size: 11, bold: isPrepaid, name: 'Malgun Gothic' };
+        addrRow.getCell(1).font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
         addrRow.getCell(1).alignment = { 
           horizontal: 'center', 
           vertical: 'middle',
           wrapText: true  // 줄바꿈 활성화
         };
         addrRow.getCell(1).border = thinBorder;
-        addrRow.height = 30;
+        addrRow.height = 32;
         rowNum++;
       }
     });
@@ -2219,12 +2238,17 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       const setting = getOrderSetting(order.orderNumber);
       const isPrepaid = setting.paymentType === '선불';
       const rowClass = isPrepaid ? 'prepaid' : '';
+      
+      // 포장과 운임을 쉼표로 구분하여 줄바꿈 처리
+      const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
+      const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
+      
       html += `<tr class="${rowClass}">
         <td class="col-num">${index + 1}</td>
         <td class="col-name">${order.customerName || ''}</td>
         <td class="col-payment">${setting.paymentType}</td>
-        <td class="col-pack">${setting.packaging}</td>
-        <td class="col-cost">${setting.shippingCost}</td>
+        <td class="col-pack">${packagingDisplay}</td>
+        <td class="col-cost">${shippingDisplay}</td>
         <td class="col-item">${mostExpensive}</td>
         <td class="col-phone">${phone}</td>
       </tr>`;
@@ -5763,34 +5787,32 @@ export default function PriceCalculator() {
     );
   }
 
-  // AI 주문 인식 페이지
-  if (showTextAnalyzeModal) {
-    return (
-      <TextAnalyzePage
-        products={products.length > 0 ? products : priceData}
-        onAddToCart={(product, qty) => {
-          const existing = cart.find(item => item.id === product.id);
-          if (existing) {
-            setCart(cart.map(item => 
-              item.id === product.id 
-                ? { ...item, quantity: item.quantity + qty }
-                : item
-            ));
-          } else {
-            setCart([...cart, { ...product, quantity: qty }]);
-          }
-          showToast(`✅ ${product.name} ${qty}개 추가`);
-        }}
-        formatPrice={formatPrice}
-        priceType={priceType}
-        onBack={() => setShowTextAnalyzeModal(false)}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <CustomStyles />
+      
+      {/* AI 주문 인식 모달 - 조건부 렌더링 */}
+      {showTextAnalyzeModal && (
+        <TextAnalyzePage
+          products={products.length > 0 ? products : priceData}
+          onAddToCart={(product, qty) => {
+            const existing = cart.find(item => item.id === product.id);
+            if (existing) {
+              setCart(cart.map(item => 
+                item.id === product.id 
+                  ? { ...item, quantity: item.quantity + qty }
+                  : item
+              ));
+            } else {
+              setCart([...cart, { ...product, quantity: qty }]);
+            }
+            showToast(`✅ ${product.name} ${qty}개 추가`);
+          }}
+          formatPrice={formatPrice}
+          priceType={priceType}
+          onBack={() => setShowTextAnalyzeModal(false)}
+        />
+      )}
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
