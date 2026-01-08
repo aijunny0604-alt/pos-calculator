@@ -3053,12 +3053,6 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     `);
     printWindow.document.close();
   };
-          <script>window.onload = function() { window.print(); }</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
