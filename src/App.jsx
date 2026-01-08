@@ -1962,6 +1962,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
 function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -2041,24 +2042,39 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
           </div>
         </header>
 
-        {/* 검색 영역 - 거래처 목록에서만 표시 */}
+        {/* 검색 영역 - 거래처 목록에서만 표시 (접기/펼치기 가능) */}
         {!selectedCustomer && (
-          <div className="bg-slate-900 border-b border-slate-700/50 shadow-lg px-4 py-4">
-            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="업체명, 주소, 전화번호로 검색..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+          <div className="bg-slate-900 border-b border-slate-700/50 shadow-lg px-4 pt-3 pb-2">
+            {/* 접기/펼치기 토글 바 */}
+            <button
+              onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+              className="w-full mb-2 flex items-center justify-between bg-slate-800/80 backdrop-blur rounded-xl px-4 py-2.5 border border-slate-700 hover:border-slate-600 transition-all"
+            >
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-slate-400">거래처</span>
+                <span className="text-white font-semibold">{filteredCustomers.length}개</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="text-xs">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
+                <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isHeaderCollapsed ? '' : 'rotate-180'}`} />
+              </div>
+            </button>
+
+            {/* 접히는 영역 */}
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[200px] opacity-100'}`}>
+              <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="업체명, 주소, 전화번호로 검색..."
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
             </div>
-            <p className="text-slate-400 text-sm mt-3 px-1">
-              검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
-            </p>
           </div>
         )}
       </div>
@@ -2965,6 +2981,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [stockFilter, setStockFilter] = useState('all'); // all, normal, low, out
   const [searchTerm, setSearchTerm] = useState('');
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -3027,45 +3044,63 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
           </div>
         </header>
 
-        {/* 통계 + 검색 + 필터 */}
-        <div className="bg-slate-900 border-b border-slate-700/50 shadow-lg">
-          <div className="w-full px-4 py-4">
+        {/* 통계 + 검색 + 필터 (접기/펼치기 가능) */}
+        <div className="bg-slate-900 border-b border-slate-700/50 shadow-lg px-4 pt-3 pb-2">
+          {/* 접기/펼치기 토글 바 */}
+          <button
+            onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+            className="w-full mb-2 flex items-center justify-between bg-slate-800/80 backdrop-blur rounded-xl px-4 py-2.5 border border-slate-700 hover:border-slate-600 transition-all"
+          >
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-white font-semibold">{stats.total}개</span>
+              <span className="text-emerald-400">{stats.normal} 정상</span>
+              <span className="text-yellow-400">{stats.low} 부족</span>
+              <span className="text-red-400">{stats.out} 품절</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-400">
+              <span className="text-xs">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
+              <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isHeaderCollapsed ? '' : 'rotate-180'}`} />
+            </div>
+          </button>
+
+          {/* 접히는 영역 */}
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
             {/* 재고 통계 카드 */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-4">
-              <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
-                <p className="text-slate-400 text-xs sm:text-sm mb-1">전체</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{stats.total}</p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              <button onClick={() => setStockFilter('all')} className={`rounded-xl p-2.5 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
+                <p className="text-slate-400 text-xs mb-0.5">전체</p>
+                <p className="text-lg font-bold text-white">{stats.total}</p>
               </button>
-              <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
-                <p className="text-emerald-300 text-xs sm:text-sm mb-1">정상</p>
-                <p className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.normal}</p>
+              <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-2.5 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
+                <p className="text-emerald-300 text-xs mb-0.5">정상</p>
+                <p className="text-lg font-bold text-emerald-400">{stats.normal}</p>
               </button>
-              <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
-                <p className="text-yellow-300 text-xs sm:text-sm mb-1">부족</p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.low}</p>
+              <button onClick={() => setStockFilter('low')} className={`rounded-xl p-2.5 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
+                <p className="text-yellow-300 text-xs mb-0.5">부족</p>
+                <p className="text-lg font-bold text-yellow-400">{stats.low}</p>
               </button>
-              <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
-                <p className="text-red-300 text-xs sm:text-sm mb-1">품절</p>
-                <p className="text-xl sm:text-2xl font-bold text-red-400">{stats.out}</p>
+              <button onClick={() => setStockFilter('out')} className={`rounded-xl p-2.5 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
+                <p className="text-red-300 text-xs mb-0.5">품절</p>
+                <p className="text-lg font-bold text-red-400">{stats.out}</p>
               </button>
             </div>
             
             {/* 검색 & 카테고리 필터 */}
-            <div className="bg-slate-800/80 rounded-xl p-4 border border-slate-700">
-              <div className="relative mb-3">
+            <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700">
+              <div className="relative mb-2.5">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="제품 검색..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <button
                   onClick={() => setSelectedCategory('전체')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                     selectedCategory === '전체' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
@@ -3075,7 +3110,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                       selectedCategory === cat ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
@@ -3442,10 +3477,10 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const searchResults = getSearchResults();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
-      {/* 배경 오버레이 */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in bg-black/70 backdrop-blur-sm" style={{ touchAction: 'none' }}>
+      {/* 배경 오버레이 - 클릭 시 닫기 */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
+        className="absolute inset-0" 
         onClick={onBack}
         onTouchMove={(e) => e.preventDefault()}
       />
