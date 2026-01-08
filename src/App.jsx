@@ -2142,8 +2142,8 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" data-lenis-prevent="true">
+      <div className="bg-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in" data-lenis-prevent="true">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -2182,7 +2182,7 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
         
         {/* 카테고리 필터 & 검색 */}
         <div className="p-4 border-b border-slate-700">
-          <div className="flex flex-wrap gap-2 mb-3 max-h-32 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-wrap gap-2 mb-3 max-h-32 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setSelectedCategory('전체')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -5596,7 +5596,7 @@ export default function PriceCalculator() {
       <div className="w-full px-4 py-3 pb-48 md:pb-3">
         <div className="flex flex-col md:flex-row gap-6">
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
-            <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 mb-4 border border-blue-600/50 sticky top-12 z-30 shadow-lg shadow-blue-900/20 animate-fade-in-down">
+            <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 mb-4 border border-blue-600/50 sticky top-14 sm:top-16 z-30 shadow-lg shadow-blue-900/20 animate-fade-in-down">
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
