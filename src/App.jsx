@@ -5618,57 +5618,55 @@ export default function PriceCalculator() {
             </div>
           </div>
         </div>
-        
-        {/* 검색바 - 헤더에 포함되어 완전 고정 */}
-        <div className="w-full px-2 sm:px-4 pb-2">
-          <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="제품명 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="전체">전체</option>
-                {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-              
-              <div className="flex bg-slate-900/50 rounded-lg p-0.5">
-                <button
-                  onClick={() => setPriceType('wholesale')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  도매가
-                </button>
-                <button
-                  onClick={() => setPriceType('retail')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  소비자가
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </header>
 
       <div className="w-full px-4 py-3 pb-48 md:pb-3">
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* 제품 목록 영역 */}
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
+            {/* 검색바 - 제품 목록 위에 sticky */}
+            <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 mb-3 border border-blue-600/50 shadow-lg shadow-blue-900/20 sticky top-12 sm:top-14 z-20">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="제품명 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="전체">전체</option>
+                  {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                
+                <div className="flex bg-slate-900/50 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setPriceType('wholesale')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    도매가
+                  </button>
+                  <button
+                    onClick={() => setPriceType('retail')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    소비자가
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <div className="mb-2 text-slate-400 text-xs">
               {filteredProducts.length}개 제품
@@ -5787,8 +5785,8 @@ export default function PriceCalculator() {
             )}
           </div>
 
-          <div className={`md:w-[420px] lg:w-[480px] ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-auto`}>
-            <div className="bg-gradient-to-r from-emerald-900/90 to-teal-900/80 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 md:sticky md:top-14 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
+          <div className={`md:w-[420px] lg:w-[480px] ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-40`}>
+            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 md:sticky md:top-12 z-40 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-emerald-400" />
