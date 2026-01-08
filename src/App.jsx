@@ -3055,15 +3055,12 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="w-full px-4 py-3">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onBack}>
+      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* 헤더 */}
+        <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-slate-300" />
-              </button>
               <div className="flex items-center gap-2">
                 <FileText className="w-6 h-6 text-blue-400" />
                 <div>
@@ -3072,15 +3069,19 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xl font-bold text-white">{formatPrice(currentTotal)}</p>
-              <p className="text-slate-400 text-xs">{totalQuantity}개</p>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xl font-bold text-white">{formatPrice(currentTotal)}</p>
+                <p className="text-slate-400 text-xs">{totalQuantity}개</p>
+              </div>
+              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-300" />
+              </button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="w-full px-4 py-4 pb-48" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
+        <div className="flex-1 overflow-y-auto px-4 py-4" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
         {/* 고객 정보 */}
         <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3319,66 +3320,67 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
             <span className="text-2xl font-bold text-emerald-400">{formatPrice(currentTotal)}</span>
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* 하단 고정 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 z-40">
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={handleSave}
-              disabled={isSaving || cart.length === 0}
-              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-                saved ? 'bg-green-600 text-white' : 
-                isSaving ? 'bg-slate-600 text-slate-400 cursor-not-allowed' :
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-blue-600 hover:bg-blue-500 text-white'
-              }`}
-            >
-              {saved ? <><Check className="w-5 h-5" />저장 완료!</> : 
-               isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
-               <><Check className="w-5 h-5" />주문 완료</>}
-            </button>
-            <button
-              onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(customerName); }}
-              disabled={cart.length === 0}
-              className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-amber-600 hover:bg-amber-500 text-white'
-              }`}
-            >
-              <ShoppingBag className="w-5 h-5" />담기
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={handleCopy}
-              disabled={cart.length === 0}
-              className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-1 text-sm transition-all ${
-                copied ? 'bg-green-600 text-white' : 
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-slate-700 hover:bg-slate-600 text-white'
-              }`}
-            >
-              {copied ? <><Check className="w-4 h-4" />완료</> : <><Copy className="w-4 h-4" />복사</>}
-            </button>
-            <button
-              onClick={handlePrint}
-              disabled={cart.length === 0}
-              className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-1 text-sm transition-colors ${
-                cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                'bg-slate-700 hover:bg-slate-600 text-white'
-              }`}
-            >
-              <Printer className="w-4 h-4" />인쇄
-            </button>
-            <button
-              onClick={onBack}
-              className="py-2.5 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-medium text-sm transition-colors"
-            >
-              닫기
-            </button>
+        {/* 하단 버튼 영역 (모달 푸터) */}
+        <div className="bg-slate-800 border-t border-slate-700 p-4 flex-shrink-0">
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving || cart.length === 0}
+                className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                  saved ? 'bg-green-600 text-white' : 
+                  isSaving ? 'bg-slate-600 text-slate-400 cursor-not-allowed' :
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-blue-600 hover:bg-blue-500 text-white'
+                }`}
+              >
+                {saved ? <><Check className="w-5 h-5" />저장 완료!</> : 
+                 isSaving ? <><RefreshCw className="w-5 h-5 animate-spin" />저장중...</> :
+                 <><Check className="w-5 h-5" />주문 완료</>}
+              </button>
+              <button
+                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(customerName); }}
+                disabled={cart.length === 0}
+                className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-amber-600 hover:bg-amber-500 text-white'
+                }`}
+              >
+                <ShoppingBag className="w-5 h-5" />담기
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={handleCopy}
+                disabled={cart.length === 0}
+                className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-1 text-sm transition-all ${
+                  copied ? 'bg-green-600 text-white' : 
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-slate-700 hover:bg-slate-600 text-white'
+                }`}
+              >
+                {copied ? <><Check className="w-4 h-4" />완료</> : <><Copy className="w-4 h-4" />복사</>}
+              </button>
+              <button
+                onClick={handlePrint}
+                disabled={cart.length === 0}
+                className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-1 text-sm transition-colors ${
+                  cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                  'bg-slate-700 hover:bg-slate-600 text-white'
+                }`}
+              >
+                <Printer className="w-4 h-4" />인쇄
+              </button>
+              <button
+                onClick={onBack}
+                className="py-2.5 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-medium text-sm transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -5504,27 +5506,6 @@ export default function PriceCalculator() {
     );
   }
 
-  // 주문 확인 페이지
-  if (isOrderModalOpen) {
-    return (
-      <OrderPage
-        cart={cart}
-        priceType={priceType}
-        totalAmount={totalAmount}
-        formatPrice={formatPrice}
-        onSaveOrder={saveOrder}
-        isSaving={isSaving}
-        onUpdateQuantity={updateQuantity}
-        onRemoveItem={removeFromCart}
-        onAddItem={addToCart}
-        products={priceData}
-        onSaveCart={(name) => { setSaveCartCustomerName(name || ''); setIsSaveCartModalOpen(true); }}
-        customers={customers}
-        onBack={() => setIsOrderModalOpen(false)}
-      />
-    );
-  }
-
   // 장바구니 저장 페이지
   if (isSaveCartModalOpen) {
     return (
@@ -6025,6 +6006,25 @@ export default function PriceCalculator() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 주문서 모달 */}
+      {isOrderModalOpen && (
+        <OrderPage
+          cart={cart}
+          priceType={priceType}
+          totalAmount={totalAmount}
+          formatPrice={formatPrice}
+          onSaveOrder={saveOrder}
+          isSaving={isSaving}
+          onUpdateQuantity={updateQuantity}
+          onRemoveItem={removeFromCart}
+          onAddItem={addToCart}
+          products={priceData}
+          onSaveCart={(name) => { setSaveCartCustomerName(name || ''); setIsSaveCartModalOpen(true); }}
+          customers={customers}
+          onBack={() => setIsOrderModalOpen(false)}
+        />
       )}
     </div>
   );
