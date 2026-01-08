@@ -1433,12 +1433,17 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [detailCart, setDetailCart] = useState(null); // 상세 보기 모달용
+  const [detailIndex, setDetailIndex] = useState(null);
 
   // ESC 키로 뒤로가기
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (selectMode) {
+        if (detailCart) {
+          setDetailCart(null);
+          setDetailIndex(null);
+        } else if (selectMode) {
           setSelectMode(false);
           setSelectedItems([]);
         } else {
@@ -1448,7 +1453,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, selectMode]);
+  }, [onBack, selectMode, detailCart]);
   
   // 항목 선택/해제
   const toggleSelect = (index) => {
@@ -1472,6 +1477,20 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
     sortedIndices.forEach(index => onDelete(index));
     setSelectedItems([]);
     setSelectMode(false);
+  };
+
+  // 카드 클릭 핸들러
+  const handleCardClick = (cart, index, e) => {
+    // 선택 모드일 때는 체크박스 토글
+    if (selectMode) {
+      toggleSelect(index);
+    } else {
+      // 버튼 클릭이 아닌 경우에만 상세 모달 열기
+      if (!e.target.closest('button')) {
+        setDetailCart(cart);
+        setDetailIndex(index);
+      }
+    }
   };
   
   return (
@@ -1584,17 +1603,18 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
             {savedCarts.map((cart, index) => (
               <div 
                 key={index} 
-                className={`bg-slate-800 rounded-xl p-4 border transition-all ${
+                onClick={(e) => handleCardClick(cart, index, e)}
+                className={`bg-slate-800 rounded-xl p-4 border transition-all cursor-pointer ${
                   selectMode && selectedItems.includes(index) 
                     ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50' 
-                    : 'border-slate-700 hover:border-slate-600'
+                    : 'border-slate-700 hover:border-violet-500/50 hover:bg-slate-750'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   {/* 체크박스 (선택 모드일 때만) */}
                   {selectMode && (
                     <button
-                      onClick={() => toggleSelect(index)}
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(index); }}
                       className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                         selectedItems.includes(index)
                           ? 'bg-violet-500 border-violet-500'
@@ -1624,14 +1644,14 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                     {!selectMode && (
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => { onLoad(cart); onBack(); }}
+                          onClick={(e) => { e.stopPropagation(); onLoad(cart); onBack(); }}
                           className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
                         >
                           <Download className="w-4 h-4" />
                           불러오기
                         </button>
                         <button 
-                          onClick={() => setDeleteConfirm(index)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(index); }}
                           className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1644,13 +1664,13 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                         <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => { onDelete(index); setDeleteConfirm(null); }}
+                            onClick={(e) => { e.stopPropagation(); onDelete(index); setDeleteConfirm(null); }}
                             className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
                           >
                             삭제
                           </button>
                           <button 
-                            onClick={() => setDeleteConfirm(null)}
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
                             className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
                           >
                             취소
@@ -1665,6 +1685,93 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
           </div>
         )}
       </div>
+
+      {/* 상세 보기 모달 */}
+      {detailCart && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ touchAction: 'none' }}>
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
+            onClick={() => { setDetailCart(null); setDetailIndex(null); }}
+          />
+          <div className="relative bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
+            {/* 모달 헤더 */}
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <ShoppingBag className="w-6 h-6 text-white" />
+                <div>
+                  <h2 className="text-lg font-bold text-white truncate max-w-[200px]">{detailCart.name}</h2>
+                  <p className="text-violet-200 text-xs">{detailCart.date} {detailCart.time}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setDetailCart(null); setDetailIndex(null); }}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            {/* 상품 목록 */}
+            <div 
+              className="flex-1 overflow-y-auto p-4 modal-scroll-area" 
+              data-lenis-prevent="true"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <Package className="w-4 h-4 text-violet-400" />
+                상품 목록 ({detailCart.items.length}종 / {detailCart.items.reduce((sum, item) => sum + item.quantity, 0)}개)
+              </h3>
+              
+              <div className="space-y-2">
+                {detailCart.items.map((item, idx) => (
+                  <div key={idx} className="bg-slate-700/50 rounded-xl p-3 border border-slate-600">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{item.name}</p>
+                        <p className="text-slate-400 text-sm">@{formatPrice(item.price)}</p>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="text-slate-300 text-sm">×{item.quantity}개</p>
+                        <p className="text-emerald-400 font-bold">{formatPrice(item.price * item.quantity)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 금액 요약 + 버튼 */}
+            <div className="border-t border-slate-700 p-4 flex-shrink-0 bg-slate-800">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-slate-400">총 금액</span>
+                <span className="text-2xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
+              </div>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { onLoad(detailCart); onBack(); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors"
+                >
+                  <Download className="w-5 h-5" />
+                  불러오기
+                </button>
+                <button 
+                  onClick={() => { 
+                    if (detailIndex !== null) {
+                      onDelete(detailIndex); 
+                      setDetailCart(null); 
+                      setDetailIndex(null);
+                    }
+                  }}
+                  className="px-4 py-3 bg-red-600/20 hover:bg-red-600/30 rounded-xl text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
