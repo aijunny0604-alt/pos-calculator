@@ -6692,22 +6692,16 @@ export default function PriceCalculator() {
                 )}
               </button>
               
-              {/* 장바구니 - 모바일 (직접 주문 확인으로 이동) */}
+              {/* 저장된 장바구니 */}
               <button
-                onClick={() => {
-                  if (cart.length > 0) {
-                    setIsOrderModalOpen(true);
-                  } else {
-                    showToast('장바구니가 비어있습니다', 'error');
-                  }
-                }}
-                className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg hover-lift btn-ripple"
-                title="장바구니"
+                onClick={() => setIsSavedCartsModalOpen(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
+                title="저장된 장바구니"
               >
-                <ShoppingCart className="w-5 h-5 text-blue-400" />
-                {cart.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                    {cart.length}
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
+                {savedCarts.length > 0 && (
+                  <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-violet-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    {savedCarts.length > 9 ? '9+' : savedCarts.length}
                   </span>
                 )}
               </button>
