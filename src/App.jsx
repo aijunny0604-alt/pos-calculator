@@ -2516,13 +2516,15 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     setSearchQuery('');
   };
 
-  // 검색 결과 필터링
+  // 검색 결과 필터링 (띄어쓰기 무시)
   const getSearchResults = () => {
     if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(query)
-    ).slice(0, 8); // 최대 8개
+    // 띄어쓰기, 하이픈 등 제거하고 소문자로
+    const query = searchQuery.toLowerCase().replace(/[\s\-_]/g, '');
+    return products.filter(p => {
+      const productName = p.name.toLowerCase().replace(/[\s\-_]/g, '');
+      return productName.includes(query);
+    }).slice(0, 8); // 최대 8개
   };
 
   // 장바구니에 담기
@@ -2560,7 +2562,7 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* 입력 영역 */}
           <div>
             <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
@@ -2608,7 +2610,7 @@ MVB 64 Y R 2개`}
                 <span className="text-sm text-purple-400">{selectedCount}개 선택됨</span>
               </div>
 
-              <div className="space-y-2 max-h-72 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="space-y-2 max-h-72 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {analyzedItems.map((item, index) => (
                   <div 
                     key={index}
@@ -2704,7 +2706,7 @@ MVB 64 Y R 2개`}
 
                         {/* 검색 드롭다운 */}
                         {searchingIndex === index && (
-                          <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-600">
+                          <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-600" data-lenis-prevent="true">
                             <div className="relative mb-2">
                               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                               <input
@@ -2717,7 +2719,7 @@ MVB 64 Y R 2개`}
                               />
                             </div>
                             {searchResults.length > 0 ? (
-                              <div className="max-h-40 overflow-y-auto space-y-1">
+                              <div className="max-h-40 overflow-y-auto space-y-1 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                                 {searchResults.map(product => (
                                   <button
                                     key={product.id}
