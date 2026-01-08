@@ -6692,20 +6692,6 @@ export default function PriceCalculator() {
                 )}
               </button>
               
-              {/* 저장된 장바구니 */}
-              <button
-                onClick={() => setIsSavedCartsModalOpen(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
-                title="저장된 장바구니"
-              >
-                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
-                {savedCarts.length > 0 && (
-                  <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-violet-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                    {savedCarts.length > 9 ? '9+' : savedCarts.length}
-                  </span>
-                )}
-              </button>
-              
               {/* 장바구니 - 모바일 (직접 주문 확인으로 이동) */}
               <button
                 onClick={() => {
