@@ -1261,11 +1261,11 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in touch-none">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} onTouchMove={(e) => e.preventDefault()} />
       
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <FileText className="w-6 h-6 text-white" />
             <div>
@@ -1278,9 +1278,9 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
           </button>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)] category-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="p-6 border-b border-slate-700">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="p-4 sm:p-6 border-b border-slate-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
               <div>
                 <span className="text-slate-400">주문일시:</span>
                 <span className="text-white ml-2">{formatDateTime(order.createdAt)}</span>
@@ -1315,7 +1315,17 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
             </h3>
             
             <div className="bg-slate-900/50 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-700/50 text-slate-300 text-sm font-medium">
+              {/* 데스크톱 헤더 */}
+              <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 bg-slate-700/50 text-slate-300 text-sm font-medium">
+                <div className="col-span-1">No</div>
+                <div className="col-span-5">상품명</div>
+                <div className="col-span-2 text-right">단가</div>
+                <div className="col-span-2 text-center">수량</div>
+                <div className="col-span-2 text-right">금액</div>
+              </div>
+              
+              {/* 모바일 헤더 */}
+              <div className="sm:hidden grid grid-cols-12 gap-1 px-3 py-2 bg-slate-700/50 text-slate-300 text-xs font-medium">
                 <div className="col-span-1">No</div>
                 <div className="col-span-5">상품명</div>
                 <div className="col-span-2 text-right">단가</div>
@@ -1325,12 +1335,23 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
               
               <div className="divide-y divide-slate-700/50">
                 {order.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 px-4 py-3 text-sm">
-                    <div className="col-span-1 text-slate-400">{index + 1}</div>
-                    <div className="col-span-5 text-white truncate">{item.name}</div>
-                    <div className="col-span-2 text-right text-slate-300">{formatPrice(item.price)}</div>
-                    <div className="col-span-2 text-center text-white">{item.quantity}개</div>
-                    <div className="col-span-2 text-right text-emerald-400 font-medium">{formatPrice(item.price * item.quantity)}</div>
+                  <div key={index}>
+                    {/* 데스크톱 행 */}
+                    <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 text-sm">
+                      <div className="col-span-1 text-slate-400">{index + 1}</div>
+                      <div className="col-span-5 text-white truncate">{item.name}</div>
+                      <div className="col-span-2 text-right text-slate-300">{formatPrice(item.price)}</div>
+                      <div className="col-span-2 text-center text-white">{item.quantity}개</div>
+                      <div className="col-span-2 text-right text-emerald-400 font-medium">{formatPrice(item.price * item.quantity)}</div>
+                    </div>
+                    {/* 모바일 행 */}
+                    <div className="sm:hidden grid grid-cols-12 gap-1 px-3 py-2 text-xs">
+                      <div className="col-span-1 text-slate-400">{index + 1}</div>
+                      <div className="col-span-5 text-white truncate" title={item.name}>{item.name}</div>
+                      <div className="col-span-2 text-right text-slate-300 whitespace-nowrap">{formatPrice(item.price).replace('원', '')}</div>
+                      <div className="col-span-2 text-center text-white">{item.quantity}개</div>
+                      <div className="col-span-2 text-right text-emerald-400 font-medium whitespace-nowrap">{formatPrice(item.price * item.quantity).replace('원', '')}</div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1345,7 +1366,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
           </div>
         </div>
 
-        <div className="border-t border-slate-700 p-6 bg-slate-900/50">
+        <div className="border-t border-slate-700 p-4 sm:p-6 bg-slate-900/50 flex-shrink-0">
           <div className="flex items-start justify-between mb-4">
             <div className="text-slate-400 text-sm space-y-1">
               <p>총 수량: <span className="text-white font-medium">{totalQuantity}개</span></p>
@@ -1355,28 +1376,28 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
                 <p>공급가액: <span className="text-slate-300">{formatPrice(exVat)}</span></p>
                 <p>부가세: <span className="text-slate-300">{formatPrice(vat)}</span></p>
               </div>
-              <p className="text-2xl font-bold text-white">{formatPrice(order.totalAmount)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{formatPrice(order.totalAmount)}</p>
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <button
               onClick={handleCopy}
-              className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 py-2.5 sm:py-3 rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-all ${
                 copied ? 'bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'
               }`}
             >
-              {copied ? <><Check className="w-5 h-5" />복사됨!</> : <><Copy className="w-5 h-5" />복사하기</>}
+              {copied ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" />복사됨</> : <><Copy className="w-4 h-4 sm:w-5 sm:h-5" />복사</>}
             </button>
             <button
               onClick={handlePrint}
-              className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+              className="flex-1 py-2.5 sm:py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-colors"
             >
-              <Printer className="w-5 h-5" />인쇄하기
+              <Printer className="w-4 h-4 sm:w-5 sm:h-5" />인쇄
             </button>
             <button
               onClick={onClose}
-              className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-medium transition-colors"
+              className="flex-1 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-medium text-sm sm:text-base transition-colors"
             >
               확인
             </button>
@@ -1853,13 +1874,22 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   );
 }
 
-// ==================== 택배 송장 생성 페이지 ====================
+// ==================== 택배 송장 생성 모달 ====================
 function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack }) {
   const [selectedOrders, setSelectedOrders] = useState([]);
-  const [defaultShippingCost, setDefaultShippingCost] = useState(7300);
   const [senderName, setSenderName] = useState('무브모터스');
   const [dateFilter, setDateFilter] = useState('all');
   const [orderSettings, setOrderSettings] = useState({});
+  
+  // 포장 옵션별 배송비 설정
+  const [shippingCosts, setShippingCosts] = useState({
+    '박스1': 7300,
+    '박스2': 10000,
+    '박스3': 13000,
+    '나체1': 5000,
+    '나체2': 7000,
+    '나체3': 9000,
+  });
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -1871,6 +1901,22 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
+
+  // 모달 열릴 때 배경 스크롤 방지
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
   
   const safeOrders = orders || [];
   const today = new Date();
@@ -1891,11 +1937,27 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   });
   
   const getOrderSetting = (orderNumber) => {
-    return orderSettings[orderNumber] || { paymentType: '착불', packaging: '박스1', shippingCost: defaultShippingCost };
+    const defaultPackaging = '박스1';
+    return orderSettings[orderNumber] || { paymentType: '착불', packaging: defaultPackaging, shippingCost: shippingCosts[defaultPackaging] || 7300 };
   };
   
   const updateOrderSetting = (orderNumber, field, value) => {
-    setOrderSettings(prev => ({ ...prev, [orderNumber]: { ...getOrderSetting(orderNumber), [field]: value } }));
+    setOrderSettings(prev => {
+      const current = prev[orderNumber] || { paymentType: '착불', packaging: '박스1', shippingCost: shippingCosts['박스1'] || 7300 };
+      let updated = { ...current, [field]: value };
+      
+      // 포장 옵션이 변경되면 해당 배송비로 자동 업데이트
+      if (field === 'packaging' && shippingCosts[value]) {
+        updated.shippingCost = shippingCosts[value];
+      }
+      
+      return { ...prev, [orderNumber]: updated };
+    });
+  };
+  
+  // 배송비 설정 업데이트
+  const updateShippingCost = (packaging, cost) => {
+    setShippingCosts(prev => ({ ...prev, [packaging]: cost }));
   };
   
   const handleSelectAll = () => {
@@ -2031,142 +2093,155 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   
   const packagingOptions = ['박스1', '박스2', '박스3', '나체1', '나체2', '나체3'];
   
+  const [showCostSettings, setShowCostSettings] = useState(false);
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="w-full px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-slate-300" />
-              </button>
-              <div className="flex items-center gap-2">
-                <Truck className="w-6 h-6 text-orange-400" />
-                <div>
-                  <h1 className="text-lg font-bold text-white">택배 송장 생성</h1>
-                  <p className="text-orange-400 text-xs">전체 {safeOrders.length}건 / 필터 {filteredOrders.length}건</p>
-                </div>
-              </div>
-            </div>
-            <span className="text-orange-400 font-semibold text-sm">{selectedOrders.length}건 선택</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="w-full px-4 py-4">
-        {/* 설정 영역 */}
-        <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
-          {/* 날짜 필터 */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[{ key: 'today', label: '오늘' }, { key: 'yesterday', label: '어제' }, { key: 'week', label: '최근 7일' }, { key: 'all', label: '전체' }].map(({ key, label }) => (
-              <button key={key} onClick={() => { setDateFilter(key); setSelectedOrders([]); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${dateFilter === key ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>{label}</button>
-            ))}
-          </div>
-          
-          {/* 보내는 곳 & 기본 택배비 */}
-          <div className="grid grid-cols-2 gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+      
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-orange-600 to-amber-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Truck className="w-6 h-6 text-white" />
             <div>
+              <h2 className="text-lg font-bold text-white">택배 송장 생성</h2>
+              <p className="text-orange-100 text-xs">전체 {safeOrders.length}건 / 필터 {filteredOrders.length}건 / 선택 {selectedOrders.length}건</p>
+            </div>
+          </div>
+          <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* 스크롤 가능 영역 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* 설정 영역 */}
+          <div className="bg-slate-700/50 rounded-xl p-4 mb-4 border border-slate-600">
+            {/* 날짜 필터 */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[{ key: 'today', label: '오늘' }, { key: 'yesterday', label: '어제' }, { key: 'week', label: '최근 7일' }, { key: 'all', label: '전체' }].map(({ key, label }) => (
+                <button key={key} onClick={() => { setDateFilter(key); setSelectedOrders([]); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${dateFilter === key ? 'bg-orange-600 text-white' : 'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>{label}</button>
+              ))}
+            </div>
+            
+            {/* 보내는 곳 */}
+            <div className="mb-3">
               <label className="block text-slate-400 text-xs mb-1">보내는 곳</label>
               <input type="text" value={senderName} onChange={(e) => setSenderName(e.target.value)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
-            <div>
-              <label className="block text-slate-400 text-xs mb-1">기본 택배비</label>
-              <input type="number" value={defaultShippingCost} onChange={(e) => setDefaultShippingCost(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-            </div>
-          </div>
-        </div>
-        
-        {/* 전체 선택 */}
-        <div className="flex items-center justify-between mb-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500" />
-            <span className="text-slate-300 text-sm">전체 선택</span>
-          </label>
-        </div>
-        
-        {/* 주문 목록 */}
-        {filteredOrders.length === 0 ? (
-          <div className="text-center py-16">
-            <Truck className="w-16 h-16 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-400">해당 기간 주문 내역이 없습니다</p>
-            <p className="text-slate-500 text-sm mt-1">다른 날짜 필터를 선택해보세요</p>
-          </div>
-        ) : (
-          <div className="space-y-2 mb-4">
-            {filteredOrders.map(order => {
-              const customer = order.customerName ? findCustomer(order.customerName) : null;
-              const hasAddress = customer?.address;
-              const setting = getOrderSetting(order.orderNumber);
-              const isSelected = selectedOrders.includes(order.orderNumber);
-              
-              return (
-                <div key={order.orderNumber} className={`rounded-xl border transition-all ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
-                  <div className="p-3 cursor-pointer" onClick={() => toggleOrder(order.orderNumber)}>
-                    <div className="flex items-start gap-3">
-                      <input type="checkbox" checked={isSelected} onChange={() => {}} className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-medium ${setting.paymentType === '선불' ? 'text-yellow-400 font-bold' : 'text-white'}`}>{order.customerName || '고객명 없음'}</span>
-                          {setting.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
-                          {hasAddress ? <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span> : <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>}
-                        </div>
-                        <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
-                        <p className="text-slate-500 text-xs mt-1">{order.items?.length || 0}종 · {formatPrice(order.totalAmount)}</p>
-                      </div>
-                      <div className="text-right"><p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p></div>
-                    </div>
+            
+            {/* 포장별 배송비 설정 토글 */}
+            <button 
+              onClick={() => setShowCostSettings(!showCostSettings)} 
+              className="w-full flex items-center justify-between px-3 py-2 bg-slate-600/50 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+            >
+              <span className="text-slate-300">📦 포장별 배송비 설정</span>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showCostSettings ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {/* 포장별 배송비 설정 */}
+            {showCostSettings && (
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {packagingOptions.map(opt => (
+                  <div key={opt} className="flex items-center gap-2">
+                    <label className="text-slate-400 text-xs w-12">{opt}</label>
+                    <input 
+                      type="number" 
+                      value={shippingCosts[opt] || 0} 
+                      onChange={(e) => updateShippingCost(opt, parseInt(e.target.value) || 0)} 
+                      className="flex-1 px-2 py-1.5 bg-slate-900/50 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
                   </div>
-                  
-                  {isSelected && (
-                    <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-slate-500 text-xs mb-1">배송 방식</label>
-                          <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500">
-                            <option value="착불">착불</option>
-                            <option value="선불">선불</option>
-                          </select>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* 전체 선택 */}
+          <div className="flex items-center justify-between mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500" />
+              <span className="text-slate-300 text-sm">전체 선택</span>
+            </label>
+          </div>
+          
+          {/* 주문 목록 */}
+          {filteredOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <Truck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">해당 기간 주문 내역이 없습니다</p>
+              <p className="text-slate-500 text-sm mt-1">다른 날짜 필터를 선택해보세요</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredOrders.map(order => {
+                const customer = order.customerName ? findCustomer(order.customerName) : null;
+                const hasAddress = customer?.address;
+                const setting = getOrderSetting(order.orderNumber);
+                const isSelected = selectedOrders.includes(order.orderNumber);
+                
+                return (
+                  <div key={order.orderNumber} className={`rounded-xl border transition-all ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'}`}>
+                    <div className="p-3 cursor-pointer" onClick={() => toggleOrder(order.orderNumber)}>
+                      <div className="flex items-start gap-3">
+                        <input type="checkbox" checked={isSelected} onChange={() => {}} className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-medium ${setting.paymentType === '선불' ? 'text-yellow-400 font-bold' : 'text-white'}`}>{order.customerName || '고객명 없음'}</span>
+                            {setting.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
+                            {hasAddress ? <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span> : <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>}
+                          </div>
+                          <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
+                          <p className="text-slate-500 text-xs mt-1">{order.items?.length || 0}종 · {formatPrice(order.totalAmount)}</p>
                         </div>
-                        <div>
-                          <label className="block text-slate-500 text-xs mb-1">포장</label>
-                          <input 
-                            type="text"
-                            list={`packaging-options-${order.orderNumber}`}
-                            value={setting.packaging} 
-                            onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
-                            placeholder="박스1"
-                            className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500"
-                          />
-                          <datalist id={`packaging-options-${order.orderNumber}`}>
-                            {packagingOptions.map(opt => <option key={opt} value={opt} />)}
-                          </datalist>
-                        </div>
-                        <div>
-                          <label className="block text-slate-500 text-xs mb-1">택배비</label>
-                          <input type="number" value={setting.shippingCost} onChange={(e) => updateOrderSetting(order.orderNumber, 'shippingCost', parseInt(e.target.value) || 0)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" />
-                        </div>
+                        <div className="text-right"><p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p></div>
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    
+                    {isSelected && (
+                      <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-slate-500 text-xs mb-1">배송 방식</label>
+                            <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500">
+                              <option value="착불">착불</option>
+                              <option value="선불">선불</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 text-xs mb-1">포장</label>
+                            <select 
+                              value={setting.packaging} 
+                              onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
+                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500"
+                            >
+                              {packagingOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 text-xs mb-1">택배비</label>
+                            <input type="number" value={setting.shippingCost} onChange={(e) => updateOrderSetting(order.orderNumber, 'shippingCost', parseInt(e.target.value) || 0)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        
+        {/* 하단 버튼 영역 */}
+        <div className="border-t border-slate-700 p-4 flex-shrink-0 bg-slate-800">
+          <div className="flex gap-2">
+            <button onClick={generateShippingLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}><Download className="w-5 h-5" />CSV</button>
+            <button onClick={generateXlsxLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><FileText className="w-5 h-5" />Excel</button>
+            <button onClick={printShippingLabels} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-500 text-white'}`}><Printer className="w-5 h-5" />인쇄</button>
           </div>
-        )}
-      </div>
-      
-      {/* 하단 고정 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 z-40">
-        <div className="flex gap-2">
-          <button onClick={generateShippingLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}><Download className="w-5 h-5" />CSV</button>
-          <button onClick={generateXlsxLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><FileText className="w-5 h-5" />Excel</button>
-          <button onClick={printShippingLabels} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-500 text-white'}`}><Printer className="w-5 h-5" />인쇄</button>
         </div>
       </div>
-      
-      {/* 하단 버튼 공간 확보 */}
-      <div className="h-20"></div>
     </div>
   );
 }
@@ -2236,63 +2311,67 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
         </div>
       </header>
 
-      <div className="w-full px-4 py-4">
-        {/* 재고 통계 카드 */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-4">
-          <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
-            <p className="text-slate-400 text-xs sm:text-sm mb-1">전체</p>
-            <p className="text-xl sm:text-2xl font-bold text-white">{stats.total}</p>
-          </button>
-          <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
-            <p className="text-emerald-300 text-xs sm:text-sm mb-1">정상</p>
-            <p className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.normal}</p>
-          </button>
-          <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
-            <p className="text-yellow-300 text-xs sm:text-sm mb-1">부족</p>
-            <p className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.low}</p>
-          </button>
-          <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
-            <p className="text-red-300 text-xs sm:text-sm mb-1">품절</p>
-            <p className="text-xl sm:text-2xl font-bold text-red-400">{stats.out}</p>
-          </button>
-        </div>
-        
-        {/* 검색 & 카테고리 필터 */}
-        <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="제품 검색..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <button
-              onClick={() => setSelectedCategory('전체')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                selectedCategory === '전체' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              전체
+      {/* 고정 영역: 통계 + 검색 + 필터 */}
+      <div className="sticky top-[52px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-900/95 backdrop-blur-md pb-2">
+        <div className="w-full px-4 pt-4">
+          {/* 재고 통계 카드 */}
+          <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-4">
+            <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
+              <p className="text-slate-400 text-xs sm:text-sm mb-1">전체</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{stats.total}</p>
             </button>
-            {categories.map(cat => (
+            <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
+              <p className="text-emerald-300 text-xs sm:text-sm mb-1">정상</p>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.normal}</p>
+            </button>
+            <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
+              <p className="text-yellow-300 text-xs sm:text-sm mb-1">부족</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.low}</p>
+            </button>
+            <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
+              <p className="text-red-300 text-xs sm:text-sm mb-1">품절</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-400">{stats.out}</p>
+            </button>
+          </div>
+          
+          {/* 검색 & 카테고리 필터 */}
+          <div className="bg-slate-800/80 rounded-xl p-4 border border-slate-700">
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="제품 검색..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => setSelectedCategory('전체')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  selectedCategory === cat ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  selectedCategory === '전체' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
               >
-                {cat}
+                전체
               </button>
-            ))}
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    selectedCategory === cat ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        
-        {/* 검색 결과 표시 */}
+      </div>
+
+      <div className="w-full px-4 py-4">
         <p className="text-slate-400 text-sm mb-3">
           {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
           {selectedCategory !== '전체' && ' · '}
@@ -2889,6 +2968,15 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
+  // 모달 열릴 때 배경 스크롤 방지
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
+
   // 거래처 검색 결과
   const customerSuggestions = customerName.length >= 1
     ? customers.filter(c => 
@@ -3055,8 +3143,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onBack}>
-      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overscroll-none" onClick={onBack}>
+      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -3081,7 +3169,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4" onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
+        <div className="flex-1 overflow-y-auto px-4 py-4 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }} onClick={() => { setShowSearchResults(false); setShowCustomerSuggestions(false); }}>
         {/* 고객 정보 */}
         <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -5494,18 +5582,6 @@ export default function PriceCalculator() {
     );
   }
 
-  // 택배 송장 페이지
-  if (showShippingModal) {
-    return (
-      <ShippingLabelPage
-        orders={orders}
-        customers={customers}
-        formatPrice={formatPrice}
-        onBack={() => setShowShippingModal(false)}
-      />
-    );
-  }
-
   // 장바구니 저장 페이지
   if (isSaveCartModalOpen) {
     return (
@@ -6024,6 +6100,16 @@ export default function PriceCalculator() {
           onSaveCart={(name) => { setSaveCartCustomerName(name || ''); setIsSaveCartModalOpen(true); }}
           customers={customers}
           onBack={() => setIsOrderModalOpen(false)}
+        />
+      )}
+
+      {/* 택배 송장 모달 */}
+      {showShippingModal && (
+        <ShippingLabelPage
+          orders={orders}
+          customers={customers}
+          formatPrice={formatPrice}
+          onBack={() => setShowShippingModal(false)}
         />
       )}
     </div>
