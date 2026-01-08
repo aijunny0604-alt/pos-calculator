@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
@@ -2389,6 +2389,392 @@ function SaveCartModal({ isOpen, onClose, onSave, cart, priceType, formatPrice, 
   );
 }
 
+// ==================== 텍스트 분석 모달 (AI 주문 인식) ====================
+function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice, priceType, initialText = '' }) {
+  const [inputText, setInputText] = useState('');
+  const [analyzedItems, setAnalyzedItems] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [searchingIndex, setSearchingIndex] = useState(null); // 검색 중인 항목 인덱스
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // initialText가 있으면 자동으로 입력
+  useEffect(() => {
+    if (isOpen && initialText) {
+      setInputText(initialText);
+    }
+  }, [isOpen, initialText]);
+
+  if (!isOpen) return null;
+
+  // 텍스트 분석 함수
+  const analyzeText = () => {
+    if (!inputText.trim()) return;
+    
+    setIsAnalyzing(true);
+    setSearchingIndex(null);
+    const lines = inputText.split('\n').filter(line => line.trim());
+    const results = [];
+
+    lines.forEach(line => {
+      const cleanLine = line.trim();
+      if (!cleanLine) return;
+
+      // 수량 추출 (숫자 + 개/세트/ea 등)
+      const qtyPatterns = [
+        /(\d+)\s*개/,
+        /(\d+)\s*세트/,
+        /(\d+)\s*ea/i,
+        /(\d+)\s*EA/,
+        /(\d+)\s*$/, // 줄 끝의 숫자
+        /^(\d+)\s+/, // 줄 시작의 숫자
+        /[x×]\s*(\d+)/i, // x3, ×2 형태
+      ];
+
+      let quantity = 1;
+      let searchText = cleanLine;
+
+      for (const pattern of qtyPatterns) {
+        const match = cleanLine.match(pattern);
+        if (match) {
+          quantity = parseInt(match[1]) || 1;
+          searchText = cleanLine.replace(pattern, '').trim();
+          break;
+        }
+      }
+
+      // 검색 텍스트 정리 (숫자, 특수문자 등)
+      searchText = searchText
+        .replace(/[,.\-_\/\\]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!searchText) return;
+
+      // 제품 매칭 (키워드 기반)
+      const keywords = searchText.toLowerCase().split(' ').filter(k => k.length > 0);
+      
+      let bestMatch = null;
+      let bestScore = 0;
+
+      products.forEach(product => {
+        const productName = product.name.toLowerCase();
+        let score = 0;
+
+        // 각 키워드가 제품명에 포함되는지 확인
+        keywords.forEach(keyword => {
+          if (productName.includes(keyword)) {
+            score += keyword.length; // 긴 키워드일수록 높은 점수
+          }
+        });
+
+        // 전체 검색어가 포함되면 보너스
+        if (productName.includes(searchText.toLowerCase())) {
+          score += 10;
+        }
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = product;
+        }
+      });
+
+      results.push({
+        originalText: cleanLine,
+        searchText,
+        quantity,
+        matchedProduct: bestMatch,
+        score: bestScore,
+        selected: bestScore > 0 // 매칭된 것만 기본 선택
+      });
+    });
+
+    setAnalyzedItems(results);
+    setIsAnalyzing(false);
+  };
+
+  // 선택 토글
+  const toggleSelect = (index) => {
+    setAnalyzedItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, selected: !item.selected } : item
+    ));
+  };
+
+  // 수량 변경
+  const updateQuantity = (index, qty) => {
+    if (qty < 1) return;
+    setAnalyzedItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, quantity: qty } : item
+    ));
+  };
+
+  // 제품 수동 선택 (검색으로 찾은 제품)
+  const selectProduct = (index, product) => {
+    setAnalyzedItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, matchedProduct: product, selected: true, score: 100 } : item
+    ));
+    setSearchingIndex(null);
+    setSearchQuery('');
+  };
+
+  // 검색 결과 필터링
+  const getSearchResults = () => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return products.filter(p => 
+      p.name.toLowerCase().includes(query)
+    ).slice(0, 8); // 최대 8개
+  };
+
+  // 장바구니에 담기
+  const addSelectedToCart = () => {
+    const selectedItems = analyzedItems.filter(item => item.selected && item.matchedProduct);
+    selectedItems.forEach(item => {
+      onAddToCart(item.matchedProduct, item.quantity);
+    });
+    onClose();
+    setInputText('');
+    setAnalyzedItems([]);
+    setSearchingIndex(null);
+    setSearchQuery('');
+  };
+
+  const selectedCount = analyzedItems.filter(item => item.selected && item.matchedProduct).length;
+  const searchResults = getSearchResults();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-white" />
+            <div>
+              <h2 className="text-lg font-bold text-white">AI 주문 인식</h2>
+              <p className="text-purple-100 text-xs">메모를 붙여넣으면 자동으로 제품을 찾아드려요</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-6 h-6 text-white" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* 입력 영역 */}
+          <div>
+            <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              메모 입력 (줄 단위로 분석)
+            </label>
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={`예시:
+카본 93 듀얼 1세트
+54파이 밴딩 45 6개
+2m 환봉 1개 12파이
+MVB 64 Y R 2개`}
+              rows={6}
+              className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
+            />
+          </div>
+
+          {/* 분석 버튼 */}
+          <button
+            onClick={analyzeText}
+            disabled={!inputText.trim() || isAnalyzing}
+            className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+              !inputText.trim() || isAnalyzing
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+            }`}
+          >
+            {isAnalyzing ? (
+              <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
+            ) : (
+              <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
+            )}
+          </button>
+
+          {/* 분석 결과 */}
+          {analyzedItems.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-medium flex items-center gap-2">
+                  <Package className="w-4 h-4 text-purple-400" />
+                  분석 결과 ({analyzedItems.length}줄)
+                </h3>
+                <span className="text-sm text-purple-400">{selectedCount}개 선택됨</span>
+              </div>
+
+              <div className="space-y-2 max-h-72 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+                {analyzedItems.map((item, index) => (
+                  <div 
+                    key={index}
+                    className={`p-3 rounded-xl border transition-all ${
+                      item.matchedProduct 
+                        ? item.selected 
+                          ? 'bg-purple-900/30 border-purple-500/50' 
+                          : 'bg-slate-700/30 border-slate-600/50'
+                        : 'bg-red-900/20 border-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* 체크박스 */}
+                      <button
+                        onClick={() => item.matchedProduct && toggleSelect(index)}
+                        disabled={!item.matchedProduct}
+                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          !item.matchedProduct 
+                            ? 'border-slate-600 bg-slate-700 cursor-not-allowed'
+                            : item.selected 
+                              ? 'border-purple-500 bg-purple-500' 
+                              : 'border-slate-500 hover:border-purple-400'
+                        }`}
+                      >
+                        {item.selected && item.matchedProduct && <Check className="w-3 h-3 text-white" />}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        {/* 원본 텍스트 */}
+                        <p className="text-slate-400 text-xs mb-1 truncate">"{item.originalText}"</p>
+                        
+                        {item.matchedProduct ? (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-white font-medium truncate">{item.matchedProduct.name}</p>
+                                {/* 제품 변경 버튼 */}
+                                <button
+                                  onClick={() => { 
+                                    setSearchingIndex(searchingIndex === index ? null : index); 
+                                    setSearchQuery(item.searchText);
+                                  }}
+                                  className="text-xs text-slate-400 hover:text-purple-400 flex-shrink-0"
+                                >
+                                  변경
+                                </button>
+                              </div>
+                              <p className={`text-sm ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                                {formatPrice(priceType === 'wholesale' ? item.matchedProduct.wholesale : (item.matchedProduct.retail || item.matchedProduct.wholesale))}
+                              </p>
+                            </div>
+                            
+                            {/* 수량 조절 */}
+                            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 flex-shrink-0">
+                              <button 
+                                onClick={() => updateQuantity(index, item.quantity - 1)}
+                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
+                              >
+                                <Minus className="w-3 h-3 text-white" />
+                              </button>
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
+                                className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <button 
+                                onClick={() => updateQuantity(index, item.quantity + 1)}
+                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
+                              >
+                                <Plus className="w-3 h-3 text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* 매칭 실패 - 검색 UI */
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400 text-sm">❌ 못 찾음</span>
+                              <button
+                                onClick={() => { 
+                                  setSearchingIndex(searchingIndex === index ? null : index); 
+                                  setSearchQuery(item.searchText);
+                                }}
+                                className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg flex items-center gap-1"
+                              >
+                                <Search className="w-3 h-3" />
+                                직접 검색
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 검색 드롭다운 */}
+                        {searchingIndex === index && (
+                          <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-600">
+                            <div className="relative mb-2">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="제품명 검색..."
+                                autoFocus
+                                className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              />
+                            </div>
+                            {searchResults.length > 0 ? (
+                              <div className="max-h-40 overflow-y-auto space-y-1">
+                                {searchResults.map(product => (
+                                  <button
+                                    key={product.id}
+                                    onClick={() => selectProduct(index, product)}
+                                    className="w-full p-2 text-left hover:bg-slate-700 rounded-lg transition-colors"
+                                  >
+                                    <p className="text-white text-sm truncate">{product.name}</p>
+                                    <p className={`text-xs ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                                      {formatPrice(priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale))}
+                                    </p>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : searchQuery.trim() ? (
+                              <p className="text-slate-500 text-sm text-center py-2">검색 결과 없음</p>
+                            ) : (
+                              <p className="text-slate-500 text-sm text-center py-2">검색어를 입력하세요</p>
+                            )}
+                            <button
+                              onClick={() => { setSearchingIndex(null); setSearchQuery(''); }}
+                              className="w-full mt-2 py-1.5 text-xs text-slate-400 hover:text-white"
+                            >
+                              닫기
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 하단 버튼 */}
+        {analyzedItems.length > 0 && (
+          <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+            <button
+              onClick={addSelectedToCart}
+              disabled={selectedCount === 0}
+              className={`w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                selectedCount === 0
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white'
+              }`}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {selectedCount}개 제품 장바구니에 담기
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // 주문 확인 모달
 function OrderModal({ isOpen, onClose, cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart, customers = [] }) {
   const [copied, setCopied] = useState(false);
@@ -4380,6 +4766,11 @@ export default function PriceCalculator() {
   const [customers, setCustomers] = useState([]);
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showCustomerListModal, setShowCustomerListModal] = useState(false);
+  const [showTextAnalyzeModal, setShowTextAnalyzeModal] = useState(false);
+  const [showMemo, setShowMemo] = useState(false);
+  const [memoText, setMemoText] = useState(() => {
+    try { return localStorage.getItem('pos_memo') || ''; } catch { return ''; }
+  });
 
   // 동적 카테고리 목록 (Supabase products 기반)
   const dynamicCategories = useMemo(() => {
@@ -4836,15 +5227,52 @@ export default function PriceCalculator() {
       if (success) {
         setOrders(prev => prev.filter(order => order.orderNumber !== orderNumber));
         setIsOnline(true);
-        alert(`✅ 주문이 삭제되었습니다.\n\n주문번호: ${orderNumber}`);
+        showToast('🗑️ 주문이 삭제되었습니다');
       } else {
         setIsOnline(false);
-        alert('❌ 삭제에 실패했습니다. 다시 시도해주세요.');
+        showToast('❌ 삭제에 실패했습니다', 'error');
       }
     } catch (error) {
       console.error('삭제 실패:', error);
       setIsOnline(false);
-      alert('❌ 삭제에 실패했습니다. 인터넷 연결을 확인해주세요.');
+      showToast('❌ 삭제에 실패했습니다', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 여러 주문 한번에 삭제 (알림 한 번만)
+  const deleteMultipleOrders = async (orderNumbers) => {
+    if (!orderNumbers || orderNumbers.length === 0) return;
+    
+    setIsLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    try {
+      for (const orderNumber of orderNumbers) {
+        const success = await supabase.deleteOrder(orderNumber);
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+      
+      // 상태 업데이트 (한 번에)
+      setOrders(prev => prev.filter(order => !orderNumbers.includes(order.orderNumber)));
+      
+      // 알림 한 번만
+      if (failCount === 0) {
+        showToast(`🗑️ ${successCount}건 삭제 완료!`);
+        setIsOnline(true);
+      } else {
+        showToast(`⚠️ ${successCount}건 삭제, ${failCount}건 실패`, 'error');
+      }
+    } catch (error) {
+      console.error('일괄 삭제 실패:', error);
+      showToast('❌ 삭제 중 오류 발생', 'error');
+      setIsOnline(false);
     } finally {
       setIsLoading(false);
     }
@@ -4961,6 +5389,7 @@ export default function PriceCalculator() {
           orders={orders}
           onBack={() => setCurrentPage('main')}
           onDeleteOrder={deleteOrder}
+          onDeleteMultiple={deleteMultipleOrders}
           onViewOrder={viewOrder}
           onRefresh={loadOrders}
           isLoading={isLoading}
@@ -5025,6 +5454,28 @@ export default function PriceCalculator() {
         customers={customers}
         orders={orders}
         formatPrice={formatPrice}
+      />
+      <TextAnalyzeModal
+        isOpen={showTextAnalyzeModal}
+        onClose={() => setShowTextAnalyzeModal(false)}
+        products={products.length > 0 ? products : priceData}
+        initialText={memoText}
+        onAddToCart={(product, qty) => {
+          // 이미 장바구니에 있으면 수량 추가
+          const existing = cart.find(item => item.id === product.id);
+          if (existing) {
+            setCart(cart.map(item => 
+              item.id === product.id 
+                ? { ...item, quantity: item.quantity + qty }
+                : item
+            ));
+          } else {
+            setCart([...cart, { ...product, quantity: qty }]);
+          }
+          showToast(`✅ ${product.name} ${qty}개 추가`);
+        }}
+        formatPrice={formatPrice}
+        priceType={priceType}
       />
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
@@ -5096,6 +5547,28 @@ export default function PriceCalculator() {
                     {orders.length > 99 ? '99+' : orders.length}
                   </span>
                 )}
+              </button>
+              
+              {/* AI 주문 인식 버튼 */}
+              <button
+                onClick={() => setShowTextAnalyzeModal(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 border border-purple-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="AI 주문 인식"
+              >
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+              </button>
+              
+              {/* 메모장 버튼 */}
+              <button
+                onClick={() => setShowMemo(!showMemo)}
+                className={`flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 border rounded-lg transition-all hover-lift btn-ripple ${
+                  showMemo 
+                    ? 'bg-yellow-600/50 border-yellow-500/50' 
+                    : 'bg-yellow-600/30 hover:bg-yellow-600/50 border-yellow-500/50'
+                }`}
+                title="메모장"
+              >
+                <Edit3 className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
               </button>
               
               <button
@@ -5248,7 +5721,17 @@ export default function PriceCalculator() {
                                 <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity - 1); }} className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded-l">
                                   <Minus className="w-3 h-3 text-white" />
                                 </button>
-                                <span className="w-6 text-center text-white text-xs font-bold">{cartItem.quantity}</span>
+                                <input
+                                  type="number"
+                                  value={cartItem.quantity}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    if (val >= 0) updateQuantity(product.id, val);
+                                  }}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-8 h-6 text-center text-white text-xs font-bold bg-transparent border-none focus:outline-none focus:bg-slate-600 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
                                 <button onClick={(e) => { e.stopPropagation(); updateQuantity(product.id, cartItem.quantity + 1); }} className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded-r">
                                   <Plus className="w-3 h-3 text-white" />
                                 </button>
@@ -5279,6 +5762,82 @@ export default function PriceCalculator() {
             </div>
             )}
           </div>
+
+          {/* 플로팅 메모장 */}
+          {showMemo && (
+            <div className="fixed bottom-20 md:bottom-4 right-4 z-50 w-80 sm:w-96 animate-scale-in">
+              <div className="bg-slate-800 rounded-2xl border border-yellow-500/50 shadow-2xl shadow-yellow-900/20 overflow-hidden">
+                {/* 메모장 헤더 */}
+                <div className="bg-gradient-to-r from-yellow-600 to-amber-600 px-4 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-white" />
+                    <span className="text-white font-medium text-sm">📝 메모장</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (memoText.trim()) {
+                          setShowTextAnalyzeModal(true);
+                        }
+                      }}
+                      disabled={!memoText.trim()}
+                      className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
+                        memoText.trim() 
+                          ? 'bg-purple-600 hover:bg-purple-500 text-white' 
+                          : 'bg-white/20 text-white/50 cursor-not-allowed'
+                      }`}
+                      title="AI 분석"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      AI 분석
+                    </button>
+                    <button
+                      onClick={() => setShowMemo(false)}
+                      className="p-1 hover:bg-white/20 rounded transition-colors"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* 메모 입력 영역 */}
+                <div className="p-3">
+                  <textarea
+                    value={memoText}
+                    onChange={(e) => {
+                      setMemoText(e.target.value);
+                      try { localStorage.setItem('pos_memo', e.target.value); } catch {}
+                    }}
+                    placeholder="전화 받으면서 메모하세요...
+
+예: MVB 64 2개
+    카본 93 듀얼 1세트
+    밴딩 45 3개"
+                    rows={6}
+                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none font-mono"
+                    autoFocus
+                  />
+                  
+                  {/* 하단 버튼 */}
+                  <div className="flex items-center justify-between mt-2">
+                    <button
+                      onClick={() => {
+                        setMemoText('');
+                        try { localStorage.removeItem('pos_memo'); } catch {}
+                      }}
+                      className="text-xs text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      지우기
+                    </button>
+                    <span className="text-xs text-slate-500">
+                      {memoText.split('\n').filter(l => l.trim()).length}줄
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className={`md:w-[420px] lg:w-[480px] ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-auto`}>
             <div className="bg-gradient-to-r from-emerald-900/90 to-teal-900/80 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 md:sticky md:top-14 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
