@@ -231,7 +231,7 @@ const CustomStyles = () => (
       scroll-behavior: smooth;
       overflow-y: scroll;
       overscroll-behavior: smooth;
-      background: #0f172a; /* slate-900 */
+      background: #1e293b; /* slate-800 - 헤더와 동일 */
     }
     
     body {
@@ -243,17 +243,13 @@ const CustomStyles = () => (
       -moz-user-select: none;
       -ms-user-select: none;
       user-select: none;
-      /* 아이폰 safe area 대응 */
-      padding-bottom: env(safe-area-inset-bottom);
-      background: #0f172a; /* slate-900 */
+      background: #1e293b; /* slate-800 - 헤더와 동일 */
       min-height: 100vh;
-      min-height: -webkit-fill-available;
     }
     
     #root {
-      background: #0f172a; /* slate-900 */
+      background: #1e293b; /* slate-800 - 헤더와 동일 */
       min-height: 100vh;
-      min-height: -webkit-fill-available;
     }
     
     /* 모든 요소 텍스트 선택 방지 */
