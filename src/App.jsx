@@ -5307,6 +5307,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showFilterDeleteConfirm, setShowFilterDeleteConfirm] = useState(false); // 필터 기준 전체 삭제
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
 
   // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
   useEffect(() => {
@@ -5494,120 +5495,141 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
         </div>
       </header>
 
-      {/* 통계 카드 & 검색/필터 - 고정 */}
-      <div className="sticky top-[73px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent px-4 pt-6 pb-2">
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700 card-glow animate-fade-in-up stagger-1">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
-              <FileText className="w-4 h-4" />
-              {dateFilter === 'all' ? '총 주문' : '조회 주문'}
-            </div>
-            <p className="text-2xl font-bold text-white">{filteredOrders.length}건</p>
-            {dateFilter !== 'all' && <p className="text-xs text-slate-500 mt-1">전체 {orders.length}건</p>}
+      {/* 통계 카드 & 검색/필터 - 고정 (접기/펼치기 가능) */}
+      <div className="sticky top-[73px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent px-4 pt-3 pb-2">
+        {/* 접기/펼치기 토글 바 */}
+        <button
+          onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+          className="w-full mb-2 flex items-center justify-between bg-slate-800/80 backdrop-blur rounded-xl px-4 py-2.5 border border-slate-700 hover:border-slate-600 transition-all"
+        >
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-slate-400">
+              {dateFilter === 'all' ? '전체' : getFilterLabel()}
+            </span>
+            <span className="text-white font-semibold">{filteredOrders.length}건</span>
+            <span className="text-emerald-400 font-bold">{formatPrice(filteredTotalSales)}</span>
           </div>
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700 card-glow animate-fade-in-up stagger-2">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
-              <Calculator className="w-4 h-4" />
-              {dateFilter === 'all' ? '총 매출' : '조회 매출'}
-            </div>
-            <p className="text-2xl font-bold text-emerald-400">{formatPrice(filteredTotalSales)}</p>
-            {dateFilter !== 'all' && <p className="text-xs text-slate-500 mt-1">전체 {formatPrice(totalSales)}</p>}
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className="text-xs">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
+            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isHeaderCollapsed ? '' : 'rotate-180'}`} />
           </div>
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700 card-glow animate-fade-in-up stagger-3">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
-              <Receipt className="w-4 h-4" />
-              공급가액
-            </div>
-            <p className="text-2xl font-bold text-blue-400">{formatPrice(filteredTotalExVat)}</p>
-          </div>
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700 card-glow animate-fade-in-up stagger-4">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
-              <Receipt className="w-4 h-4" />
-              부가세
-            </div>
-            <p className="text-2xl font-bold text-purple-400">{formatPrice(filteredTotalSales - filteredTotalExVat)}</p>
-          </div>
-        </div>
+        </button>
 
-        {/* 검색 & 날짜 필터 */}
-        <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 mb-2 border border-slate-700 animate-fade-in-up stagger-5">
-          {/* 날짜 필터 버튼 */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[
-              { key: 'all', label: '전체' },
-              { key: 'today', label: '오늘' },
-              { key: 'yesterday', label: '어제' },
-              { key: 'week', label: '이번 주' },
-              { key: 'month', label: '이번 달' },
-              { key: 'custom', label: '날짜 선택' },
-            ].map(({ key, label }) => (
+        {/* 접히는 영역 */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
+          {/* 통계 카드 */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+            <div className="bg-slate-800/50 backdrop-blur rounded-xl p-3 border border-slate-700">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <FileText className="w-3.5 h-3.5" />
+                {dateFilter === 'all' ? '총 주문' : '조회 주문'}
+              </div>
+              <p className="text-xl font-bold text-white">{filteredOrders.length}건</p>
+              {dateFilter !== 'all' && <p className="text-[10px] text-slate-500 mt-0.5">전체 {orders.length}건</p>}
+            </div>
+            <div className="bg-slate-800/50 backdrop-blur rounded-xl p-3 border border-slate-700">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <Calculator className="w-3.5 h-3.5" />
+                {dateFilter === 'all' ? '총 매출' : '조회 매출'}
+              </div>
+              <p className="text-xl font-bold text-emerald-400">{formatPrice(filteredTotalSales)}</p>
+              {dateFilter !== 'all' && <p className="text-[10px] text-slate-500 mt-0.5">전체 {formatPrice(totalSales)}</p>}
+            </div>
+            <div className="bg-slate-800/50 backdrop-blur rounded-xl p-3 border border-slate-700">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <Receipt className="w-3.5 h-3.5" />
+                공급가액
+              </div>
+              <p className="text-xl font-bold text-blue-400">{formatPrice(filteredTotalExVat)}</p>
+            </div>
+            <div className="bg-slate-800/50 backdrop-blur rounded-xl p-3 border border-slate-700">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <Receipt className="w-3.5 h-3.5" />
+                부가세
+              </div>
+              <p className="text-xl font-bold text-purple-400">{formatPrice(filteredTotalSales - filteredTotalExVat)}</p>
+            </div>
+          </div>
+
+          {/* 검색 & 날짜 필터 */}
+          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-3 border border-slate-700">
+            {/* 날짜 필터 버튼 */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {[
+                { key: 'all', label: '전체' },
+                { key: 'today', label: '오늘' },
+                { key: 'yesterday', label: '어제' },
+                { key: 'week', label: '이번 주' },
+                { key: 'month', label: '이번 달' },
+                { key: 'custom', label: '날짜 선택' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => { setDateFilter(key); setSelectedOrders([]); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    dateFilter === key
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              {dateFilter === 'custom' && (
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              )}
               <button
-                key={key}
-                onClick={() => { setDateFilter(key); setSelectedOrders([]); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  dateFilter === key
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                onClick={() => setShowFilterDeleteConfirm(true)}
+                disabled={filteredOrders.length === 0}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  filteredOrders.length === 0 
+                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                    : 'bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/40'
                 }`}
               >
-                {label}
+                <Trash2 className="w-3.5 h-3.5" />
+                {getFilterLabel()} 삭제 ({filteredOrders.length})
               </button>
-            ))}
-            {dateFilter === 'custom' && (
+            </div>
+            
+            {/* 검색 */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                type="date"
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                type="text"
+                placeholder="주문번호, 고객명, 연락처 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-xl text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
-            )}
-            <button
-              onClick={() => setShowFilterDeleteConfirm(true)}
-              disabled={filteredOrders.length === 0}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                filteredOrders.length === 0 
-                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                  : 'bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/40'
-              }`}
-            >
-              <Trash2 className="w-4 h-4" />
-              {getFilterLabel()} 삭제 ({filteredOrders.length})
-            </button>
-          </div>
-          
-          {/* 검색 */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="주문번호, 고객명, 연락처 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-          
-          {/* 필터 결과 요약 & 전체 선택 */}
-          <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
-                />
-                <span className="text-slate-400">전체 선택</span>
-              </label>
-              <span className="text-slate-400">
-                검색 결과: <span className="text-white font-semibold">{filteredOrders.length}건</span>
-                {selectedOrders.length > 0 && <span className="text-emerald-400 ml-2">({selectedOrders.length}개 선택됨)</span>}
+            </div>
+            
+            {/* 필터 결과 요약 & 전체 선택 */}
+            <div className="mt-2.5 pt-2.5 border-t border-slate-700 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                  />
+                  <span className="text-slate-400 text-xs">전체 선택</span>
+                </label>
+                <span className="text-slate-400 text-xs">
+                  검색 결과: <span className="text-white font-semibold">{filteredOrders.length}건</span>
+                  {selectedOrders.length > 0 && <span className="text-emerald-400 ml-1">({selectedOrders.length}개 선택)</span>}
+                </span>
+              </div>
+              <span className="text-emerald-400 font-semibold text-sm">
+                {formatPrice(filteredTotalSales)}
               </span>
             </div>
-            <span className="text-emerald-400 font-semibold">
-              {formatPrice(filteredTotalSales)}
-            </span>
           </div>
         </div>
       </div>
