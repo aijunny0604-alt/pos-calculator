@@ -1600,88 +1600,98 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {savedCarts.map((cart, index) => (
-              <div 
-                key={index} 
-                onClick={(e) => handleCardClick(cart, index, e)}
-                className={`bg-slate-800 rounded-xl p-4 border transition-all cursor-pointer ${
-                  selectMode && selectedItems.includes(index) 
-                    ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50' 
-                    : 'border-slate-700 hover:border-violet-500/50 hover:bg-slate-750'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* 체크박스 (선택 모드일 때만) */}
-                  {selectMode && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleSelect(index); }}
-                      className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                        selectedItems.includes(index)
-                          ? 'bg-violet-500 border-violet-500'
-                          : 'border-slate-500 hover:border-violet-400'
-                      }`}
-                    >
-                      {selectedItems.includes(index) && <Check className="w-3 h-3 text-white" />}
-                    </button>
-                  )}
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="min-w-0">
-                        <h3 className="text-white font-semibold truncate">{cart.name}</h3>
-                        <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
-                      </div>
-                      <p className="text-emerald-400 font-bold text-sm ml-2">{formatPrice(cart.total)}</p>
-                    </div>
-                    
-                    <div className="bg-slate-900/50 rounded-lg p-2 mb-3">
-                      <p className="text-slate-400 text-sm truncate">
-                        {cart.items.map(item => `${item.name}(${item.quantity})`).join(', ')}
-                      </p>
-                      <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
-                    </div>
-                    
-                    {!selectMode && (
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onLoad(cart); onBack(); }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                          불러오기
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(index); }}
-                          className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+            {savedCarts.map((cart, index) => {
+              // 가격 계산 - priceType에 따라
+              const cartItemsDisplay = cart.items.map(item => {
+                const itemPrice = cart.priceType === 'wholesale' 
+                  ? (item.wholesale || item.price || 0)
+                  : (item.retail || item.wholesale || item.price || 0);
+                return `${item.name}(${item.quantity})`;
+              }).join(', ');
+              
+              return (
+                <div 
+                  key={index} 
+                  onClick={(e) => handleCardClick(cart, index, e)}
+                  className={`bg-slate-800 rounded-xl p-4 border transition-all duration-200 cursor-pointer transform ${
+                    selectMode && selectedItems.includes(index) 
+                      ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50' 
+                      : 'border-slate-700 hover:border-violet-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* 체크박스 (선택 모드일 때만) */}
+                    {selectMode && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleSelect(index); }}
+                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                          selectedItems.includes(index)
+                            ? 'bg-violet-500 border-violet-500'
+                            : 'border-slate-500 hover:border-violet-400'
+                        }`}
+                      >
+                        {selectedItems.includes(index) && <Check className="w-3 h-3 text-white" />}
+                      </button>
                     )}
                     
-                    {deleteConfirm === index && !selectMode && (
-                      <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
-                        <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="min-w-0">
+                          <h3 className="text-white font-semibold truncate">{cart.name}</h3>
+                          <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
+                        </div>
+                        <p className="text-emerald-400 font-bold text-sm ml-2">{formatPrice(cart.total)}</p>
+                      </div>
+                      
+                      <div className="bg-slate-900/50 rounded-lg p-2 mb-3">
+                        <p className="text-slate-400 text-sm truncate">
+                          {cartItemsDisplay}
+                        </p>
+                        <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
+                      </div>
+                      
+                      {!selectMode && (
                         <div className="flex gap-2">
                           <button 
-                            onClick={(e) => { e.stopPropagation(); onDelete(index); setDeleteConfirm(null); }}
-                            className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
+                            onClick={(e) => { e.stopPropagation(); onLoad(cart); onBack(); }}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
                           >
-                            삭제
+                            <Download className="w-4 h-4" />
+                            불러오기
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                            className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(index); }}
+                            className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
                           >
-                            취소
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      
+                      {deleteConfirm === index && !selectMode && (
+                        <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
+                          <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); onDelete(index); setDeleteConfirm(null); }}
+                              className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
+                            >
+                              삭제
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                              className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1693,66 +1703,74 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
             onClick={() => { setDetailCart(null); setDetailIndex(null); }}
           />
-          <div className="relative bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
+          <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col animate-fade-in">
             {/* 모달 헤더 */}
-            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
-                <ShoppingBag className="w-6 h-6 text-white" />
+                <ShoppingBag className="w-7 h-7 text-white" />
                 <div>
-                  <h2 className="text-lg font-bold text-white truncate max-w-[200px]">{detailCart.name}</h2>
-                  <p className="text-violet-200 text-xs">{detailCart.date} {detailCart.time}</p>
+                  <h2 className="text-xl font-bold text-white truncate max-w-[300px]">{detailCart.name}</h2>
+                  <p className="text-violet-200 text-sm">{detailCart.date} {detailCart.time}</p>
                 </div>
               </div>
               <button 
                 onClick={() => { setDetailCart(null); setDetailIndex(null); }}
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-6 h-6 text-white" />
               </button>
             </div>
 
             {/* 상품 목록 */}
             <div 
-              className="flex-1 overflow-y-auto p-4 modal-scroll-area" 
+              className="flex-1 overflow-y-auto p-5 modal-scroll-area" 
               data-lenis-prevent="true"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <Package className="w-4 h-4 text-violet-400" />
+              <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-lg">
+                <Package className="w-5 h-5 text-violet-400" />
                 상품 목록 ({detailCart.items.length}종 / {detailCart.items.reduce((sum, item) => sum + item.quantity, 0)}개)
               </h3>
               
-              <div className="space-y-2">
-                {detailCart.items.map((item, idx) => (
-                  <div key={idx} className="bg-slate-700/50 rounded-xl p-3 border border-slate-600">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate">{item.name}</p>
-                        <p className="text-slate-400 text-sm">@{formatPrice(item.price)}</p>
-                      </div>
-                      <div className="text-right ml-3">
-                        <p className="text-slate-300 text-sm">×{item.quantity}개</p>
-                        <p className="text-emerald-400 font-bold">{formatPrice(item.price * item.quantity)}</p>
+              <div className="space-y-3">
+                {detailCart.items.map((item, idx) => {
+                  // 가격 계산 - priceType에 따라 wholesale 또는 retail 사용
+                  const itemPrice = detailCart.priceType === 'wholesale' 
+                    ? (item.wholesale || item.price || 0)
+                    : (item.retail || item.wholesale || item.price || 0);
+                  const itemTotal = itemPrice * item.quantity;
+                  
+                  return (
+                    <div key={idx} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-violet-500/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium text-lg truncate">{item.name}</p>
+                          <p className="text-blue-400 text-sm mt-1">@{formatPrice(itemPrice)}</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-slate-300">×{item.quantity}개</p>
+                          <p className="text-emerald-400 font-bold text-lg">{formatPrice(itemTotal)}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* 금액 요약 + 버튼 */}
-            <div className="border-t border-slate-700 p-4 flex-shrink-0 bg-slate-800">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-slate-400">총 금액</span>
-                <span className="text-2xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
+            <div className="border-t border-slate-700 p-5 flex-shrink-0 bg-slate-800">
+              <div className="flex items-center justify-between mb-4 bg-slate-900/50 rounded-xl p-4">
+                <span className="text-slate-400 text-lg">총 금액</span>
+                <span className="text-3xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button 
                   onClick={() => { onLoad(detailCart); onBack(); }}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium text-lg transition-colors"
                 >
-                  <Download className="w-5 h-5" />
+                  <Download className="w-6 h-6" />
                   불러오기
                 </button>
                 <button 
@@ -1763,9 +1781,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                       setDetailIndex(null);
                     }
                   }}
-                  className="px-4 py-3 bg-red-600/20 hover:bg-red-600/30 rounded-xl text-red-400 transition-colors"
+                  className="px-5 py-4 bg-red-600/20 hover:bg-red-600/30 rounded-xl text-red-400 transition-colors"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <Trash2 className="w-6 h-6" />
                 </button>
               </div>
             </div>
@@ -1825,59 +1843,64 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 - 고정 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="w-full px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={selectedCustomer ? () => setSelectedCustomer(null) : onBack}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-300" />
-              </button>
-              <div className="flex items-center gap-2">
-                <Building className="w-6 h-6 text-emerald-400" />
-                <div>
-                  <h1 className="text-lg font-bold text-white">
-                    {selectedCustomer ? selectedCustomer.name : '거래처 목록'}
-                  </h1>
-                  <p className="text-emerald-400 text-xs">
-                    {selectedCustomer 
-                      ? `주문 ${getCustomerOrders(selectedCustomer.name).length}건 / 총 ${formatPrice(getCustomerTotalAmount(selectedCustomer.name))}`
-                      : `총 ${customers?.length || 0}개 업체`
-                    }
-                  </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      {/* 고정 상단 영역 */}
+      <div className="flex-shrink-0 sticky top-0 z-40 bg-slate-900">
+        {/* 헤더 */}
+        <header className="bg-slate-800/95 backdrop-blur-md border-b border-slate-700">
+          <div className="w-full px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={selectedCustomer ? () => setSelectedCustomer(null) : onBack}
+                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5 text-slate-300" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <Building className="w-6 h-6 text-emerald-400" />
+                  <div>
+                    <h1 className="text-lg font-bold text-white">
+                      {selectedCustomer ? selectedCustomer.name : '거래처 목록'}
+                    </h1>
+                    <p className="text-emerald-400 text-xs">
+                      {selectedCustomer 
+                        ? `주문 ${getCustomerOrders(selectedCustomer.name).length}건 / 총 ${formatPrice(getCustomerTotalAmount(selectedCustomer.name))}`
+                        : `총 ${customers?.length || 0}개 업체`
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* 검색 영역 - 고정 */}
-      {!selectedCustomer && (
-        <div className="sticky top-[52px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent px-4 pt-4 pb-2">
-          <div className="bg-slate-800/50 rounded-xl p-4 mb-2 border border-slate-700">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="업체명, 주소, 전화번호로 검색..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+        {/* 검색 영역 - 거래처 목록에서만 표시 */}
+        {!selectedCustomer && (
+          <div className="bg-slate-900 border-b border-slate-700/50 shadow-lg px-4 py-4">
+            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="업체명, 주소, 전화번호로 검색..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
             </div>
+            <p className="text-slate-400 text-sm mt-3 px-1">
+              검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
+            </p>
           </div>
-          <p className="text-slate-400 text-sm mb-2 px-1">
-            검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="w-full px-4 py-4">
+      {/* 스크롤 영역 */}
+      <div className="flex-1 overflow-y-auto" data-lenis-prevent="true">
+        <div className="w-full px-4 py-4">
         {selectedCustomer ? (
           /* 거래처 주문 이력 */
           <>
@@ -1996,6 +2019,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );
@@ -2117,37 +2141,46 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   };
   
   const generateShippingLabel = () => {
-    if (selectedOrders.length === 0) return;
-    const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    const selectedData = selectedOrders.length > 0 
+      ? filteredOrders.filter(o => selectedOrders.includes(o.orderNumber))
+      : [];
     
     // 보내는 곳별로 그룹화
     const groupedBySender = {};
+    senderList.forEach(sender => {
+      groupedBySender[sender] = [];
+    });
     selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber);
       const sender = setting.sender || senderList[0];
-      if (!groupedBySender[sender]) {
-        groupedBySender[sender] = [];
+      if (groupedBySender[sender]) {
+        groupedBySender[sender].push(order);
       }
-      groupedBySender[sender].push(order);
     });
     
     let csv = '\uFEFF';
     
-    // 각 보내는 곳별로 데이터 생성
-    Object.keys(groupedBySender).forEach((sender, senderIndex) => {
+    // 항상 모든 보내는 곳 섹션 출력 (무브모터스 → 엠파츠 순서)
+    senderList.forEach((sender, senderIndex) => {
       if (senderIndex > 0) csv += '\n'; // 그룹 간 빈 줄
       csv += '보내는곳 : ' + sender + '\n';
       csv += '번호,받는곳,배송,포장,운임,품명,연락처\n';
       
-      groupedBySender[sender].forEach((order, index) => {
-        const customer = findCustomer(order.customerName);
-        const mostExpensive = getMostExpensiveItem(order.items);
-        const phone = customer?.phone || order.customerPhone || '';
-        const address = customer?.address || '';
-        const setting = getOrderSetting(order.orderNumber);
-        csv += `${index + 1},${order.customerName},${setting.paymentType},${setting.packaging},${setting.shippingCost},${mostExpensive},${phone}\n`;
-        if (address) csv += `${address}\n`;
-      });
+      const orders = groupedBySender[sender] || [];
+      if (orders.length === 0) {
+        // 주문이 없으면 빈 행 추가
+        csv += ',,,,,, \n';
+      } else {
+        orders.forEach((order, index) => {
+          const customer = findCustomer(order.customerName);
+          const mostExpensive = getMostExpensiveItem(order.items);
+          const phone = customer?.phone || order.customerPhone || '';
+          const address = customer?.address || '';
+          const setting = getOrderSetting(order.orderNumber);
+          csv += `${index + 1},${order.customerName},${setting.paymentType},${setting.packaging},${setting.shippingCost},${mostExpensive},${phone}\n`;
+          if (address) csv += `${address}\n`;
+        });
+      }
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -2158,8 +2191,9 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   };
 
   const generateXlsxLabel = async () => {
-    if (selectedOrders.length === 0) return;
-    const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    const selectedData = selectedOrders.length > 0 
+      ? filteredOrders.filter(o => selectedOrders.includes(o.orderNumber))
+      : [];
     if (!window.ExcelJS) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
@@ -2201,21 +2235,23 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     const thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     const headers = ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처'];
     
-    // 보내는 곳별로 그룹화
+    // 보내는 곳별로 그룹화 (항상 모든 보내는 곳 초기화)
     const groupedBySender = {};
+    senderList.forEach(sender => {
+      groupedBySender[sender] = [];
+    });
     selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber);
       const sender = setting.sender || senderList[0];
-      if (!groupedBySender[sender]) {
-        groupedBySender[sender] = [];
+      if (groupedBySender[sender]) {
+        groupedBySender[sender].push(order);
       }
-      groupedBySender[sender].push(order);
     });
     
     let rowNum = 1;
     
-    // 각 보내는 곳별로 데이터 생성
-    Object.keys(groupedBySender).forEach((sender, senderIndex) => {
+    // 항상 모든 보내는 곳 섹션 출력 (무브모터스 → 엠파츠 순서)
+    senderList.forEach((sender, senderIndex) => {
       // 그룹 간 빈 줄 추가 (첫 그룹 제외)
       if (senderIndex > 0) {
         rowNum++;
@@ -2230,7 +2266,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       senderHeaderRow.getCell(1).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE8F5E9' } // 연한 초록색 배경
+        fgColor: { argb: sender === '엠파츠' ? 'FFE3F2FD' : 'FFE8F5E9' } // 엠파츠는 연한 파란색, 무브모터스는 연한 초록색
       };
       senderHeaderRow.getCell(1).border = thinBorder;
       senderHeaderRow.height = 38;
@@ -2248,75 +2284,89 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       colHeaderRow.height = 28;
       rowNum++;
       
-      // 해당 보내는 곳의 주문 데이터
-      groupedBySender[sender].forEach((order, index) => {
-        const customer = order.customerName ? findCustomer(order.customerName) : null;
-        const mostExpensive = getMostExpensiveItem(order.items);
-        const phone = customer?.phone || order.customerPhone || '';
-        const address = customer?.address || '';
-        const setting = getOrderSetting(order.orderNumber);
-        const isPrepaid = setting.paymentType === '선불';
-        
-        // 포장과 운임 쉼표로 분리
-        const packagingValue = String(setting.packaging || '');
-        const shippingCostValue = String(setting.shippingCost || '');
-        
-        // 쉼표가 있으면 줄바꿈 문자로 치환
-        const packagingDisplay = packagingValue.includes(',') 
-          ? packagingValue.split(',').join('\n') 
-          : packagingValue;
-        
-        const shippingDisplay = shippingCostValue.includes(',') 
-          ? shippingCostValue.split(',').join('\n') 
-          : shippingCostValue;
-        
-        const dataRow = worksheet.getRow(rowNum);
-        const rowData = [
-          index + 1, 
-          order.customerName || '', 
-          setting.paymentType, 
-          packagingDisplay, 
-          shippingDisplay, 
-          mostExpensive, 
-          phone
-        ];
-        
-        rowData.forEach((value, idx) => {
-          const cell = dataRow.getCell(idx + 1);
-          cell.value = value;
-          cell.font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
-          cell.alignment = { 
-            horizontal: 'center', 
-            vertical: 'middle',
-            wrapText: true  // 줄바꿈 활성화
-          };
+      const orders = groupedBySender[sender] || [];
+      
+      if (orders.length === 0) {
+        // 주문이 없으면 빈 행 추가
+        const emptyRow = worksheet.getRow(rowNum);
+        headers.forEach((_, idx) => {
+          const cell = emptyRow.getCell(idx + 1);
+          cell.value = '';
           cell.border = thinBorder;
         });
-        
-        // 쉼표가 여러 개면 행 높이 증가
-        const maxLines = Math.max(
-          (packagingValue.match(/,/g) || []).length + 1,
-          (shippingCostValue.match(/,/g) || []).length + 1
-        );
-        dataRow.height = Math.max(40, 25 * maxLines);
+        emptyRow.height = 40;
         rowNum++;
-        
-        // 주소 행 추가 (줄바꿈 적용)
-        if (address) {
-          worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
-          const addrRow = worksheet.getRow(rowNum);
-          addrRow.getCell(1).value = address;
-          addrRow.getCell(1).font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
-          addrRow.getCell(1).alignment = { 
-            horizontal: 'center', 
-            vertical: 'middle',
-            wrapText: true  // 줄바꿈 활성화
-          };
-          addrRow.getCell(1).border = thinBorder;
-          addrRow.height = 32;
+      } else {
+        // 해당 보내는 곳의 주문 데이터
+        orders.forEach((order, index) => {
+          const customer = order.customerName ? findCustomer(order.customerName) : null;
+          const mostExpensive = getMostExpensiveItem(order.items);
+          const phone = customer?.phone || order.customerPhone || '';
+          const address = customer?.address || '';
+          const setting = getOrderSetting(order.orderNumber);
+          const isPrepaid = setting.paymentType === '선불';
+          
+          // 포장과 운임 쉼표로 분리
+          const packagingValue = String(setting.packaging || '');
+          const shippingCostValue = String(setting.shippingCost || '');
+          
+          // 쉼표가 있으면 줄바꿈 문자로 치환
+          const packagingDisplay = packagingValue.includes(',') 
+            ? packagingValue.split(',').join('\n') 
+            : packagingValue;
+          
+          const shippingDisplay = shippingCostValue.includes(',') 
+            ? shippingCostValue.split(',').join('\n') 
+            : shippingCostValue;
+          
+          const dataRow = worksheet.getRow(rowNum);
+          const rowData = [
+            index + 1, 
+            order.customerName || '', 
+            setting.paymentType, 
+            packagingDisplay, 
+            shippingDisplay, 
+            mostExpensive, 
+            phone
+          ];
+          
+          rowData.forEach((value, idx) => {
+            const cell = dataRow.getCell(idx + 1);
+            cell.value = value;
+            cell.font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
+            cell.alignment = { 
+              horizontal: 'center', 
+              vertical: 'middle',
+              wrapText: true  // 줄바꿈 활성화
+            };
+            cell.border = thinBorder;
+          });
+          
+          // 쉼표가 여러 개면 행 높이 증가
+          const maxLines = Math.max(
+            (packagingValue.match(/,/g) || []).length + 1,
+            (shippingCostValue.match(/,/g) || []).length + 1
+          );
+          dataRow.height = Math.max(40, 25 * maxLines);
           rowNum++;
-        }
-      });
+          
+          // 주소 행 추가 (줄바꿈 적용)
+          if (address) {
+            worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
+            const addrRow = worksheet.getRow(rowNum);
+            addrRow.getCell(1).value = address;
+            addrRow.getCell(1).font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
+            addrRow.getCell(1).alignment = { 
+              horizontal: 'center', 
+              vertical: 'middle',
+              wrapText: true  // 줄바꿈 활성화
+            };
+            addrRow.getCell(1).border = thinBorder;
+            addrRow.height = 32;
+            rowNum++;
+          }
+        });
+      }
     });
     
     const buffer = await workbook.xlsx.writeBuffer();
@@ -2328,18 +2378,21 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   };
   
   const printShippingLabels = () => {
-    if (selectedOrders.length === 0) return;
-    const selectedData = filteredOrders.filter(o => selectedOrders.includes(o.orderNumber));
+    const selectedData = selectedOrders.length > 0 
+      ? filteredOrders.filter(o => selectedOrders.includes(o.orderNumber))
+      : [];
     
-    // 보내는 곳별로 그룹화
+    // 보내는 곳별로 그룹화 (항상 모든 보내는 곳 초기화)
     const groupedBySender = {};
+    senderList.forEach(sender => {
+      groupedBySender[sender] = [];
+    });
     selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber);
       const sender = setting.sender || senderList[0];
-      if (!groupedBySender[sender]) {
-        groupedBySender[sender] = [];
+      if (groupedBySender[sender]) {
+        groupedBySender[sender].push(order);
       }
-      groupedBySender[sender].push(order);
     });
     
     let html = `<!DOCTYPE html>
@@ -2384,7 +2437,12 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       font-weight: bold;
       text-align: center;
       padding: 12px;
+    }
+    .header-green {
       background-color: #e8f5e9;
+    }
+    .header-blue {
+      background-color: #e3f2fd;
     }
     .prepaid {
       font-weight: bold;
@@ -2410,13 +2468,14 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
 </head>
 <body>`;
 
-    // 각 보내는 곳별로 테이블 생성
-    Object.keys(groupedBySender).forEach((sender) => {
+    // 항상 모든 보내는 곳 섹션 출력 (무브모터스 → 엠파츠 순서)
+    senderList.forEach((sender) => {
+      const headerClass = sender === '엠파츠' ? 'header header-blue' : 'header header-green';
       html += `
   <table>
     <thead>
       <tr>
-        <td colspan="7" class="header">보내는곳 : ${sender}</td>
+        <td colspan="7" class="${headerClass}">보내는곳 : ${sender}</td>
       </tr>
       <tr>
         <th class="col-num">번호</th>
@@ -2430,30 +2489,45 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     </thead>
     <tbody>`;
     
-      groupedBySender[sender].forEach((order, index) => {
-        const customer = findCustomer(order.customerName);
-        const mostExpensive = getMostExpensiveItem(order.items);
-        const phone = customer?.phone || order.customerPhone || '';
-        const address = customer?.address || '';
-        const setting = getOrderSetting(order.orderNumber);
-        const isPrepaid = setting.paymentType === '선불';
-        const rowClass = isPrepaid ? 'prepaid' : '';
-        
-        // 포장과 운임을 쉼표로 구분하여 줄바꿈 처리
-        const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
-        const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
-        
-        html += `<tr class="${rowClass}">
-          <td class="col-num">${index + 1}</td>
-          <td class="col-name">${order.customerName || ''}</td>
-          <td class="col-payment">${setting.paymentType}</td>
-          <td class="col-pack">${packagingDisplay}</td>
-          <td class="col-cost">${shippingDisplay}</td>
-          <td class="col-item">${mostExpensive}</td>
-          <td class="col-phone">${phone}</td>
+      const orders = groupedBySender[sender] || [];
+      
+      if (orders.length === 0) {
+        // 주문이 없으면 빈 행 추가
+        html += `<tr>
+          <td class="col-num"></td>
+          <td class="col-name"></td>
+          <td class="col-payment"></td>
+          <td class="col-pack"></td>
+          <td class="col-cost"></td>
+          <td class="col-item"></td>
+          <td class="col-phone"></td>
         </tr>`;
-        if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
-      });
+      } else {
+        orders.forEach((order, index) => {
+          const customer = findCustomer(order.customerName);
+          const mostExpensive = getMostExpensiveItem(order.items);
+          const phone = customer?.phone || order.customerPhone || '';
+          const address = customer?.address || '';
+          const setting = getOrderSetting(order.orderNumber);
+          const isPrepaid = setting.paymentType === '선불';
+          const rowClass = isPrepaid ? 'prepaid' : '';
+          
+          // 포장과 운임을 쉼표로 구분하여 줄바꿈 처리
+          const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
+          const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
+          
+          html += `<tr class="${rowClass}">
+            <td class="col-num">${index + 1}</td>
+            <td class="col-name">${order.customerName || ''}</td>
+            <td class="col-payment">${setting.paymentType}</td>
+            <td class="col-pack">${packagingDisplay}</td>
+            <td class="col-cost">${shippingDisplay}</td>
+            <td class="col-item">${mostExpensive}</td>
+            <td class="col-phone">${phone}</td>
+          </tr>`;
+          if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
+        });
+      }
       
       html += `
     </tbody>
@@ -2657,10 +2731,13 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
         
         {/* 하단 버튼 영역 */}
         <div className="border-t border-slate-700 p-4 flex-shrink-0 bg-slate-800">
+          <p className="text-slate-400 text-xs text-center mb-2">
+            {selectedOrders.length === 0 ? '주문을 선택하지 않으면 빈 양식이 출력됩니다' : `${selectedOrders.length}건 선택됨`}
+          </p>
           <div className="flex gap-2">
-            <button onClick={generateShippingLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}><Download className="w-5 h-5" />CSV</button>
-            <button onClick={generateXlsxLabel} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}><FileText className="w-5 h-5" />Excel</button>
-            <button onClick={printShippingLabels} disabled={selectedOrders.length === 0} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${selectedOrders.length === 0 ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-500 text-white'}`}><Printer className="w-5 h-5" />인쇄</button>
+            <button onClick={generateShippingLabel} className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors bg-emerald-600 hover:bg-emerald-500 text-white"><Download className="w-5 h-5" />CSV</button>
+            <button onClick={generateXlsxLabel} className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors bg-blue-600 hover:bg-blue-500 text-white"><FileText className="w-5 h-5" />Excel</button>
+            <button onClick={printShippingLabels} className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors bg-orange-600 hover:bg-orange-500 text-white"><Printer className="w-5 h-5" />인쇄</button>
           </div>
         </div>
       </div>
