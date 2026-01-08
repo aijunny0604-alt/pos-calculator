@@ -5620,7 +5620,7 @@ export default function PriceCalculator() {
         </div>
       </header>
 
-      <div className="w-full px-4 py-3 pb-48 md:pb-3">
+      <div className="w-full px-4 py-3 pb-48 md:pb-3 md:pr-[420px] lg:pr-[440px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
@@ -5785,8 +5785,9 @@ export default function PriceCalculator() {
             )}
           </div>
 
-          <div className={`md:w-[420px] lg:w-[480px] ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-40`}>
-            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 md:sticky md:top-12 z-40 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
+          {/* 장바구니 - 데스크톱에서 오른쪽 고정 */}
+          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-14 md:bottom-4 md:left-auto md:right-4 md:w-[400px] lg:w-[420px] z-40`}>
+            <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right md:h-full md:flex md:flex-col">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-emerald-400" />
@@ -5798,7 +5799,7 @@ export default function PriceCalculator() {
                 </button>
               </div>
 
-              <div className="max-h-52 md:max-h-80 overflow-y-auto order-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="max-h-52 md:max-h-none md:flex-1 overflow-y-auto order-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
