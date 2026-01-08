@@ -5769,7 +5769,7 @@ export default function PriceCalculator() {
       </header>
 
       {/* 검색바 - 완전 고정 */}
-      <div className="fixed top-14 sm:top-16 left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
+      <div className="fixed top-16 sm:top-20 left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 relative">
@@ -5814,7 +5814,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="w-full px-4 pt-24 sm:pt-28 pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
+      <div className="w-full px-4 pt-28 sm:pt-32 pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
@@ -5937,7 +5937,7 @@ export default function PriceCalculator() {
           </div>
 
           {/* 장바구니 - 데스크톱에서 오른쪽 상단 고정 */}
-          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-16 md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
+          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-20 md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
             <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
