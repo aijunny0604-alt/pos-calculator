@@ -231,6 +231,7 @@ const CustomStyles = () => (
       scroll-behavior: smooth;
       overflow-y: scroll;
       overscroll-behavior: smooth;
+      background: #0f172a; /* slate-900 */
     }
     
     body {
@@ -244,6 +245,15 @@ const CustomStyles = () => (
       user-select: none;
       /* 아이폰 safe area 대응 */
       padding-bottom: env(safe-area-inset-bottom);
+      background: #0f172a; /* slate-900 */
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+    
+    #root {
+      background: #0f172a; /* slate-900 */
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
     }
     
     /* 모든 요소 텍스트 선택 방지 */
