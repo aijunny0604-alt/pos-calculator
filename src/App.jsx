@@ -1888,7 +1888,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col select-none">
       {/* 고정 상단 영역 */}
       <div className="flex-shrink-0 sticky top-0 z-40 bg-slate-900">
         {/* 헤더 */}
@@ -2881,7 +2881,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col select-none">
       {/* 고정 상단 영역 */}
       <div className="flex-shrink-0 sticky top-0 z-40 bg-slate-900">
         {/* 헤더 */}
