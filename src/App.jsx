@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
@@ -1458,7 +1458,7 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDele
   
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-2xl border border-slate-700 animate-scale-in">
+      <div className="bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl border border-slate-700 animate-scale-in">
         <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Save className="w-6 h-6 text-white" />
@@ -1652,53 +1652,10 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDele
 }
 
 // ==================== 장바구니 저장 모달 ====================
-// ==================== 거래처 목록 모달 ====================
-function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPrice }) {
+// ==================== 거래처 목록 페이지 ====================
+function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
-  
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleEsc = (e) => { 
-      if (e.key === 'Escape') {
-        if (selectedCustomer) {
-          setSelectedCustomer(null);
-        } else {
-          onClose();
-        }
-      }
-    };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose, selectedCustomer]);
-
-  // 모달 열릴 때 body 스크롤 완전 잠금
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      const scrollY = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedCustomer(null);
-      setSearchTerm('');
-    }
-  }, [isOpen]);
-  
-  if (!isOpen) return null;
   
   // 검색 필터링
   const filteredCustomers = (customers || []).filter(c => 
@@ -1728,40 +1685,43 @@ function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPric
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onWheel={(e) => e.stopPropagation()}>
-      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-700 flex flex-col shadow-2xl animate-scale-in">
-        {/* 헤더 */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            {selectedCustomer ? (
-              <button onClick={() => setSelectedCustomer(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
-                <ChevronLeft className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={selectedCustomer ? () => setSelectedCustomer(null) : onBack}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
               </button>
-            ) : (
-              <Building className="w-6 h-6 text-white" />
-            )}
-            <div>
-              <h2 className="text-xl font-bold text-white">
-                {selectedCustomer ? selectedCustomer.name : '거래처 목록'}
-              </h2>
-              <p className="text-emerald-100 text-sm">
-                {selectedCustomer 
-                  ? `주문 ${getCustomerOrders(selectedCustomer.name).length}건 / 총 ${formatPrice(getCustomerTotalAmount(selectedCustomer.name))}`
-                  : `총 ${customers?.length || 0}개 업체`
-                }
-              </p>
+              <div className="flex items-center gap-2">
+                <Building className="w-6 h-6 text-emerald-400" />
+                <div>
+                  <h1 className="text-lg font-bold text-white">
+                    {selectedCustomer ? selectedCustomer.name : '거래처 목록'}
+                  </h1>
+                  <p className="text-emerald-400 text-xs">
+                    {selectedCustomer 
+                      ? `주문 ${getCustomerOrders(selectedCustomer.name).length}건 / 총 ${formatPrice(getCustomerTotalAmount(selectedCustomer.name))}`
+                      : `총 ${customers?.length || 0}개 업체`
+                    }
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-white" />
-          </button>
         </div>
-        
+      </header>
+
+      <div className="w-full px-4 py-4">
         {selectedCustomer ? (
           /* 거래처 주문 이력 */
           <>
             {/* 거래처 정보 */}
-            <div className="p-4 border-b border-slate-700 bg-slate-800/50">
+            <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
               <div className="flex flex-wrap gap-4 text-sm">
                 {selectedCustomer.phone && (
                   <div className="flex items-center gap-2">
@@ -1772,49 +1732,56 @@ function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPric
                 {selectedCustomer.address && (
                   <div className="flex items-center gap-2 flex-1">
                     <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span className="text-slate-300 truncate">{selectedCustomer.address}</span>
+                    <span className="text-slate-300">{selectedCustomer.address}</span>
                   </div>
                 )}
               </div>
+              {selectedCustomer.memo && (
+                <p className="text-slate-500 text-sm mt-2 pt-2 border-t border-slate-600">
+                  메모: {selectedCustomer.memo}
+                </p>
+              )}
             </div>
             
             {/* 주문 이력 */}
-            <div className="overflow-y-auto flex-1 p-4 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {getCustomerOrders(selectedCustomer.name).length === 0 ? (
-                <div className="text-center py-12">
-                  <Receipt className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">주문 이력이 없습니다</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {getCustomerOrders(selectedCustomer.name).map(order => (
-                    <div key={order.orderNumber} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-slate-400 text-sm">{formatDate(order.createdAt)}</span>
-                        <span className="text-emerald-400 font-bold">{formatPrice(order.totalAmount)}</span>
-                      </div>
-                      <div className="space-y-1">
-                        {(order.items || []).map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm">
-                            <span className="text-slate-300">{item.name} x{item.quantity}</span>
-                            <span className="text-slate-400">{formatPrice(item.price * item.quantity)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {order.memo && (
-                        <p className="text-slate-500 text-xs mt-2 pt-2 border-t border-slate-600">메모: {order.memo}</p>
-                      )}
+            <p className="text-slate-400 text-sm mb-3">
+              주문 이력: <span className="text-white font-semibold">{getCustomerOrders(selectedCustomer.name).length}건</span>
+            </p>
+            
+            {getCustomerOrders(selectedCustomer.name).length === 0 ? (
+              <div className="text-center py-12">
+                <Receipt className="w-16 h-16 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400">주문 이력이 없습니다</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {getCustomerOrders(selectedCustomer.name).map(order => (
+                  <div key={order.orderNumber} className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-slate-400 text-sm">{formatDate(order.createdAt)}</span>
+                      <span className="text-emerald-400 font-bold">{formatPrice(order.totalAmount)}</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="space-y-1">
+                      {(order.items || []).map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span className="text-slate-300">{item.name} x{item.quantity}</span>
+                          <span className="text-slate-400">{formatPrice(item.price * item.quantity)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {order.memo && (
+                      <p className="text-slate-500 text-xs mt-2 pt-2 border-t border-slate-600">메모: {order.memo}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           /* 거래처 목록 */
           <>
             {/* 검색 */}
-            <div className="p-4 border-b border-slate-700">
+            <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -1822,80 +1789,71 @@ function CustomerListModal({ isOpen, onClose, customers, orders = [], formatPric
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="업체명, 주소, 전화번호로 검색..."
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              <p className="text-slate-400 text-sm mt-2">검색 결과: {filteredCustomers.length}개</p>
             </div>
             
+            <p className="text-slate-400 text-sm mb-3">
+              검색 결과: <span className="text-white font-semibold">{filteredCustomers.length}개</span>
+            </p>
+            
             {/* 목록 */}
-            <div className="overflow-y-auto flex-1 p-4 mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {filteredCustomers.length === 0 ? (
-                <div className="text-center py-8">
-                  <Building className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">등록된 거래처가 없습니다</p>
-                  <p className="text-slate-500 text-sm mt-1">관리자 페이지에서 거래처를 추가하세요</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {filteredCustomers.map(customer => {
-                    const orderCount = getCustomerOrders(customer.name).length;
-                    const totalAmount = getCustomerTotalAmount(customer.name);
-                    
-                    return (
-                      <div 
-                        key={customer.id} 
-                        onClick={() => setSelectedCustomer(customer)}
-                        className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-emerald-500/50 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-white font-semibold truncate">{customer.name}</h3>
-                              {orderCount > 0 && (
-                                <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">
-                                  {orderCount}건
-                                </span>
-                              )}
-                            </div>
-                            {customer.phone && (
-                              <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
-                                <Phone className="w-3.5 h-3.5" />
-                                {customer.phone}
-                              </p>
-                            )}
-                            {customer.address && (
-                              <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
-                                <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                                <span className="truncate">{customer.address}</span>
-                              </p>
-                            )}
-                            {totalAmount > 0 && (
-                              <p className="text-blue-400 text-xs mt-2">
-                                총 거래: {formatPrice(totalAmount)}
-                              </p>
+            {filteredCustomers.length === 0 ? (
+              <div className="text-center py-12">
+                <Building className="w-16 h-16 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400">등록된 거래처가 없습니다</p>
+                <p className="text-slate-500 text-sm mt-1">관리자 페이지에서 거래처를 추가하세요</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredCustomers.map(customer => {
+                  const orderCount = getCustomerOrders(customer.name).length;
+                  const totalAmount = getCustomerTotalAmount(customer.name);
+                  
+                  return (
+                    <div 
+                      key={customer.id} 
+                      onClick={() => setSelectedCustomer(customer)}
+                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group hover:scale-[1.02]"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-semibold truncate">{customer.name}</h3>
+                            {orderCount > 0 && (
+                              <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">
+                                {orderCount}건
+                              </span>
                             )}
                           </div>
-                          <ChevronLeft className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 rotate-180 transition-colors" />
+                          {customer.phone && (
+                            <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
+                              <Phone className="w-3.5 h-3.5" />
+                              {customer.phone}
+                            </p>
+                          )}
+                          {customer.address && (
+                            <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
+                              <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                              <span className="truncate">{customer.address}</span>
+                            </p>
+                          )}
+                          {totalAmount > 0 && (
+                            <p className="text-blue-400 text-xs mt-2">
+                              총 거래: {formatPrice(totalAmount)}
+                            </p>
+                          )}
                         </div>
+                        <ChevronLeft className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 rotate-180 transition-colors" />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </>
         )}
-        
-        {/* 하단 버튼 */}
-        <div className="p-4 border-t border-slate-700 flex-shrink-0">
-          <button
-            onClick={() => selectedCustomer ? setSelectedCustomer(null) : onClose()}
-            className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
-          >
-            {selectedCustomer ? '← 목록으로' : '닫기'}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -2225,39 +2183,11 @@ function ShippingLabelModal({ isOpen, onClose, orders = [], customers = [], form
   );
 }
 
-// ==================== 재고 현황 모달 ====================
-function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice }) {
+// ==================== 재고 현황 페이지 ====================
+function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [stockFilter, setStockFilter] = useState('all'); // all, normal, low, out
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-
-  // 모달 열릴 때 body 스크롤 완전 잠금
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      const scrollY = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
-    };
-  }, [isOpen]);
-  
-  if (!isOpen) return null;
   
   // 필터링된 제품
   const filteredProducts = products.filter(p => {
@@ -2283,47 +2213,64 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
   };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" data-lenis-prevent="true">
-      <div className="bg-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in" data-lenis-prevent="true">
-        {/* 헤더 */}
-        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Package className="w-6 h-6 text-white" />
-            <div>
-              <h2 className="text-xl font-bold text-white">재고 현황</h2>
-              <p className="text-cyan-100 text-sm">전체 {products.length}개 제품</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* 헤더 */}
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={onBack}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Package className="w-6 h-6 text-cyan-400" />
+                <div>
+                  <h1 className="text-lg font-bold text-white">재고 현황</h1>
+                  <p className="text-cyan-400 text-xs">전체 {products.length}개 제품</p>
+                </div>
+              </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-white" />
+        </div>
+      </header>
+
+      <div className="w-full px-4 py-4">
+        {/* 재고 통계 카드 */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-4">
+          <button onClick={() => setStockFilter('all')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-800 hover:bg-slate-700'}`}>
+            <p className="text-slate-400 text-xs sm:text-sm mb-1">전체</p>
+            <p className="text-xl sm:text-2xl font-bold text-white">{stats.total}</p>
+          </button>
+          <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
+            <p className="text-emerald-300 text-xs sm:text-sm mb-1">정상</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.normal}</p>
+          </button>
+          <button onClick={() => setStockFilter('low')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
+            <p className="text-yellow-300 text-xs sm:text-sm mb-1">부족</p>
+            <p className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.low}</p>
+          </button>
+          <button onClick={() => setStockFilter('out')} className={`rounded-xl p-3 sm:p-4 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
+            <p className="text-red-300 text-xs sm:text-sm mb-1">품절</p>
+            <p className="text-xl sm:text-2xl font-bold text-red-400">{stats.out}</p>
           </button>
         </div>
         
-        {/* 재고 통계 카드 (클릭 가능) */}
-        <div className="p-3 sm:p-4 border-b border-slate-700">
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
-            <button onClick={() => setStockFilter('all')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
-              <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">전체</p>
-              <p className="text-base sm:text-xl font-bold text-white">{stats.total}</p>
-            </button>
-            <button onClick={() => setStockFilter('normal')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30' : 'bg-emerald-600/20 hover:bg-emerald-600/30'}`}>
-              <p className="text-emerald-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">정상</p>
-              <p className="text-base sm:text-xl font-bold text-emerald-400">{stats.normal}</p>
-            </button>
-            <button onClick={() => setStockFilter('low')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30' : 'bg-yellow-600/20 hover:bg-yellow-600/30'}`}>
-              <p className="text-yellow-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">부족</p>
-              <p className="text-base sm:text-xl font-bold text-yellow-400">{stats.low}</p>
-            </button>
-            <button onClick={() => setStockFilter('out')} className={`rounded-xl p-2 sm:p-3 text-center transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30' : 'bg-red-600/20 hover:bg-red-600/30'}`}>
-              <p className="text-red-300 text-[10px] sm:text-xs mb-0.5 sm:mb-1">품절</p>
-              <p className="text-base sm:text-xl font-bold text-red-400">{stats.out}</p>
-            </button>
+        {/* 검색 & 카테고리 필터 */}
+        <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700">
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="제품 검색..."
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
           </div>
-        </div>
-        
-        {/* 카테고리 필터 & 검색 */}
-        <div className="p-4 border-b border-slate-700">
-          <div className="flex flex-wrap gap-2 mb-3 max-h-32 overflow-y-auto mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto mobile-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setSelectedCategory('전체')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -2344,66 +2291,55 @@ function StockOverviewModal({ isOpen, onClose, products, categories, formatPrice
               </button>
             ))}
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="제품 검색..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-cyan-500"
-            />
-          </div>
         </div>
         
+        {/* 검색 결과 표시 */}
+        <p className="text-slate-400 text-sm mb-3">
+          {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
+          {selectedCategory !== '전체' && ' · '}
+          검색 결과: <span className="text-white font-semibold">{filteredProducts.length}개</span>
+        </p>
+        
         {/* 제품 목록 */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-320px)] overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <p className="text-slate-400 text-sm mb-3">
-            {selectedCategory !== '전체' && <span className="text-cyan-400">{selectedCategory}</span>}
-            {selectedCategory !== '전체' && ' · '}
-            검색 결과: <span className="text-white font-semibold">{filteredProducts.length}개</span>
-          </p>
-          
-          {filteredProducts.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">해당 조건의 제품이 없습니다</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {filteredProducts.map(product => {
-                const stock = product.stock ?? 50;
-                const minStock = product.min_stock || 5;
-                const isOut = stock === 0;
-                const isLow = stock > 0 && stock <= minStock;
-                
-                return (
-                  <div 
-                    key={product.id} 
-                    className={`rounded-lg p-3 border ${
-                      isOut ? 'bg-red-900/20 border-red-500/30' :
-                      isLow ? 'bg-yellow-900/20 border-yellow-500/30' :
-                      'bg-emerald-900/10 border-emerald-500/20'
-                    }`}
-                  >
-                    <p className="text-white text-sm font-medium truncate">{product.name}</p>
-                    <div className="flex justify-between items-center mt-1">
-                      <p className="text-slate-400 text-xs truncate">{product.category}</p>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        isOut ? 'bg-red-600/30 text-red-400' :
-                        isLow ? 'bg-yellow-600/30 text-yellow-400' :
-                        'bg-emerald-600/30 text-emerald-400'
-                      }`}>
-                        {isOut ? '품절' : `${stock}개`}
-                      </span>
-                    </div>
-                    <p className="text-slate-500 text-xs mt-1">{formatPrice(product.wholesale)}</p>
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400">해당 조건의 제품이 없습니다</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {filteredProducts.map(product => {
+              const stock = product.stock ?? 50;
+              const minStock = product.min_stock || 5;
+              const isOut = stock === 0;
+              const isLow = stock > 0 && stock <= minStock;
+              
+              return (
+                <div 
+                  key={product.id} 
+                  className={`rounded-xl p-4 border transition-transform hover:scale-[1.02] ${
+                    isOut ? 'bg-red-900/20 border-red-500/30' :
+                    isLow ? 'bg-yellow-900/20 border-yellow-500/30' :
+                    'bg-emerald-900/10 border-emerald-500/20'
+                  }`}
+                >
+                  <p className="text-white text-sm font-medium truncate mb-2">{product.name}</p>
+                  <p className="text-slate-400 text-xs truncate mb-2">{product.category}</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-slate-500 text-xs">{formatPrice(product.wholesale)}</p>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      isOut ? 'bg-red-600/30 text-red-400' :
+                      isLow ? 'bg-yellow-600/30 text-yellow-400' :
+                      'bg-emerald-600/30 text-emerald-400'
+                    }`}>
+                      {isOut ? '품절' : `${stock}개`}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2697,7 +2633,7 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -3727,65 +3663,67 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
       <CustomStyles />
       
       <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-              <ChevronLeft className="w-6 h-6 text-white" />
-            </button>
+        <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
+          {/* 상단 행: 뒤로가기, 타이틀, 새로고침 */}
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Settings className="w-6 h-6 text-amber-400" />
-              <h1 className="text-xl font-bold text-white">관리자</h1>
+              <button onClick={onBack} className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
+                <h1 className="text-base sm:text-xl font-bold text-white">관리자</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+              {activeTab === 'products' ? (
+                <>
+                  <button 
+                    onClick={() => setShowResetStockModal(true)} 
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-xs sm:text-sm font-medium transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden xs:inline">재고 초기화</span>
+                  </button>
+                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-xs sm:text-sm font-medium transition-colors">
+                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="hidden xs:inline">제품 추가</span>
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-xs sm:text-sm font-medium transition-colors">
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden xs:inline">거래처 추가</span>
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-              <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-            {activeTab === 'products' ? (
-              <>
-                <button 
-                  onClick={() => setShowResetStockModal(true)} 
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 font-medium transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  재고 초기화
-                </button>
-                <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white font-medium transition-colors">
-                  <Plus className="w-5 h-5" />
-                  제품 추가
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition-colors">
-                <Plus className="w-5 h-5" />
-                거래처 추가
-              </button>
-            )}
-          </div>
-        </div>
-        {/* 탭 메뉴 */}
-        <div className="max-w-7xl mx-auto px-4 pb-2">
+          
+          {/* 탭 메뉴 */}
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('products')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 activeTab === 'products' 
                   ? 'bg-amber-600 text-white' 
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              <Package className="w-4 h-4 inline mr-2" />
+              <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1 sm:mr-2" />
               제품 관리 ({products.length})
             </button>
             <button
               onClick={() => setActiveTab('customers')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 activeTab === 'customers' 
                   ? 'bg-emerald-600 text-white' 
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              <Building className="w-4 h-4 inline mr-2" />
+              <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1 sm:mr-2" />
               거래처 관리 ({(customers || []).length})
             </button>
           </div>
@@ -5578,6 +5516,30 @@ export default function PriceCalculator() {
     );
   }
 
+  // 재고 현황 페이지
+  if (showStockOverview) {
+    return (
+      <StockOverviewPage
+        products={products.length > 0 ? products : priceData}
+        categories={dynamicCategories}
+        formatPrice={formatPrice}
+        onBack={() => setShowStockOverview(false)}
+      />
+    );
+  }
+
+  // 거래처 목록 페이지
+  if (showCustomerListModal) {
+    return (
+      <CustomerListPage
+        customers={customers}
+        orders={orders}
+        formatPrice={formatPrice}
+        onBack={() => setShowCustomerListModal(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <CustomStyles />
@@ -5620,13 +5582,6 @@ export default function PriceCalculator() {
         onClose={() => setShowShippingModal(false)}
         orders={orders}
         customers={customers}
-        formatPrice={formatPrice}
-      />
-      <CustomerListModal
-        isOpen={showCustomerListModal}
-        onClose={() => setShowCustomerListModal(false)}
-        customers={customers}
-        orders={orders}
         formatPrice={formatPrice}
       />
       <TextAnalyzeModal
@@ -5769,7 +5724,7 @@ export default function PriceCalculator() {
       </header>
 
       {/* 검색바 - 완전 고정 */}
-      <div className="fixed top-16 sm:top-20 left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
+      <div className="fixed top-[70px] sm:top-[85px] left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 relative">
@@ -5814,7 +5769,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="w-full px-4 pt-28 sm:pt-32 pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
+      <div className="w-full px-4 pt-[140px] sm:pt-[160px] pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
@@ -5937,7 +5892,7 @@ export default function PriceCalculator() {
           </div>
 
           {/* 장바구니 - 데스크톱에서 오른쪽 상단 고정 */}
-          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-20 md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
+          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-[85px] md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
             <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -6068,17 +6023,6 @@ export default function PriceCalculator() {
         } text-white font-medium animate-fade-in`}>
           {toast.message}
         </div>
-      )}
-
-      {/* 재고 현황 모달 */}
-      {showStockOverview && (
-        <StockOverviewModal 
-          isOpen={showStockOverview}
-          onClose={() => setShowStockOverview(false)}
-          products={products.length > 0 ? products : priceData}
-          categories={dynamicCategories}
-          formatPrice={formatPrice}
-        />
       )}
 
       {/* 관리자 로그인 모달 */}
