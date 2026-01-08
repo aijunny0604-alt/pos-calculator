@@ -600,6 +600,11 @@ const CustomStyles = () => (
       100% { transform: scale(1); opacity: 1; }
     }
     
+    @keyframes loading-bar {
+      0% { width: 0%; }
+      100% { width: 100%; }
+    }
+    
     .animate-glitch {
       animation: glitch 0.3s ease-in-out infinite;
     }
@@ -5803,6 +5808,7 @@ export default function PriceCalculator() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+  const [showAccessGranted, setShowAccessGranted] = useState(false);
   const [products, setProducts] = useState([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
   const [showStockOverview, setShowStockOverview] = useState(false);
@@ -6118,13 +6124,21 @@ export default function PriceCalculator() {
   // 관리자 로그인 처리
   const handleAdminLogin = () => {
     if (adminPassword === ADMIN_PASSWORD) {
-      setIsAdminLoggedIn(true);
       setShowAdminLogin(false);
-      setAdminPassword('');
-      setCurrentPage('admin');
-      loadProducts();
+      setShowAccessGranted(true);
+      
+      // ACCESS GRANTED 애니메이션 후 페이지 이동
+      setTimeout(() => {
+        setIsAdminLoggedIn(true);
+        setAdminPassword('');
+        setCurrentPage('admin');
+        loadProducts();
+        setShowAccessGranted(false);
+      }, 2000);
     } else {
-      showToast('❌ 비밀번호가 틀렸습니다', 'error');
+      showToast('❌ ACCESS DENIED', 'error');
+      // 틀렸을 때 글리치 효과를 위해 잠시 흔들림
+      setAdminPassword('');
     }
   };
 
@@ -7032,7 +7046,10 @@ export default function PriceCalculator() {
                   type="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAdminLogin();
+                    if (e.key === 'Escape') { setShowAdminLogin(false); setAdminPassword(''); }
+                  }}
                   placeholder="ENTER PASSCODE..."
                   className="w-full pl-12 pr-4 py-4 bg-black/50 border-2 border-red-500/30 rounded-xl text-red-400 font-mono tracking-widest placeholder-slate-600 focus:outline-none focus:border-red-500 focus:shadow-lg transition-all"
                   style={{ 
@@ -7076,6 +7093,114 @@ export default function PriceCalculator() {
                 <span className="text-slate-700 text-xs font-mono">v2.0.25</span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACCESS GRANTED 애니메이션 */}
+      {showAccessGranted && (
+        <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center overflow-hidden">
+          {/* 배경 그리드 효과 */}
+          <div 
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(0,255,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,0,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px',
+              animation: 'pulse 2s ease-in-out infinite'
+            }}
+          />
+          
+          {/* 스캔라인 효과 */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.03) 2px, rgba(0,255,0,0.03) 4px)'
+            }}
+          />
+          
+          {/* 메인 콘텐츠 */}
+          <div className="relative text-center">
+            {/* 성공 아이콘 */}
+            <div 
+              className="mx-auto mb-8 w-32 h-32 rounded-full border-4 border-green-500 flex items-center justify-center"
+              style={{
+                boxShadow: '0 0 60px rgba(0,255,0,0.5), inset 0 0 60px rgba(0,255,0,0.1)',
+                animation: 'access-granted 0.5s ease-out forwards'
+              }}
+            >
+              <Check 
+                className="w-16 h-16 text-green-500" 
+                style={{ 
+                  filter: 'drop-shadow(0 0 10px rgba(0,255,0,0.8))',
+                  animation: 'access-granted 0.5s ease-out 0.2s forwards',
+                  opacity: 0
+                }} 
+              />
+            </div>
+            
+            {/* ACCESS GRANTED 텍스트 */}
+            <div 
+              className="font-mono text-5xl font-bold text-green-500 mb-4 tracking-widest"
+              style={{
+                textShadow: '0 0 20px rgba(0,255,0,0.8), 0 0 40px rgba(0,255,0,0.4)',
+                animation: 'access-granted 0.5s ease-out 0.3s forwards',
+                opacity: 0
+              }}
+            >
+              ACCESS GRANTED
+            </div>
+            
+            {/* 서브 텍스트 */}
+            <div 
+              className="font-mono text-green-400/70 tracking-wider mb-8"
+              style={{
+                animation: 'access-granted 0.5s ease-out 0.5s forwards',
+                opacity: 0
+              }}
+            >
+              WELCOME, ADMINISTRATOR
+            </div>
+            
+            {/* 로딩 바 */}
+            <div className="w-64 h-1 bg-green-900/50 rounded-full mx-auto overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
+                style={{
+                  animation: 'loading-bar 1.5s ease-out forwards',
+                  width: '0%'
+                }}
+              />
+            </div>
+            
+            {/* 시스템 메시지 */}
+            <div 
+              className="mt-6 font-mono text-xs text-green-500/50 space-y-1"
+              style={{
+                animation: 'access-granted 0.5s ease-out 0.7s forwards',
+                opacity: 0
+              }}
+            >
+              <p>INITIALIZING ADMIN INTERFACE...</p>
+              <p>LOADING SECURE MODULES...</p>
+            </div>
+          </div>
+          
+          {/* 코너 장식 */}
+          <div className="absolute top-8 left-8 w-16 h-16 border-l-2 border-t-2 border-green-500/50" />
+          <div className="absolute top-8 right-8 w-16 h-16 border-r-2 border-t-2 border-green-500/50" />
+          <div className="absolute bottom-8 left-8 w-16 h-16 border-l-2 border-b-2 border-green-500/50" />
+          <div className="absolute bottom-8 right-8 w-16 h-16 border-r-2 border-b-2 border-green-500/50" />
+          
+          {/* 하단 시스템 정보 */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 font-mono text-xs text-green-500/30 flex items-center gap-4">
+            <span>SYS.AUTH.v2.0</span>
+            <span className="w-1 h-1 rounded-full bg-green-500/50" />
+            <span>ENCRYPTION: AES-256</span>
+            <span className="w-1 h-1 rounded-full bg-green-500/50" />
+            <span>STATUS: AUTHENTICATED</span>
           </div>
         </div>
       )}
