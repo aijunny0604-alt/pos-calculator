@@ -538,6 +538,96 @@ const CustomStyles = () => (
       }
     }
     
+    /* 시크릿 관리자 로그인 애니메이션 */
+    @keyframes glitch {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(-2px, -2px); }
+      60% { transform: translate(2px, 2px); }
+      80% { transform: translate(2px, -2px); }
+    }
+    
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+    
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+      25%, 75% { opacity: 0.9; }
+    }
+    
+    @keyframes neon-pulse {
+      0%, 100% { 
+        text-shadow: 0 0 5px #ff0040, 0 0 10px #ff0040, 0 0 20px #ff0040;
+        box-shadow: 0 0 5px #ff0040, 0 0 10px #ff0040, inset 0 0 10px rgba(255,0,64,0.1);
+      }
+      50% { 
+        text-shadow: 0 0 10px #ff0040, 0 0 20px #ff0040, 0 0 40px #ff0040;
+        box-shadow: 0 0 10px #ff0040, 0 0 20px #ff0040, inset 0 0 20px rgba(255,0,64,0.2);
+      }
+    }
+    
+    @keyframes border-glow {
+      0%, 100% { border-color: rgba(255,0,64,0.5); }
+      50% { border-color: rgba(255,0,64,1); }
+    }
+    
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    
+    @keyframes blink-caret {
+      0%, 100% { border-color: transparent; }
+      50% { border-color: #ff0040; }
+    }
+    
+    @keyframes matrix-rain {
+      0% { transform: translateY(-100%); opacity: 1; }
+      100% { transform: translateY(100%); opacity: 0; }
+    }
+    
+    @keyframes unlock-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes access-granted {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .animate-glitch {
+      animation: glitch 0.3s ease-in-out infinite;
+    }
+    
+    .animate-flicker {
+      animation: flicker 0.1s ease-in-out infinite;
+    }
+    
+    .animate-neon-pulse {
+      animation: neon-pulse 2s ease-in-out infinite;
+    }
+    
+    .animate-border-glow {
+      animation: border-glow 2s ease-in-out infinite;
+    }
+    
+    .secret-scanline::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255,0,64,0.5), transparent);
+      animation: scanline 3s linear infinite;
+      pointer-events: none;
+    }
+    
     /* 애니메이션 클래스 */
     .animate-fade-in-up {
       animation: fadeInUp 0.4s ease-out forwards;
@@ -6858,41 +6948,133 @@ export default function PriceCalculator() {
         </div>
       )}
 
-      {/* 관리자 로그인 모달 */}
+      {/* 관리자 로그인 모달 - 시크릿 테마 */}
       {showAdminLogin && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl max-w-sm w-full p-6 border border-slate-700">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-amber-600/20 rounded-xl">
-                <Lock className="w-6 h-6 text-amber-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">관리자 로그인</h3>
-                <p className="text-slate-400 text-sm">비밀번호를 입력하세요</p>
-              </div>
-            </div>
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-              placeholder="비밀번호"
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 mb-4"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowAdminLogin(false); setAdminPassword(''); }}
-                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          {/* 배경 매트릭스 효과 */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute text-red-500 text-xs font-mono"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `-20px`,
+                  animation: `matrix-rain ${2 + Math.random() * 3}s linear infinite`,
+                  animationDelay: `${Math.random() * 2}s`
+                }}
               >
-                취소
-              </button>
-              <button
-                onClick={handleAdminLogin}
-                className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl text-white font-medium transition-colors"
-              >
-                로그인
-              </button>
+                {Math.random() > 0.5 ? '01001' : '10110'}
+              </div>
+            ))}
+          </div>
+          
+          {/* 모달 컨테이너 */}
+          <div className="relative max-w-md w-full">
+            {/* 스캔라인 효과 */}
+            <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none secret-scanline" />
+            
+            {/* 메인 모달 */}
+            <div 
+              className="relative bg-gradient-to-b from-slate-900 via-slate-900 to-black rounded-2xl p-8 border-2 border-red-500/50 shadow-2xl animate-border-glow"
+              style={{
+                boxShadow: '0 0 40px rgba(255,0,64,0.3), inset 0 0 60px rgba(0,0,0,0.5)'
+              }}
+            >
+              {/* 코너 장식 */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-red-500 rounded-tl-2xl" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-r-2 border-t-2 border-red-500 rounded-tr-2xl" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-l-2 border-b-2 border-red-500 rounded-bl-2xl" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-r-2 border-b-2 border-red-500 rounded-br-2xl" />
+              
+              {/* 헤더 */}
+              <div className="text-center mb-8">
+                {/* 아이콘 */}
+                <div className="relative inline-block mb-4">
+                  <div 
+                    className="w-20 h-20 rounded-full bg-gradient-to-br from-red-600/20 to-red-900/40 flex items-center justify-center border border-red-500/50"
+                    style={{ boxShadow: '0 0 30px rgba(255,0,64,0.4)' }}
+                  >
+                    <Lock className="w-10 h-10 text-red-500 animate-pulse" />
+                  </div>
+                  {/* 회전하는 링 */}
+                  <div 
+                    className="absolute inset-0 rounded-full border-2 border-transparent border-t-red-500 border-r-red-500/50"
+                    style={{ animation: 'unlock-spin 3s linear infinite' }}
+                  />
+                </div>
+                
+                {/* 타이틀 */}
+                <h3 
+                  className="text-2xl font-bold text-red-500 mb-2 tracking-wider font-mono"
+                  style={{ textShadow: '0 0 10px rgba(255,0,64,0.8)' }}
+                >
+                  [ RESTRICTED ACCESS ]
+                </h3>
+                <p className="text-slate-500 text-sm font-mono tracking-widest">
+                  AUTHENTICATION REQUIRED
+                </p>
+                
+                {/* 경고 텍스트 */}
+                <div className="mt-4 py-2 px-4 bg-red-900/20 rounded-lg border border-red-500/30 inline-block">
+                  <p className="text-red-400 text-xs font-mono animate-pulse">
+                    ⚠ UNAUTHORIZED ACCESS PROHIBITED
+                  </p>
+                </div>
+              </div>
+              
+              {/* 입력 필드 */}
+              <div className="relative mb-6">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500 font-mono text-sm">
+                  {'>>'}
+                </div>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  placeholder="ENTER PASSCODE..."
+                  className="w-full pl-12 pr-4 py-4 bg-black/50 border-2 border-red-500/30 rounded-xl text-red-400 font-mono tracking-widest placeholder-slate-600 focus:outline-none focus:border-red-500 focus:shadow-lg transition-all"
+                  style={{ 
+                    caretColor: '#ff0040',
+                    textShadow: '0 0 5px rgba(255,0,64,0.5)'
+                  }}
+                  autoFocus
+                />
+                {/* 입력 필드 글로우 */}
+                <div 
+                  className="absolute inset-0 rounded-xl pointer-events-none"
+                  style={{ boxShadow: adminPassword ? '0 0 20px rgba(255,0,64,0.3)' : 'none', transition: 'box-shadow 0.3s' }}
+                />
+              </div>
+              
+              {/* 버튼 */}
+              <div className="flex gap-4">
+                <button
+                  onClick={() => { setShowAdminLogin(false); setAdminPassword(''); }}
+                  className="flex-1 py-4 bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-xl text-slate-400 hover:text-white font-mono tracking-wider transition-all duration-300 hover:border-slate-500"
+                >
+                  [ CANCEL ]
+                </button>
+                <button
+                  onClick={handleAdminLogin}
+                  className="flex-1 py-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-xl text-white font-bold font-mono tracking-wider transition-all duration-300 relative overflow-hidden group"
+                  style={{ boxShadow: '0 0 20px rgba(255,0,64,0.4)' }}
+                >
+                  <span className="relative z-10">[ ACCESS ]</span>
+                  {/* 버튼 스캔 효과 */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                </button>
+              </div>
+              
+              {/* 하단 장식 */}
+              <div className="mt-6 pt-4 border-t border-red-500/20 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-slate-600 text-xs font-mono">SECURE CONNECTION</span>
+                </div>
+                <span className="text-slate-700 text-xs font-mono">v2.0.25</span>
+              </div>
             </div>
           </div>
         </div>
