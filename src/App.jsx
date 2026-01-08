@@ -1388,8 +1388,11 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
 }
 
 // ==================== 저장된 장바구니 모달 ====================
-function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, formatPrice }) {
+function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, onDeleteAll, formatPrice }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]); // 선택된 항목들
+  const [selectMode, setSelectMode] = useState(false); // 선택 모드
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false); // 전체 삭제 확인
   
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -1416,6 +1419,40 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
       window.scrollTo(0, parseInt(scrollY || '0') * -1);
     };
   }, [isOpen]);
+
+  // 모달 닫힐 때 선택 모드 초기화
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectMode(false);
+      setSelectedItems([]);
+      setShowDeleteAllConfirm(false);
+    }
+  }, [isOpen]);
+  
+  // 항목 선택/해제
+  const toggleSelect = (index) => {
+    setSelectedItems(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+  
+  // 전체 선택/해제
+  const toggleSelectAll = () => {
+    if (selectedItems.length === savedCarts.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(savedCarts.map((_, i) => i));
+    }
+  };
+  
+  // 선택 삭제
+  const deleteSelected = () => {
+    // 인덱스를 내림차순으로 정렬해서 삭제 (뒤에서부터 삭제해야 인덱스 꼬이지 않음)
+    const sortedIndices = [...selectedItems].sort((a, b) => b - a);
+    sortedIndices.forEach(index => onDelete(index));
+    setSelectedItems([]);
+    setSelectMode(false);
+  };
   
   if (!isOpen) return null;
   
@@ -1433,7 +1470,84 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
           </button>
         </div>
         
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)] overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* 액션 버튼 영역 */}
+        {savedCarts.length > 0 && (
+          <div className="px-4 py-2 bg-slate-900/50 border-b border-slate-700 flex items-center justify-between gap-2">
+            {selectMode ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
+                  >
+                    {selectedItems.length === savedCarts.length ? '전체 해제' : '전체 선택'}
+                  </button>
+                  <span className="text-slate-400 text-xs">{selectedItems.length}개 선택됨</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={deleteSelected}
+                    disabled={selectedItems.length === 0}
+                    className={`text-xs px-3 py-1 rounded flex items-center gap-1 ${
+                      selectedItems.length > 0 
+                        ? 'bg-red-600 hover:bg-red-500 text-white' 
+                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    선택 삭제
+                  </button>
+                  <button
+                    onClick={() => { setSelectMode(false); setSelectedItems([]); }}
+                    className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
+                  >
+                    취소
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setSelectMode(true)}
+                  className="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded flex items-center gap-1"
+                >
+                  <Check className="w-3 h-3" />
+                  선택 삭제
+                </button>
+                <button
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  className="text-xs px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  전체 삭제
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* 전체 삭제 확인 */}
+        {showDeleteAllConfirm && (
+          <div className="px-4 py-3 bg-red-900/30 border-b border-red-600/30">
+            <p className="text-red-400 text-sm mb-2">모든 저장된 장바구니를 삭제하시겠습니까?</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => { onDeleteAll(); setShowDeleteAllConfirm(false); }}
+                className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
+              >
+                전체 삭제
+              </button>
+              <button 
+                onClick={() => setShowDeleteAllConfirm(false)}
+                className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        )}
+        
+        <div className="p-4 overflow-y-auto max-h-[calc(80vh-200px)] overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
           {savedCarts.length === 0 ? (
             <div className="text-center py-8">
               <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -1443,57 +1557,84 @@ function SavedCartsModal({ isOpen, onClose, savedCarts, onLoad, onDelete, format
           ) : (
             <div className="space-y-3">
               {savedCarts.map((cart, index) => (
-                <div key={index} className="bg-slate-700/50 rounded-xl p-4 hover:bg-slate-700 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="text-white font-semibold">{cart.name}</h3>
-                      <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
-                    </div>
-                    <p className="text-emerald-400 font-bold">{formatPrice(cart.total)}</p>
-                  </div>
-                  
-                  <div className="bg-slate-800/50 rounded-lg p-2 mb-3">
-                    <p className="text-slate-400 text-sm truncate">
-                      {cart.items.map(item => `${item.name}(${item.quantity})`).join(', ')}
-                    </p>
-                    <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => { onLoad(cart); onClose(); }}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      불러오기
-                    </button>
-                    <button 
-                      onClick={() => setDeleteConfirm(index)}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  {deleteConfirm === index && (
-                    <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
-                      <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => { onDelete(index); setDeleteConfirm(null); }}
-                          className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
-                        >
-                          삭제
-                        </button>
-                        <button 
-                          onClick={() => setDeleteConfirm(null)}
-                          className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
-                        >
-                          취소
-                        </button>
+                <div 
+                  key={index} 
+                  className={`bg-slate-700/50 rounded-xl p-4 transition-colors ${
+                    selectMode && selectedItems.includes(index) 
+                      ? 'ring-2 ring-violet-500 bg-violet-900/20' 
+                      : 'hover:bg-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* 체크박스 (선택 모드일 때만) */}
+                    {selectMode && (
+                      <button
+                        onClick={() => toggleSelect(index)}
+                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          selectedItems.includes(index)
+                            ? 'bg-violet-500 border-violet-500'
+                            : 'border-slate-500 hover:border-violet-400'
+                        }`}
+                      >
+                        {selectedItems.includes(index) && <Check className="w-3 h-3 text-white" />}
+                      </button>
+                    )}
+                    
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h3 className="text-white font-semibold">{cart.name}</h3>
+                          <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
+                        </div>
+                        <p className="text-emerald-400 font-bold">{formatPrice(cart.total)}</p>
                       </div>
+                      
+                      <div className="bg-slate-800/50 rounded-lg p-2 mb-3">
+                        <p className="text-slate-400 text-sm truncate">
+                          {cart.items.map(item => `${item.name}(${item.quantity})`).join(', ')}
+                        </p>
+                        <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
+                      </div>
+                      
+                      {!selectMode && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => { onLoad(cart); onClose(); }}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
+                          >
+                            <Download className="w-4 h-4" />
+                            불러오기
+                          </button>
+                          <button 
+                            onClick={() => setDeleteConfirm(index)}
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      
+                      {deleteConfirm === index && !selectMode && (
+                        <div className="mt-3 p-3 bg-red-900/30 rounded-lg border border-red-600/30">
+                          <p className="text-red-400 text-sm mb-2">정말 삭제하시겠습니까?</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => { onDelete(index); setDeleteConfirm(null); }}
+                              className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm"
+                            >
+                              삭제
+                            </button>
+                            <button 
+                              onClick={() => setDeleteConfirm(null)}
+                              className="flex-1 py-1.5 bg-slate-600 hover:bg-slate-500 rounded text-white text-sm"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -4926,6 +5067,12 @@ export default function PriceCalculator() {
     showToast('🗑️ 장바구니가 삭제되었습니다');
   };
 
+  // 저장된 장바구니 전체 삭제
+  const deleteSavedCartAll = () => {
+    setSavedCarts([]);
+    showToast('🗑️ 모든 장바구니가 삭제되었습니다');
+  };
+
   // ===== 제품 관리 함수들 =====
   // Supabase에서 제품 불러오기
   const loadProducts = async () => {
@@ -5464,7 +5611,8 @@ export default function PriceCalculator() {
         onClose={() => setIsSavedCartsModalOpen(false)} 
         savedCarts={savedCarts} 
         onLoad={loadSavedCart} 
-        onDelete={deleteSavedCart} 
+        onDelete={deleteSavedCart}
+        onDeleteAll={deleteSavedCartAll}
         formatPrice={formatPrice} 
       />
       <ShippingLabelModal
@@ -5621,7 +5769,7 @@ export default function PriceCalculator() {
       </header>
 
       {/* 검색바 - 완전 고정 */}
-      <div className="fixed top-12 sm:top-14 left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
+      <div className="fixed top-14 sm:top-16 left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 relative">
@@ -5666,7 +5814,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="w-full px-4 pt-20 sm:pt-24 pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
+      <div className="w-full px-4 pt-24 sm:pt-28 pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
@@ -5789,7 +5937,7 @@ export default function PriceCalculator() {
           </div>
 
           {/* 장바구니 - 데스크톱에서 오른쪽 상단 고정 */}
-          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-14 md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
+          <div className={`${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 md:top-16 md:bottom-auto md:left-auto md:right-4 md:w-[380px] lg:w-[400px] z-40`}>
             <div className="bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
               <div className="px-3 py-2 border-b border-emerald-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
