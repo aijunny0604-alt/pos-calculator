@@ -246,8 +246,34 @@ const CustomStyles = () => (
       padding-bottom: env(safe-area-inset-bottom);
     }
     
+    /* 모든 요소 텍스트 선택 방지 */
+    *, *::before, *::after {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* 텍스트 드래그 방지 */
+    h1, h2, h3, h4, h5, h6, p, span, div, label {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    
+    /* 카드, 버튼 등 인터랙티브 요소 */
+    .card, [class*="rounded"], [class*="bg-slate"], [class*="border"] {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+    }
+    
     /* 입력 필드와 복사 필요한 데이터만 선택 가능 */
-    input, textarea, [contenteditable="true"] {
+    input, textarea, [contenteditable="true"], .selectable {
       -webkit-user-select: text;
       -moz-user-select: text;
       -ms-user-select: text;
@@ -1494,9 +1520,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 select-none">
       {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none">
         <div className="w-full px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1613,7 +1639,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                 <div 
                   key={index} 
                   onClick={(e) => handleCardClick(cart, index, e)}
-                  className={`bg-slate-800 rounded-xl p-4 border transition-all duration-200 cursor-pointer transform ${
+                  className={`bg-slate-800 rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none ${
                     selectMode && selectedItems.includes(index) 
                       ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50' 
                       : 'border-slate-700 hover:border-violet-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'
@@ -1832,12 +1858,14 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack, selectedCustomer]);
   
-  // 검색 필터링
-  const filteredCustomers = (customers || []).filter(c => 
-    c.name.toLowerCase().replace(/\s/g, '').includes(searchTerm.toLowerCase().replace(/\s/g, '')) ||
-    (c.address && c.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (c.phone && c.phone.replace(/\s/g, '').includes(searchTerm.replace(/\s/g, '')))
-  );
+  // 검색 필터링 (띄어쓰기 무시)
+  const filteredCustomers = (customers || []).filter(c => {
+    const search = searchTerm.toLowerCase().replace(/\s/g, '');
+    const name = c.name.toLowerCase().replace(/\s/g, '');
+    const address = (c.address || '').toLowerCase().replace(/\s/g, '');
+    const phone = (c.phone || '').replace(/\s/g, '');
+    return name.includes(search) || address.includes(search) || phone.includes(search);
+  });
 
   // 거래처별 주문 이력 가져오기
   const getCustomerOrders = (customerName) => {
@@ -1956,25 +1984,46 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
               </div>
             ) : (
               <div className="space-y-3">
-                {getCustomerOrders(selectedCustomer.name).map(order => (
-                  <div key={order.orderNumber} className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-400 text-sm">{formatDate(order.createdAt)}</span>
-                      <span className="text-emerald-400 font-bold">{formatPrice(order.totalAmount)}</span>
-                    </div>
-                    <div className="space-y-1">
-                      {(order.items || []).map((item, idx) => (
-                        <div key={idx} className="flex justify-between text-sm">
-                          <span className="text-slate-300">{item.name} x{item.quantity}</span>
-                          <span className="text-slate-400">{formatPrice(item.price * item.quantity)}</span>
+                {getCustomerOrders(selectedCustomer.name).map(order => {
+                  const copyOrderText = () => {
+                    const lines = [
+                      formatDate(order.createdAt),
+                      ...(order.items || []).map(item => `${item.name} x${item.quantity}  ${formatPrice(item.price * item.quantity)}`),
+                      `총 금액: ${formatPrice(order.totalAmount)}`,
+                      order.memo ? `메모: ${order.memo}` : ''
+                    ].filter(Boolean).join('\n');
+                    navigator.clipboard.writeText(lines);
+                  };
+                  
+                  return (
+                    <div key={order.orderNumber} className="bg-slate-800 rounded-xl p-4 border border-slate-700 group">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-400 text-sm">{formatDate(order.createdAt)}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={copyOrderText}
+                            className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                            title="주문 복사"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <span className="text-emerald-400 font-bold">{formatPrice(order.totalAmount)}</span>
                         </div>
-                      ))}
+                      </div>
+                      <div className="space-y-1">
+                        {(order.items || []).map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span className="text-slate-300">{item.name} x{item.quantity}</span>
+                            <span className="text-slate-400">{formatPrice(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {order.memo && (
+                        <p className="text-slate-500 text-xs mt-2 pt-2 border-t border-slate-600">메모: {order.memo}</p>
+                      )}
                     </div>
-                    {order.memo && (
-                      <p className="text-slate-500 text-xs mt-2 pt-2 border-t border-slate-600">메모: {order.memo}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
@@ -1997,7 +2046,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                     <div 
                       key={customer.id} 
                       onClick={() => setSelectedCustomer(customer)}
-                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group hover:scale-[1.02]"
+                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group hover:scale-[1.02] select-none"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -2280,11 +2329,14 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       senderHeaderRow.getCell(1).value = '보내는곳 : ' + sender;
       senderHeaderRow.getCell(1).font = { bold: true, size: 15, name: 'Malgun Gothic' };
       senderHeaderRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-      senderHeaderRow.getCell(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: sender === '엠파츠' ? 'FFE3F2FD' : 'FFE8F5E9' } // 엠파츠는 연한 파란색, 무브모터스는 연한 초록색
-      };
+      // 무브모터스만 배경색 적용
+      if (sender === '무브모터스') {
+        senderHeaderRow.getCell(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE8F5E9' } // 연한 초록색
+        };
+      }
       senderHeaderRow.getCell(1).border = thinBorder;
       senderHeaderRow.height = 38;
       rowNum++;
@@ -2458,8 +2510,8 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     .header-green {
       background-color: #e8f5e9;
     }
-    .header-blue {
-      background-color: #e3f2fd;
+    .header-plain {
+      background-color: transparent;
     }
     .prepaid {
       font-weight: bold;
@@ -2487,7 +2539,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
 
     // 항상 모든 보내는 곳 섹션 출력 (무브모터스 → 엠파츠 순서)
     senderList.forEach((sender) => {
-      const headerClass = sender === '엠파츠' ? 'header header-blue' : 'header header-green';
+      const headerClass = sender === '무브모터스' ? 'header header-green' : 'header header-plain';
       html += `
   <table>
     <thead>
@@ -2665,7 +2717,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                 const isSelected = selectedOrders.includes(order.orderNumber);
                 
                 return (
-                  <div key={order.orderNumber} className={`rounded-xl border transition-all ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'}`}>
+                  <div key={order.orderNumber} className={`rounded-xl border transition-all select-none ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'}`}>
                     <div className="p-3 cursor-pointer" onClick={() => toggleOrder(order.orderNumber)}>
                       <div className="flex items-start gap-3">
                         <input type="checkbox" checked={isSelected} onChange={() => {}} className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500" />
@@ -3154,21 +3206,23 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       if (!searchText) return;
 
       const keywords = searchText.toLowerCase().split(' ').filter(k => k.length > 0);
+      const searchTextNoSpace = searchText.toLowerCase().replace(/\s/g, '');
       
       let bestMatch = null;
       let bestScore = 0;
 
       products.forEach(product => {
         const productName = product.name.toLowerCase();
+        const productNameNoSpace = productName.replace(/\s/g, '');
         let score = 0;
 
         keywords.forEach(keyword => {
-          if (productName.includes(keyword)) {
+          if (productNameNoSpace.includes(keyword)) {
             score += keyword.length;
           }
         });
 
-        if (productName.includes(searchText.toLowerCase())) {
+        if (productNameNoSpace.includes(searchTextNoSpace)) {
           score += 10;
         }
 
@@ -3586,12 +3640,14 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     setShowCustomerSuggestions(false);
   };
 
-  // 검색 결과 필터링
+  // 검색 결과 필터링 (띄어쓰기 무시)
   const searchResults = productSearch.length >= 1 
-    ? products.filter(p => 
-        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.category.toLowerCase().includes(productSearch.toLowerCase())
-      ).slice(0, 8)
+    ? products.filter(p => {
+        const search = productSearch.toLowerCase().replace(/\s/g, '');
+        const name = p.name.toLowerCase().replace(/\s/g, '');
+        const category = p.category.toLowerCase().replace(/\s/g, '');
+        return name.includes(search) || category.includes(search);
+      }).slice(0, 8)
     : [];
 
   const today = new Date();
@@ -3942,14 +3998,16 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                 const itemTotal = price * item.quantity;
                 const isChanging = changingItemId === item.id;
                 
-                // 변경 시 검색 결과
+                // 변경 시 검색 결과 (띄어쓰기 무시)
                 const changeSearchResults = isChanging && changeSearchQuery.trim() 
-                  ? products.filter(p => 
-                      p.id !== item.id && // 현재 제품 제외
-                      !cart.some(c => c.id === p.id) && // 장바구니에 있는 제품 제외
-                      (p.name.toLowerCase().includes(changeSearchQuery.toLowerCase()) ||
-                       (p.category && p.category.toLowerCase().includes(changeSearchQuery.toLowerCase())))
-                    ).slice(0, 8)
+                  ? products.filter(p => {
+                      if (p.id === item.id) return false; // 현재 제품 제외
+                      if (cart.some(c => c.id === p.id)) return false; // 장바구니에 있는 제품 제외
+                      const search = changeSearchQuery.toLowerCase().replace(/\s/g, '');
+                      const name = p.name.toLowerCase().replace(/\s/g, '');
+                      const category = (p.category || '').toLowerCase().replace(/\s/g, '');
+                      return name.includes(search) || category.includes(search);
+                    }).slice(0, 8)
                   : [];
                 
                 return (
@@ -4275,12 +4333,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     setEditingCustomer(null);
   };
 
-  // 필터링된 거래처
-  const filteredCustomers = (customers || []).filter(c => 
-    c.name.toLowerCase().replace(/\s/g, '').includes(customerSearch.toLowerCase().replace(/\s/g, '')) ||
-    (c.address && c.address.toLowerCase().includes(customerSearch.toLowerCase())) ||
-    (c.phone && c.phone.includes(customerSearch))
-  );
+  // 필터링된 거래처 (띄어쓰기 무시)
+  const filteredCustomers = (customers || []).filter(c => {
+    const search = customerSearch.toLowerCase().replace(/\s/g, '');
+    const name = c.name.toLowerCase().replace(/\s/g, '');
+    const address = (c.address || '').toLowerCase().replace(/\s/g, '');
+    const phone = (c.phone || '').replace(/\s/g, '');
+    return name.includes(search) || address.includes(search) || phone.includes(search);
+  });
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.wholesale || !newProduct.category) return;
@@ -4340,7 +4400,9 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const filteredProducts = useMemo(() => {
     return products
       .filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const search = searchTerm.toLowerCase().replace(/\s/g, '');
+        const name = p.name.toLowerCase().replace(/\s/g, '');
+        const matchesSearch = name.includes(search);
         const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
         let matchesStock = true;
         const stock = p.stock ?? 50;
@@ -4377,10 +4439,10 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   }, [products, searchTerm, selectedCategory, stockFilter, sortField, sortDirection]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       <CustomStyles />
       
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 flex-shrink-0 select-none">
         <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
           {/* 상단 행: 뒤로가기, 타이틀, 새로고침 */}
           <div className="flex items-center justify-between mb-2">
@@ -4446,56 +4508,76 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             </button>
           </div>
         </div>
+        
+        {/* 제품 탭 - 재고 현황 + 검색 (sticky) */}
+        {activeTab === 'products' && (
+          <div className="bg-slate-900/50 border-t border-slate-700/50 px-3 sm:px-4 py-3">
+            {/* 재고 현황 카드 */}
+            <div className="grid grid-cols-4 gap-2 mb-3 max-w-7xl mx-auto">
+              <div onClick={() => setStockFilter('all')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'all' ? 'ring-2 ring-blue-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">전체 제품</p>
+                <p className="text-lg sm:text-xl font-bold text-white">{stockStats.total}</p>
+              </div>
+              <div onClick={() => setStockFilter('normal')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'normal' ? 'ring-2 ring-emerald-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">정상 재고</p>
+                <p className="text-lg sm:text-xl font-bold text-emerald-400">{stockStats.normalStock}</p>
+              </div>
+              <div onClick={() => setStockFilter('low')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'low' ? 'ring-2 ring-yellow-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">재고 부족</p>
+                <p className="text-lg sm:text-xl font-bold text-yellow-400">{stockStats.lowStock}</p>
+              </div>
+              <div onClick={() => setStockFilter('out')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'out' ? 'ring-2 ring-red-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">품절</p>
+                <p className="text-lg sm:text-xl font-bold text-red-400">{stockStats.outOfStock}</p>
+              </div>
+            </div>
+            
+            {/* 검색 및 필터 */}
+            <div className="flex flex-col md:flex-row gap-2 max-w-7xl mx-auto">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="제품 검색..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 text-sm"
+                />
+              </div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-amber-500 text-sm"
+              >
+                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+        
+        {/* 거래처 탭 - 검색 (sticky) */}
+        {activeTab === 'customers' && (
+          <div className="bg-slate-900/50 border-t border-slate-700/50 px-3 sm:px-4 py-3">
+            <div className="max-w-7xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="거래처 검색..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
-      <div className="max-w-7xl mx-auto p-4">
-        {activeTab === 'products' ? (
-          <>
-        {/* 재고 현황 카드 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div onClick={() => setStockFilter('all')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'all' ? 'ring-2 ring-blue-500' : 'hover:bg-slate-750'}`}>
-            <p className="text-slate-400 text-sm mb-1">전체 제품</p>
-            <p className="text-2xl font-bold text-white">{stockStats.total}</p>
-          </div>
-          <div onClick={() => setStockFilter('normal')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'normal' ? 'ring-2 ring-emerald-500' : 'hover:bg-slate-750'}`}>
-            <p className="text-slate-400 text-sm mb-1">정상 재고</p>
-            <p className="text-2xl font-bold text-emerald-400">{stockStats.normalStock}</p>
-          </div>
-          <div onClick={() => setStockFilter('low')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'low' ? 'ring-2 ring-yellow-500' : 'hover:bg-slate-750'}`}>
-            <p className="text-slate-400 text-sm mb-1">재고 부족</p>
-            <p className="text-2xl font-bold text-yellow-400">{stockStats.lowStock}</p>
-          </div>
-          <div onClick={() => setStockFilter('out')} className={`bg-slate-800 rounded-xl p-4 cursor-pointer transition-all ${stockFilter === 'out' ? 'ring-2 ring-red-500' : 'hover:bg-slate-750'}`}>
-            <p className="text-slate-400 text-sm mb-1">품절</p>
-            <p className="text-2xl font-bold text-red-400">{stockStats.outOfStock}</p>
-          </div>
-        </div>
-
-        {/* 검색 및 필터 */}
-        <div className="bg-slate-800 rounded-xl p-4 mb-4">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="제품 검색..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-amber-500"
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto p-4">
+          {activeTab === 'products' ? (
+            <>
         {/* 제품 테이블 */}
         <div className="bg-slate-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -4570,21 +4652,6 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         ) : (
           /* 거래처 관리 탭 */
           <>
-            {/* 거래처 검색 */}
-            <div className="bg-slate-800 rounded-xl p-4 mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  placeholder="거래처명, 주소, 전화번호 검색..."
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <p className="text-slate-400 text-sm mt-2">검색 결과: {filteredCustomers.length}개</p>
-            </div>
-
             {/* 거래처 목록 */}
             <div className="bg-slate-800 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
@@ -4654,38 +4721,38 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 
             {/* 거래처 추가 모달 */}
             {showAddCustomerModal && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-emerald-600/20 rounded-xl">
-                      <Building className="w-6 h-6 text-emerald-400" />
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="bg-slate-800 rounded-2xl max-w-2xl w-full p-8 border border-slate-700 shadow-2xl animate-scale-in">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-4 bg-emerald-600/20 rounded-xl">
+                      <Building className="w-8 h-8 text-emerald-400" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-white">거래처 추가</h3>
-                      <p className="text-slate-400 text-sm">새 거래처 정보를 입력하세요</p>
+                      <h3 className="text-2xl font-bold text-white">거래처 추가</h3>
+                      <p className="text-slate-400">새 거래처 정보를 입력하세요</p>
                     </div>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">업체명 *</label>
-                      <input type="text" value={newCustomer.name} onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})} placeholder="업체명" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                      <label className="block text-slate-300 font-medium mb-2">업체명 <span className="text-red-400">*</span></label>
+                      <input type="text" value={newCustomer.name} onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})} placeholder="업체명" className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">연락처</label>
-                      <input type="text" value={newCustomer.phone} onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} placeholder="010-1234-5678" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                      <label className="block text-slate-300 font-medium mb-2">연락처</label>
+                      <input type="text" value={newCustomer.phone} onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} placeholder="010-1234-5678" className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">주소</label>
-                      <input type="text" value={newCustomer.address} onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})} placeholder="배송 주소" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                      <label className="block text-slate-300 font-medium mb-2">주소</label>
+                      <input type="text" value={newCustomer.address} onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})} placeholder="배송 주소" className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">메모</label>
-                      <input type="text" value={newCustomer.memo} onChange={(e) => setNewCustomer({...newCustomer, memo: e.target.value})} placeholder="참고사항" className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                      <label className="block text-slate-300 font-medium mb-2">메모</label>
+                      <textarea value={newCustomer.memo} onChange={(e) => setNewCustomer({...newCustomer, memo: e.target.value})} placeholder="참고사항" rows={3} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none" />
                     </div>
                   </div>
-                  <div className="flex gap-3 mt-6">
-                    <button onClick={() => setShowAddCustomerModal(false)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors">취소</button>
-                    <button onClick={handleAddCustomer} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors">추가</button>
+                  <div className="flex gap-4 mt-8">
+                    <button onClick={() => setShowAddCustomerModal(false)} className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold text-lg transition-colors">취소</button>
+                    <button onClick={handleAddCustomer} className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-lg transition-colors">추가</button>
                   </div>
                 </div>
               </div>
@@ -4693,38 +4760,42 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 
             {/* 거래처 수정 모달 */}
             {editingCustomer && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-blue-600/20 rounded-xl">
-                      <Edit3 className="w-6 h-6 text-blue-400" />
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="bg-slate-800 rounded-2xl max-w-2xl w-full p-8 border border-slate-700 shadow-2xl animate-scale-in">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-4 bg-blue-600/20 rounded-xl">
+                      <Edit3 className="w-8 h-8 text-blue-400" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-white">거래처 수정</h3>
-                      <p className="text-slate-400 text-sm">거래처 정보를 수정합니다</p>
+                      <h3 className="text-2xl font-bold text-white">거래처 수정</h3>
+                      <p className="text-slate-400">거래처 정보를 수정합니다</p>
                     </div>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">업체명 *</label>
-                      <input type="text" value={editingCustomer.name} onChange={(e) => setEditingCustomer({...editingCustomer, name: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                      <label className="block text-slate-300 font-medium mb-2">업체명 <span className="text-red-400">*</span></label>
+                      <input type="text" value={editingCustomer.name} onChange={(e) => setEditingCustomer({...editingCustomer, name: e.target.value})} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">연락처</label>
-                      <input type="text" value={editingCustomer.phone || ''} onChange={(e) => setEditingCustomer({...editingCustomer, phone: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                      <label className="block text-slate-300 font-medium mb-2">연락처</label>
+                      <input type="text" value={editingCustomer.phone || ''} onChange={(e) => setEditingCustomer({...editingCustomer, phone: e.target.value})} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
                       <label className="block text-slate-300 text-sm font-medium mb-1.5">주소</label>
                       <input type="text" value={editingCustomer.address || ''} onChange={(e) => setEditingCustomer({...editingCustomer, address: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">메모</label>
-                      <input type="text" value={editingCustomer.memo || ''} onChange={(e) => setEditingCustomer({...editingCustomer, memo: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
+                      <label className="block text-slate-300 font-medium mb-2">주소</label>
+                      <input type="text" value={editingCustomer.address || ''} onChange={(e) => setEditingCustomer({...editingCustomer, address: e.target.value})} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-medium mb-2">메모</label>
+                      <textarea value={editingCustomer.memo || ''} onChange={(e) => setEditingCustomer({...editingCustomer, memo: e.target.value})} rows={3} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none" />
                     </div>
                   </div>
-                  <div className="flex gap-3 mt-6">
-                    <button onClick={() => setEditingCustomer(null)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors">취소</button>
-                    <button onClick={handleUpdateCustomer} className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-medium transition-colors">저장</button>
+                  <div className="flex gap-4 mt-8">
+                    <button onClick={() => setEditingCustomer(null)} className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold text-lg transition-colors">취소</button>
+                    <button onClick={handleUpdateCustomer} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-semibold text-lg transition-colors">저장</button>
                   </div>
                 </div>
               </div>
@@ -4732,26 +4803,27 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
           </>
         )}
       </div>
+      </div>
 
       {/* 제품 추가 모달 */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-700 shadow-2xl animate-scale-in">
+          <div className="bg-slate-800 rounded-2xl max-w-2xl w-full p-8 border border-slate-700 shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
             {/* 헤더 */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-amber-600/20 rounded-xl">
-                <Plus className="w-6 h-6 text-amber-400" />
+            <div className="flex items-center gap-4 mb-8">
+              <div className="p-4 bg-amber-600/20 rounded-xl">
+                <Plus className="w-8 h-8 text-amber-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">제품 추가</h3>
-                <p className="text-slate-400 text-sm">새 제품을 등록합니다</p>
+                <h3 className="text-2xl font-bold text-white">제품 추가</h3>
+                <p className="text-slate-400">새 제품을 등록합니다</p>
               </div>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* 제품명 */}
               <div>
-                <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                <label className="block text-slate-300 font-medium mb-2">
                   제품명 <span className="text-red-400">*</span>
                 </label>
                 <input 
@@ -4759,13 +4831,13 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   value={newProduct.name} 
                   onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} 
                   placeholder="예: 레조 100 150 54" 
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all" 
+                  className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20" 
                 />
               </div>
               
               {/* 카테고리 */}
               <div>
-                <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                <label className="block text-slate-300 font-medium mb-2">
                   카테고리 <span className="text-red-400">*</span>
                 </label>
                 <input 
@@ -4774,7 +4846,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   value={newProduct.category} 
                   onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} 
                   placeholder="선택 또는 새 카테고리 입력" 
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all" 
+                  className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20" 
                 />
                 <datalist id="category-list">
                   {categories.map(cat => <option key={cat} value={cat} />)}
@@ -4784,7 +4856,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               {/* 가격 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                  <label className="block text-slate-300 font-medium mb-2">
                     도매가 <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
@@ -4793,14 +4865,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       value={newProduct.wholesale} 
                       onChange={(e) => setNewProduct({...newProduct, wholesale: e.target.value})} 
                       placeholder="0" 
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                      className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 pr-12" 
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">원</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">원</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
-                    소비자가 <span className="text-slate-500 text-xs">(선택)</span>
+                  <label className="block text-slate-300 font-medium mb-2">
+                    소비자가 <span className="text-slate-500 text-sm">(선택)</span>
                   </label>
                   <div className="relative">
                     <input 
@@ -4808,9 +4880,9 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       value={newProduct.retail} 
                       onChange={(e) => setNewProduct({...newProduct, retail: e.target.value})} 
                       placeholder="0" 
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                      className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 pr-12" 
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">원</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">원</span>
                   </div>
                 </div>
               </div>
@@ -4818,7 +4890,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               {/* 재고 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                  <label className="block text-slate-300 font-medium mb-2">
                     초기 재고
                   </label>
                   <div className="relative">
@@ -4827,14 +4899,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       value={newProduct.stock} 
                       onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})} 
                       placeholder="50" 
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                      className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 pr-12" 
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">개</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1.5">
-                    최소 재고 <span className="text-slate-500 text-xs">(알림 기준)</span>
+                  <label className="block text-slate-300 font-medium mb-2">
+                    최소 재고 <span className="text-slate-500 text-sm">(알림)</span>
                   </label>
                   <div className="relative">
                     <input 
@@ -4842,17 +4914,17 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       value={newProduct.min_stock} 
                       onChange={(e) => setNewProduct({...newProduct, min_stock: e.target.value})} 
                       placeholder="5" 
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all pr-10" 
+                      className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 pr-12" 
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">개</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">개</span>
                   </div>
                 </div>
               </div>
               
               {/* 도움말 */}
-              <div className="bg-slate-700/50 rounded-xl p-3 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                <p className="text-slate-400 text-xs">
+              <div className="bg-slate-700/50 rounded-xl p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-slate-400 text-sm">
                   <span className="text-red-400">*</span> 표시는 필수 입력 항목입니다. 
                   재고를 입력하지 않으면 기본값 50개로 설정됩니다.
                 </p>
@@ -4860,17 +4932,17 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             </div>
             
             {/* 버튼 */}
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-4 mt-8">
               <button 
                 onClick={() => { setShowAddModal(false); setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' }); }} 
-                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+                className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold text-lg transition-colors"
               >
                 취소
               </button>
               <button 
                 onClick={handleAddProduct} 
                 disabled={!newProduct.name || !newProduct.wholesale || !newProduct.category}
-                className={`flex-1 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-colors ${
+                className={`flex-1 py-4 rounded-xl text-white font-semibold text-lg flex items-center justify-center gap-2 transition-colors ${
                   !newProduct.name || !newProduct.wholesale || !newProduct.category
                     ? 'bg-slate-600 cursor-not-allowed'
                     : 'bg-amber-600 hover:bg-amber-500'
@@ -5185,11 +5257,13 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
 
   const filteredOrders = orders
     .filter(filterByDate)
-    .filter(order => 
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.customerName && order.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (order.customerPhone && order.customerPhone.includes(searchTerm))
-    );
+    .filter(order => {
+      const search = searchTerm.toLowerCase().replace(/\s/g, '');
+      const orderNum = order.orderNumber.toLowerCase().replace(/\s/g, '');
+      const customerName = (order.customerName || '').toLowerCase().replace(/\s/g, '');
+      const customerPhone = (order.customerPhone || '').replace(/\s/g, '');
+      return orderNum.includes(search) || customerName.includes(search) || customerPhone.includes(search);
+    });
 
   // 필터된 주문의 통계
   const filteredTotalSales = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
@@ -5434,7 +5508,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
         ) : (
           <div className="space-y-3">
             {filteredOrders.map((order, index) => (
-              <div key={order.orderNumber} className={`bg-slate-800/50 backdrop-blur rounded-xl border ${selectedOrders.includes(order.orderNumber) ? 'border-emerald-500' : 'border-slate-700'} overflow-hidden card-glow hover-lift animate-fade-in-up`} style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}>
+              <div key={order.orderNumber} className={`bg-slate-800/50 backdrop-blur rounded-xl border select-none ${selectedOrders.includes(order.orderNumber) ? 'border-emerald-500' : 'border-slate-700'} overflow-hidden card-glow hover-lift animate-fade-in-up`} style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}>
                 <div className="p-4">
                   <div className="flex items-start gap-3">
                     {/* 체크박스 */}
@@ -6550,7 +6624,7 @@ export default function PriceCalculator() {
                         <div 
                           key={product.id} 
                           onClick={() => !isOutOfStock && !cartItem && addToCart(product)}
-                          className={`px-2 py-2 rounded-lg cursor-pointer transition-all duration-200 hover-lift ${
+                          className={`px-2 py-2 rounded-lg cursor-pointer transition-all duration-200 hover-lift select-none ${
                             cartItem 
                               ? 'bg-blue-600/30 border border-blue-500/50' 
                               : isOutOfStock
