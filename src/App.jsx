@@ -1703,53 +1703,70 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
             onClick={() => { setDetailCart(null); setDetailIndex(null); }}
           />
-          <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col animate-fade-in">
+          <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col animate-fade-in">
             {/* 모달 헤더 */}
-            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <ShoppingBag className="w-7 h-7 text-white" />
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-5 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <ShoppingBag className="w-7 h-7 text-white" />
+                </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white truncate max-w-[300px]">{detailCart.name}</h2>
-                  <p className="text-violet-200 text-sm">{detailCart.date} {detailCart.time}</p>
+                  <h2 className="text-2xl font-bold text-white truncate max-w-[400px]">{detailCart.name}</h2>
+                  <p className="text-violet-200">{detailCart.date} {detailCart.time}</p>
                 </div>
               </div>
               <button 
                 onClick={() => { setDetailCart(null); setDetailIndex(null); }}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                className="p-2.5 hover:bg-white/20 rounded-lg transition-colors"
               >
-                <X className="w-6 h-6 text-white" />
+                <X className="w-7 h-7 text-white" />
               </button>
             </div>
 
             {/* 상품 목록 */}
             <div 
-              className="flex-1 overflow-y-auto p-5 modal-scroll-area" 
+              className="flex-1 overflow-y-auto p-6 modal-scroll-area" 
               data-lenis-prevent="true"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-lg">
-                <Package className="w-5 h-5 text-violet-400" />
+              <h3 className="text-white font-semibold mb-5 flex items-center gap-2 text-xl">
+                <Package className="w-6 h-6 text-violet-400" />
                 상품 목록 ({detailCart.items.length}종 / {detailCart.items.reduce((sum, item) => sum + item.quantity, 0)}개)
               </h3>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {detailCart.items.map((item, idx) => {
-                  // 가격 계산 - priceType에 따라 wholesale 또는 retail 사용
-                  const itemPrice = detailCart.priceType === 'wholesale' 
-                    ? (item.wholesale || item.price || 0)
-                    : (item.retail || item.wholesale || item.price || 0);
+                  // 가격 계산 - 여러 필드 확인
+                  let itemPrice = 0;
+                  if (detailCart.priceType === 'wholesale') {
+                    itemPrice = item.wholesale || item.price || item.unitPrice || 0;
+                  } else {
+                    itemPrice = item.retail || item.wholesale || item.price || item.unitPrice || 0;
+                  }
+                  
+                  // total에서 역산 (가격 정보가 없는 경우)
+                  if (itemPrice === 0 && detailCart.total && detailCart.items.length === 1) {
+                    itemPrice = detailCart.total / item.quantity;
+                  }
+                  
                   const itemTotal = itemPrice * item.quantity;
                   
                   return (
-                    <div key={idx} className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-violet-500/50 transition-colors">
+                    <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500/50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium text-lg truncate">{item.name}</p>
-                          <p className="text-blue-400 text-sm mt-1">@{formatPrice(itemPrice)}</p>
+                          <p className="text-white font-semibold text-xl truncate">{item.name}</p>
+                          {itemPrice > 0 && (
+                            <p className="text-blue-400 mt-2">@{formatPrice(itemPrice)}</p>
+                          )}
                         </div>
-                        <div className="text-right ml-4">
-                          <p className="text-slate-300">×{item.quantity}개</p>
-                          <p className="text-emerald-400 font-bold text-lg">{formatPrice(itemTotal)}</p>
+                        <div className="text-right ml-6">
+                          <p className="text-slate-300 text-lg">×{item.quantity}개</p>
+                          {itemPrice > 0 ? (
+                            <p className="text-emerald-400 font-bold text-2xl mt-1">{formatPrice(itemTotal)}</p>
+                          ) : (
+                            <p className="text-slate-500 text-sm mt-1">가격 정보 없음</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1759,18 +1776,18 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
             </div>
 
             {/* 금액 요약 + 버튼 */}
-            <div className="border-t border-slate-700 p-5 flex-shrink-0 bg-slate-800">
-              <div className="flex items-center justify-between mb-4 bg-slate-900/50 rounded-xl p-4">
-                <span className="text-slate-400 text-lg">총 금액</span>
-                <span className="text-3xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
+            <div className="border-t border-slate-700 p-6 flex-shrink-0 bg-slate-800">
+              <div className="flex items-center justify-between mb-5 bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-5">
+                <span className="text-slate-400 text-xl">총 금액</span>
+                <span className="text-4xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
               </div>
               
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button 
                   onClick={() => { onLoad(detailCart); onBack(); }}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium text-lg transition-colors"
+                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-xl transition-colors"
                 >
-                  <Download className="w-6 h-6" />
+                  <Download className="w-7 h-7" />
                   불러오기
                 </button>
                 <button 
@@ -1781,9 +1798,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                       setDetailIndex(null);
                     }
                   }}
-                  className="px-5 py-4 bg-red-600/20 hover:bg-red-600/30 rounded-xl text-red-400 transition-colors"
+                  className="px-6 py-5 bg-red-600/20 hover:bg-red-600/30 rounded-xl text-red-400 transition-colors"
                 >
-                  <Trash2 className="w-6 h-6" />
+                  <Trash2 className="w-7 h-7" />
                 </button>
               </div>
             </div>
@@ -2928,11 +2945,12 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   );
 }
 
-// ==================== 장바구니 저장 페이지 ====================
-function SaveCartPage({ onSave, cart, priceType, formatPrice, customerName = '', onBack }) {
+// ==================== 장바구니 저장 모달 ====================
+function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', onBack, onCloseAll }) {
   const [cartName, setCartName] = useState('');
   
   useEffect(() => {
+    if (!isOpen) return;
     // 고객명이 있으면 고객명으로, 없으면 날짜로
     if (customerName && customerName.trim()) {
       setCartName(customerName.trim());
@@ -2941,22 +2959,22 @@ function SaveCartPage({ onSave, cart, priceType, formatPrice, customerName = '',
       const defaultName = `${now.getMonth() + 1}월 ${now.getDate()}일 ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
       setCartName(defaultName);
     }
-  }, [customerName]);
+  }, [customerName, isOpen]);
 
   // ESC/Enter 키 이벤트
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onBack();
       } else if (e.key === 'Enter' && cartName.trim()) {
         e.preventDefault();
-        onSave(cartName.trim());
-        onBack();
+        handleSave();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, onSave, cartName]);
+  }, [isOpen, onBack, cartName]);
   
   const total = cart.reduce((sum, item) => {
     const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
@@ -2966,42 +2984,47 @@ function SaveCartPage({ onSave, cart, priceType, formatPrice, customerName = '',
   const handleSave = () => {
     if (!cartName.trim()) return;
     onSave(cartName.trim());
-    onBack();
+    // 장바구니 저장 후 메인 페이지로 복귀 (주문서 모달도 닫기)
+    if (onCloseAll) {
+      onCloseAll();
+    } else {
+      onBack();
+    }
   };
+
+  if (!isOpen) return null;
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
-        <div className="w-full px-4 py-3">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ touchAction: 'none' }}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+      
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden border border-slate-700 shadow-2xl animate-fade-in">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-              <ArrowLeft className="w-5 h-5 text-slate-300" />
-            </button>
-            <div className="flex items-center gap-2">
-              <Save className="w-6 h-6 text-violet-400" />
-              <h1 className="text-lg font-bold text-white">장바구니 저장</h1>
-            </div>
+            <Save className="w-6 h-6 text-white" />
+            <h2 className="text-lg font-bold text-white">장바구니 저장</h2>
           </div>
+          <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
         </div>
-      </header>
 
-      <div className="w-full px-4 py-6">
-        <div className="max-w-md mx-auto">
-          <div className="mb-6">
+        <div className="p-5">
+          <div className="mb-5">
             <label className="block text-slate-400 text-sm mb-2">저장 이름</label>
             <input
               type="text"
               value={cartName}
               onChange={(e) => setCartName(e.target.value)}
               placeholder="고객명 또는 저장명 입력"
-              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
               autoFocus
               onFocus={(e) => e.target.select()}
             />
           </div>
           
-          <div className="bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700">
+          <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
             <div className="flex justify-between items-center mb-2">
               <span className="text-slate-400">상품</span>
               <span className="text-white">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
@@ -3012,7 +3035,7 @@ function SaveCartPage({ onSave, cart, priceType, formatPrice, customerName = '',
             </div>
           </div>
           
-          <div className="bg-slate-900/50 rounded-xl p-4 mb-6 border border-slate-700 max-h-48 overflow-y-auto">
+          <div className="bg-slate-900/30 rounded-xl p-3 mb-5 border border-slate-700/50 max-h-32 overflow-y-auto">
             <p className="text-slate-400 text-sm">
               {cart.map(item => `${item.name}(${item.quantity})`).join(', ')}
             </p>
@@ -3495,6 +3518,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   const [orderNumber, setOrderNumber] = useState('');
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [changingItemId, setChangingItemId] = useState(null); // 변경 중인 제품 ID
+  const [changeSearchQuery, setChangeSearchQuery] = useState(''); // 변경 검색어
 
   // 처음 마운트시 주문번호 생성
   useEffect(() => {
@@ -3915,9 +3940,21 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
               cart.map((item) => {
                 const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
                 const itemTotal = price * item.quantity;
+                const isChanging = changingItemId === item.id;
+                
+                // 변경 시 검색 결과
+                const changeSearchResults = isChanging && changeSearchQuery.trim() 
+                  ? products.filter(p => 
+                      p.id !== item.id && // 현재 제품 제외
+                      !cart.some(c => c.id === p.id) && // 장바구니에 있는 제품 제외
+                      (p.name.toLowerCase().includes(changeSearchQuery.toLowerCase()) ||
+                       (p.category && p.category.toLowerCase().includes(changeSearchQuery.toLowerCase())))
+                    ).slice(0, 8)
+                  : [];
+                
                 return (
                   <div key={item.id} className="bg-slate-800/80 rounded-xl p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-                    {/* 상단: 상품명 + 삭제 버튼 */}
+                    {/* 상단: 상품명 + 변경/삭제 버튼 */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-medium truncate">{item.name}</p>
@@ -3925,13 +3962,97 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                           @{formatPrice(price)}
                         </p>
                       </div>
-                      <button 
-                        onClick={() => onRemoveItem(item.id)}
-                        className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button 
+                          onClick={() => {
+                            if (isChanging) {
+                              setChangingItemId(null);
+                              setChangeSearchQuery('');
+                            } else {
+                              setChangingItemId(item.id);
+                              setChangeSearchQuery('');
+                            }
+                          }}
+                          className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg transition-colors ${
+                            isChanging 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-blue-600/20 hover:bg-blue-600/40 text-blue-400'
+                          }`}
+                          title="제품 변경"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => onRemoveItem(item.id)}
+                          className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-lg text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
+                    
+                    {/* 제품 변경 UI */}
+                    {isChanging && (
+                      <div className="mb-3 relative">
+                        <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg px-3 py-2 border border-blue-500/50">
+                          <Search className="w-4 h-4 text-blue-400" />
+                          <input
+                            type="text"
+                            value={changeSearchQuery}
+                            onChange={(e) => setChangeSearchQuery(e.target.value)}
+                            placeholder="변경할 제품 검색..."
+                            className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
+                            autoFocus
+                          />
+                          {changeSearchQuery && (
+                            <button onClick={() => setChangeSearchQuery('')}>
+                              <X className="w-4 h-4 text-slate-400" />
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* 검색 결과 */}
+                        {changeSearchResults.length > 0 && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
+                            {changeSearchResults.map(product => {
+                              const productPrice = priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
+                              return (
+                                <div 
+                                  key={product.id}
+                                  onClick={() => {
+                                    // 기존 제품 삭제 후 새 제품 추가 (수량 유지)
+                                    const currentQty = item.quantity;
+                                    onRemoveItem(item.id);
+                                    onAddItem(product);
+                                    // 수량 조절
+                                    setTimeout(() => {
+                                      if (currentQty > 1) {
+                                        onUpdateQuantity(product.id, currentQty);
+                                      }
+                                    }, 50);
+                                    setChangingItemId(null);
+                                    setChangeSearchQuery('');
+                                  }}
+                                  className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/50 last:border-0"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                                    <p className="text-slate-500 text-xs">{product.category}</p>
+                                  </div>
+                                  <span className="text-blue-400 text-sm font-medium ml-2">{formatPrice(productPrice)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        {changeSearchQuery && changeSearchResults.length === 0 && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl p-3 text-center text-slate-400 text-sm">
+                            검색 결과가 없습니다
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {/* 하단: 수량 조절 + 소계 */}
                     <div className="flex items-center justify-between bg-slate-900/50 rounded-lg p-2">
@@ -6182,20 +6303,6 @@ export default function PriceCalculator() {
     );
   }
 
-  // 장바구니 저장 페이지
-  if (isSaveCartModalOpen) {
-    return (
-      <SaveCartPage
-        onSave={saveCartWithName}
-        cart={cart}
-        priceType={priceType}
-        formatPrice={formatPrice}
-        customerName={saveCartCustomerName}
-        onBack={() => setIsSaveCartModalOpen(false)}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <CustomStyles />
@@ -6709,6 +6816,21 @@ export default function PriceCalculator() {
           onBack={() => setIsOrderModalOpen(false)}
         />
       )}
+
+      {/* 장바구니 저장 모달 */}
+      <SaveCartModal
+        isOpen={isSaveCartModalOpen}
+        onSave={saveCartWithName}
+        cart={cart}
+        priceType={priceType}
+        formatPrice={formatPrice}
+        customerName={saveCartCustomerName}
+        onBack={() => setIsSaveCartModalOpen(false)}
+        onCloseAll={() => { 
+          setIsSaveCartModalOpen(false); 
+          setIsOrderModalOpen(false); 
+        }}
+      />
 
       {/* 택배 송장 모달 */}
       {showShippingModal && (
