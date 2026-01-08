@@ -2653,8 +2653,9 @@ MVB 64 Y R 2개`}
                                     setSearchingIndex(searchingIndex === index ? null : index); 
                                     setSearchQuery(item.searchText);
                                   }}
-                                  className="text-xs text-slate-400 hover:text-purple-400 flex-shrink-0"
+                                  className="px-2 py-0.5 text-xs bg-slate-600 hover:bg-purple-600 text-white rounded flex-shrink-0 transition-colors flex items-center gap-1"
                                 >
+                                  <Edit3 className="w-3 h-3" />
                                   변경
                                 </button>
                               </div>
@@ -4769,10 +4770,6 @@ export default function PriceCalculator() {
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showCustomerListModal, setShowCustomerListModal] = useState(false);
   const [showTextAnalyzeModal, setShowTextAnalyzeModal] = useState(false);
-  const [showMemo, setShowMemo] = useState(false);
-  const [memoText, setMemoText] = useState(() => {
-    try { return localStorage.getItem('pos_memo') || ''; } catch { return ''; }
-  });
 
   // 동적 카테고리 목록 (Supabase products 기반)
   const dynamicCategories = useMemo(() => {
@@ -5461,7 +5458,6 @@ export default function PriceCalculator() {
         isOpen={showTextAnalyzeModal}
         onClose={() => setShowTextAnalyzeModal(false)}
         products={products.length > 0 ? products : priceData}
-        initialText={memoText}
         onAddToCart={(product, qty) => {
           // 이미 장바구니에 있으면 수량 추가
           const existing = cart.find(item => item.id === product.id);
@@ -5515,35 +5511,13 @@ export default function PriceCalculator() {
                 <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
               </button>
               
-              <button
-                onClick={() => { loadCustomers(); setShowCustomerListModal(true); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="거래처 목록"
-              >
-                <Building className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-              </button>
-              
-              <button
-                onClick={() => setShowStockOverview(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="재고 현황"
-              >
-                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-              </button>
-              
-              <button
-                onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="택배 송장"
-              >
-                <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
-              </button>
-              
+              {/* 주문 이력 - 메인 버튼 */}
               <button
                 onClick={() => { setCurrentPage('history'); loadOrders(); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="주문 이력"
               >
-                <List className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                <List className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                 {orders.length > 0 && (
                   <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                     {orders.length > 99 ? '99+' : orders.length}
@@ -5551,28 +5525,7 @@ export default function PriceCalculator() {
                 )}
               </button>
               
-              {/* AI 주문 인식 버튼 */}
-              <button
-                onClick={() => setShowTextAnalyzeModal(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 border border-purple-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="AI 주문 인식"
-              >
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-              </button>
-              
-              {/* 메모장 버튼 */}
-              <button
-                onClick={() => setShowMemo(!showMemo)}
-                className={`flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 border rounded-lg transition-all hover-lift btn-ripple ${
-                  showMemo 
-                    ? 'bg-yellow-600/50 border-yellow-500/50' 
-                    : 'bg-yellow-600/30 hover:bg-yellow-600/50 border-yellow-500/50'
-                }`}
-                title="메모장"
-              >
-                <Edit3 className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-              </button>
-              
+              {/* 저장된 장바구니 */}
               <button
                 onClick={() => setIsSavedCartsModalOpen(true)}
                 className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
@@ -5586,16 +5539,54 @@ export default function PriceCalculator() {
                 )}
               </button>
               
+              {/* 장바구니 - 모바일 */}
               <button
                 onClick={() => setActiveTab(activeTab === 'cart' ? 'catalog' : 'cart')}
-                className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-slate-700 rounded-lg hover-lift btn-ripple"
+                className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg hover-lift btn-ripple"
+                title="장바구니"
               >
-                <ShoppingCart className="w-5 h-5 text-white" />
+                <ShoppingCart className="w-5 h-5 text-blue-400" />
                 {cart.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  <span className="min-w-5 h-5 px-1.5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                     {cart.length}
                   </span>
                 )}
+              </button>
+              
+              {/* 구분선 */}
+              <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
+              
+              {/* AI 주문 인식 버튼 - 노란색 */}
+              <button
+                onClick={() => setShowTextAnalyzeModal(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-yellow-600/30 hover:bg-yellow-600/50 border border-yellow-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="AI 주문 인식"
+              >
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
+              </button>
+              
+              <button
+                onClick={() => { loadCustomers(); setShowCustomerListModal(true); }}
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="거래처 목록"
+              >
+                <Building className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
+              </button>
+              
+              <button
+                onClick={() => setShowStockOverview(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="재고 현황"
+              >
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
+              </button>
+              
+              <button
+                onClick={() => { loadOrders(); setShowShippingModal(true); }}
+                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="택배 송장"
+              >
+                <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
               </button>
             </div>
           </div>
@@ -5764,82 +5755,6 @@ export default function PriceCalculator() {
             </div>
             )}
           </div>
-
-          {/* 플로팅 메모장 */}
-          {showMemo && (
-            <div className="fixed bottom-20 md:bottom-4 right-4 z-50 w-80 sm:w-96 animate-scale-in">
-              <div className="bg-slate-800 rounded-2xl border border-yellow-500/50 shadow-2xl shadow-yellow-900/20 overflow-hidden">
-                {/* 메모장 헤더 */}
-                <div className="bg-gradient-to-r from-yellow-600 to-amber-600 px-4 py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Edit3 className="w-4 h-4 text-white" />
-                    <span className="text-white font-medium text-sm">📝 메모장</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        if (memoText.trim()) {
-                          setShowTextAnalyzeModal(true);
-                        }
-                      }}
-                      disabled={!memoText.trim()}
-                      className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
-                        memoText.trim() 
-                          ? 'bg-purple-600 hover:bg-purple-500 text-white' 
-                          : 'bg-white/20 text-white/50 cursor-not-allowed'
-                      }`}
-                      title="AI 분석"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      AI 분석
-                    </button>
-                    <button
-                      onClick={() => setShowMemo(false)}
-                      className="p-1 hover:bg-white/20 rounded transition-colors"
-                    >
-                      <X className="w-4 h-4 text-white" />
-                    </button>
-                  </div>
-                </div>
-                
-                {/* 메모 입력 영역 */}
-                <div className="p-3">
-                  <textarea
-                    value={memoText}
-                    onChange={(e) => {
-                      setMemoText(e.target.value);
-                      try { localStorage.setItem('pos_memo', e.target.value); } catch {}
-                    }}
-                    placeholder="전화 받으면서 메모하세요...
-
-예: MVB 64 2개
-    카본 93 듀얼 1세트
-    밴딩 45 3개"
-                    rows={6}
-                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none font-mono"
-                    autoFocus
-                  />
-                  
-                  {/* 하단 버튼 */}
-                  <div className="flex items-center justify-between mt-2">
-                    <button
-                      onClick={() => {
-                        setMemoText('');
-                        try { localStorage.removeItem('pos_memo'); } catch {}
-                      }}
-                      className="text-xs text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      지우기
-                    </button>
-                    <span className="text-xs text-slate-500">
-                      {memoText.split('\n').filter(l => l.trim()).length}줄
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className={`md:w-[420px] lg:w-[480px] ${activeTab === 'catalog' ? 'hidden md:block' : ''} fixed md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto z-40 md:z-auto`}>
             <div className="bg-gradient-to-r from-emerald-900/90 to-teal-900/80 backdrop-blur-md md:rounded-xl border-t-2 md:border border-emerald-500/50 md:sticky md:top-14 shadow-2xl shadow-emerald-900/30 md:shadow-lg animate-slide-in-right">
