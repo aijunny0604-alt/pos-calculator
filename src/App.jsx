@@ -2507,6 +2507,15 @@ function TextAnalyzeModal({ isOpen, onClose, products, onAddToCart, formatPrice,
     ));
   };
 
+  // 항목 삭제
+  const removeItem = (index) => {
+    setAnalyzedItems(prev => prev.filter((_, i) => i !== index));
+    if (searchingIndex === index) {
+      setSearchingIndex(null);
+      setSearchQuery('');
+    }
+  };
+
   // 제품 수동 선택 (검색으로 찾은 제품)
   const selectProduct = (index, product) => {
     setAnalyzedItems(prev => prev.map((item, i) => 
@@ -2664,42 +2673,60 @@ MVB 64 Y R 2개`}
                               </p>
                             </div>
                             
-                            {/* 수량 조절 */}
-                            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 flex-shrink-0">
+                            {/* 수량 조절 + 삭제 */}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+                                <button 
+                                  onClick={() => updateQuantity(index, item.quantity - 1)}
+                                  className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
+                                >
+                                  <Minus className="w-3 h-3 text-white" />
+                                </button>
+                                <input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
+                                  className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <button 
+                                  onClick={() => updateQuantity(index, item.quantity + 1)}
+                                  className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
+                                >
+                                  <Plus className="w-3 h-3 text-white" />
+                                </button>
+                              </div>
                               <button 
-                                onClick={() => updateQuantity(index, item.quantity - 1)}
-                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
+                                onClick={() => removeItem(index)}
+                                className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
+                                title="삭제"
                               >
-                                <Minus className="w-3 h-3 text-white" />
-                              </button>
-                              <input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                                className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                              <button 
-                                onClick={() => updateQuantity(index, item.quantity + 1)}
-                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-600 rounded"
-                              >
-                                <Plus className="w-3 h-3 text-white" />
+                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
                               </button>
                             </div>
                           </div>
                         ) : (
                           /* 매칭 실패 - 검색 UI */
                           <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-red-400 text-sm">❌ 못 찾음</span>
-                              <button
-                                onClick={() => { 
-                                  setSearchingIndex(searchingIndex === index ? null : index); 
-                                  setSearchQuery(item.searchText);
-                                }}
-                                className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg flex items-center gap-1"
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-red-400 text-sm">❌ 못 찾음</span>
+                                <button
+                                  onClick={() => { 
+                                    setSearchingIndex(searchingIndex === index ? null : index); 
+                                    setSearchQuery(item.searchText);
+                                  }}
+                                  className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg flex items-center gap-1"
+                                >
+                                  <Search className="w-3 h-3" />
+                                  직접 검색
+                                </button>
+                              </div>
+                              <button 
+                                onClick={() => removeItem(index)}
+                                className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
+                                title="삭제"
                               >
-                                <Search className="w-3 h-3" />
-                                직접 검색
+                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
                               </button>
                             </div>
                           </div>
@@ -5591,53 +5618,57 @@ export default function PriceCalculator() {
             </div>
           </div>
         </div>
+        
+        {/* 검색바 - 헤더에 포함되어 완전 고정 */}
+        <div className="w-full px-2 sm:px-4 pb-2">
+          <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="제품명 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="전체">전체</option>
+                {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+              
+              <div className="flex bg-slate-900/50 rounded-lg p-0.5">
+                <button
+                  onClick={() => setPriceType('wholesale')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  도매가
+                </button>
+                <button
+                  onClick={() => setPriceType('retail')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  소비자가
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </header>
 
       <div className="w-full px-4 py-3 pb-48 md:pb-3">
         <div className="flex flex-col md:flex-row gap-6">
           <div className={`flex-1 ${activeTab === 'cart' ? 'hidden md:block' : ''}`}>
-            <div className="bg-gradient-to-r from-blue-900/80 to-blue-800/60 backdrop-blur-md rounded-xl p-3 mb-4 border border-blue-600/50 sticky top-14 sm:top-16 z-30 shadow-lg shadow-blue-900/20 animate-fade-in-down">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="제품명 검색..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="전체">전체</option>
-                  {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-                
-                <div className="flex bg-slate-900/50 rounded-lg p-0.5">
-                  <button
-                    onClick={() => setPriceType('wholesale')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    도매가
-                  </button>
-                  <button
-                    onClick={() => setPriceType('retail')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    소비자가
-                  </button>
-                </div>
-              </div>
-            </div>
 
             <div className="mb-2 text-slate-400 text-xs">
               {filteredProducts.length}개 제품
