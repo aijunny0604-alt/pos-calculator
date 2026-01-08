@@ -2744,6 +2744,23 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
+  // 모달 열릴 때 body 스크롤 방지 (모바일 최적화)
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   // 텍스트 분석 함수
   const analyzeText = () => {
     if (!inputText.trim()) return;
@@ -2876,10 +2893,11 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+      {/* 배경 오버레이 */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
       
       <div className="relative bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
-        {/* 헤더 */}
+        {/* 헤더 - 고정 */}
         <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-white" />
@@ -2898,10 +2916,10 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
           </div>
         </div>
 
-        {/* 스크롤 가능 영역 */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* 입력 영역 & 분석 버튼 - 고정 */}
+        <div className="flex-shrink-0 px-4 pt-4 bg-slate-800">
           {/* 입력 영역 */}
-          <div className="mb-4">
+          <div className="mb-3">
             <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4" />
               메모 입력 (줄 단위로 분석)
@@ -2923,7 +2941,7 @@ MVB 64 Y R 2개`}
           <button
             onClick={analyzeText}
             disabled={!inputText.trim() || isAnalyzing}
-            className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all mb-4 ${
+            className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all mb-3 ${
               !inputText.trim() || isAnalyzing
                 ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30'
@@ -2935,6 +2953,10 @@ MVB 64 Y R 2개`}
               <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
             )}
           </button>
+        </div>
+
+        {/* 분석 결과 - 스크롤 영역 */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
 
         {/* 분석 결과 */}
         {analyzedItems.length > 0 && (
@@ -4734,6 +4756,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <CustomStyles />
+      {/* 헤더 - 고정 */}
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
@@ -4778,9 +4801,10 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
         </div>
       </header>
 
-      <div className="w-full px-4 py-6">
+      {/* 통계 카드 & 검색/필터 - 고정 */}
+      <div className="sticky top-[73px] z-30 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent px-4 pt-6 pb-2">
         {/* 통계 카드 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700 card-glow animate-fade-in-up stagger-1">
             <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
               <FileText className="w-4 h-4" />
@@ -4814,7 +4838,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
         </div>
 
         {/* 검색 & 날짜 필터 */}
-        <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 mb-6 border border-slate-700 animate-fade-in-up stagger-5">
+        <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 mb-2 border border-slate-700 animate-fade-in-up stagger-5">
           {/* 날짜 필터 버튼 */}
           <div className="flex flex-wrap gap-2 mb-4">
             {[
@@ -4893,7 +4917,10 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
             </span>
           </div>
         </div>
+      </div>
 
+      {/* 주문 목록 - 스크롤 영역 */}
+      <div className="w-full px-4 pb-6">
         {isLoading && (
           <div className="text-center py-8 animate-fade-in">
             <RefreshCw className="w-8 h-8 text-emerald-400 mx-auto mb-2 animate-spin" />
@@ -6113,7 +6140,7 @@ export default function PriceCalculator() {
                 </button>
               </div>
 
-              <div className="max-h-52 md:max-h-[calc(100vh-280px)] overflow-y-auto order-scroll overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="max-h-52 md:max-h-[calc(100vh-280px)] overflow-y-auto order-scroll mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                 {cart.length === 0 ? (
                   <div className="p-6 text-center">
                     <ShoppingCart className="w-10 h-10 text-emerald-700 mx-auto mb-2" />
