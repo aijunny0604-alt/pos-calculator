@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
 import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft } from 'lucide-react';
 
@@ -6423,6 +6424,17 @@ export default function PriceCalculator() {
   useEffect(() => {
     loadProducts();
     loadCustomers();
+    loadOrders();
+    loadSavedCarts();
+    
+    // 페이지 포커스 시 데이터 새로고침 (다른 기기에서 변경된 내용 반영)
+    const handleFocus = () => {
+      loadOrders();
+      loadSavedCarts();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // Lenis 부드러운 스크롤 초기화
@@ -7189,11 +7201,18 @@ export default function PriceCalculator() {
                 title="주문 이력"
               >
                 <List className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-                {orders.length > 0 && (
-                  <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                    {orders.length > 99 ? '99+' : orders.length}
-                  </span>
-                )}
+                {(() => {
+                  const today = new Date();
+                  const todayCount = orders.filter(order => {
+                    const orderDate = new Date(order.createdAt);
+                    return orderDate.toDateString() === today.toDateString();
+                  }).length;
+                  return todayCount > 0 && (
+                    <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                      {todayCount > 99 ? '99+' : todayCount}
+                    </span>
+                  );
+                })()}
               </button>
               
               {/* 저장된 장바구니 */}
@@ -7838,14 +7857,15 @@ export default function PriceCalculator() {
         }}
       />
 
-      {/* 택배 송장 모달 */}
-      {showShippingModal && (
+      {/* 택배 송장 모달 - createPortal로 body에 직접 렌더링 */}
+      {showShippingModal && createPortal(
         <ShippingLabelPage
           orders={orders}
           customers={customers}
           formatPrice={formatPrice}
           onBack={() => setShowShippingModal(false)}
-        />
+        />,
+        document.body
       )}
     </div>
   );
