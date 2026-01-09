@@ -2322,22 +2322,27 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     if (!packaging) return '7300';
     
     let costs = [];
+    const input = String(packaging);
     
-    // 박스 처리: 박스1 → 7300, 박스2 → 7300,7300, 박스3 → 7300,7300,7300
-    const boxMatch = packaging.match(/박스(\d+)/);
-    if (boxMatch) {
-      const count = parseInt(boxMatch[1]) || 1;
-      for (let i = 0; i < count; i++) {
-        costs.push(7300);
+    // 박스 처리: 박스1 → 7300, 박스2 → 7300,7300
+    if (input.includes('박스')) {
+      const boxNum = input.match(/박스(\d)/);
+      if (boxNum && boxNum[1]) {
+        const count = parseInt(boxNum[1]) || 1;
+        for (let i = 0; i < count; i++) {
+          costs.push(7300);
+        }
       }
     }
     
     // 나체 처리: 나체1 → 12000, 나체2 → 12000,12000
-    const nakedMatch = packaging.match(/나체(\d+)/);
-    if (nakedMatch) {
-      const count = parseInt(nakedMatch[1]) || 1;
-      for (let i = 0; i < count; i++) {
-        costs.push(12000);
+    if (input.includes('나체')) {
+      const nakedNum = input.match(/나체(\d)/);
+      if (nakedNum && nakedNum[1]) {
+        const count = parseInt(nakedNum[1]) || 1;
+        for (let i = 0; i < count; i++) {
+          costs.push(12000);
+        }
       }
     }
     
@@ -2914,6 +2919,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                               list={`packaging-options-${order.orderNumber}`}
                               value={setting.packaging} 
                               onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
+                              onInput={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)}
                               placeholder="박스1"
                               className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500"
                             />
