@@ -1589,6 +1589,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [detailIndex, setDetailIndex] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
 
   // 날짜 필터링 함수
   const filterByDate = (cart) => {
@@ -1729,25 +1730,36 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               </div>
             </div>
             
-            {/* 액션 버튼 */}
-            {savedCarts.length > 0 && !selectMode && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSelectMode(true)}
-                  className="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-1"
-                >
-                  <Check className="w-3 h-3" />
-                  선택
-                </button>
-                <button
-                  onClick={() => setShowDeleteAllConfirm(true)}
-                  className="text-xs px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg flex items-center gap-1"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  전체삭제
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {/* 액션 버튼 */}
+              {savedCarts.length > 0 && !selectMode && (
+                <>
+                  <button
+                    onClick={() => setSelectMode(true)}
+                    className="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-1"
+                  >
+                    <Check className="w-3 h-3" />
+                    선택
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    className="text-xs px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    전체삭제
+                  </button>
+                </>
+              )}
+              
+              {/* 접기/펼치기 버튼 */}
+              <button
+                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white flex items-center gap-1"
+              >
+                <span className="text-xs hidden sm:inline">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isHeaderCollapsed ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
           </div>
           
           {/* 선택 모드 바 */}
@@ -1784,55 +1796,67 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               </div>
             </div>
           )}
+          
+          {/* 접힌 상태: 요약 정보 */}
+          {isHeaderCollapsed && (
+            <div className="mt-2 flex items-center justify-between text-xs bg-slate-700/30 rounded-lg px-3 py-2">
+              <span className="text-slate-400">
+                {dateFilter === 'today' ? '오늘' : dateFilter === 'yesterday' ? '어제' : dateFilter === 'week' ? '이번 주' : dateFilter === 'month' ? '이번 달' : '전체'} · {filteredCarts.length}건 · <span className="text-emerald-400 font-semibold">{formatPrice(totalAmount)}</span>
+              </span>
+              {searchTerm && <span className="text-violet-400">검색: {searchTerm}</span>}
+            </div>
+          )}
         </div>
         
-        {/* 통계 + 필터 + 검색 영역 */}
-        <div className="px-4 pb-4 space-y-3">
-          {/* 통계 카드 */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-              <p className="text-slate-400 text-xs flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> 총 건수</p>
-              <p className="text-white font-bold text-lg">{filteredCarts.length}건</p>
+        {/* 통계 + 필터 + 검색 영역 - 접기/펼치기 */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+          <div className="px-4 pb-4 space-y-3">
+            {/* 통계 카드 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                <p className="text-slate-400 text-xs flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> 총 건수</p>
+                <p className="text-white font-bold text-lg">{filteredCarts.length}건</p>
+              </div>
+              <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                <p className="text-slate-400 text-xs flex items-center gap-1"><Receipt className="w-3 h-3" /> 총 금액</p>
+                <p className="text-emerald-400 font-bold text-lg">{formatPrice(totalAmount)}</p>
+              </div>
             </div>
-            <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
-              <p className="text-slate-400 text-xs flex items-center gap-1"><Receipt className="w-3 h-3" /> 총 금액</p>
-              <p className="text-emerald-400 font-bold text-lg">{formatPrice(totalAmount)}</p>
+            
+            {/* 날짜 필터 */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'today', label: '오늘' },
+                { key: 'yesterday', label: '어제' },
+                { key: 'week', label: '이번 주' },
+                { key: 'month', label: '이번 달' },
+                { key: 'all', label: '전체' }
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => { setDateFilter(key); setSelectedItems([]); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    dateFilter === key 
+                      ? 'bg-violet-600 text-white' 
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          </div>
-          
-          {/* 날짜 필터 */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: 'today', label: '오늘' },
-              { key: 'yesterday', label: '어제' },
-              { key: 'week', label: '이번 주' },
-              { key: 'month', label: '이번 달' },
-              { key: 'all', label: '전체' }
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => { setDateFilter(key); setSelectedItems([]); }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  dateFilter === key 
-                    ? 'bg-violet-600 text-white' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          
-          {/* 검색창 */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="이름, 상품명 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            />
+            
+            {/* 검색창 */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="이름, 상품명 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -2046,7 +2070,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                   const itemTotalSupply = Math.round(itemTotal / 1.1); // 소계 공급가
                   
                   return (
-                    <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500/50 transition-colors">
+                    <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500/50 hover:bg-slate-700/70 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg hover:shadow-violet-500/10">
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-semibold text-xl truncate">{item.name}</p>
@@ -2095,7 +2119,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               <div className="flex gap-4">
                 <button 
                   onClick={() => { onLoad(detailCart); onBack(); }}
-                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-xl transition-colors"
+                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-xl transition-all hover-lift btn-ripple"
                 >
                   <Download className="w-7 h-7" />
                   불러오기
@@ -2108,7 +2132,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                       setDetailIndex(null);
                     }
                   }}
-                  className="px-6 py-5 bg-red-600/20 hover:bg-red-600/30 rounded-xl text-red-400 transition-colors"
+                  className="px-6 py-5 bg-red-600/20 hover:bg-red-600/40 rounded-xl text-red-400 transition-all hover-lift btn-ripple"
                 >
                   <Trash2 className="w-7 h-7" />
                 </button>
