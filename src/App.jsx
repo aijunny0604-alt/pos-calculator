@@ -1587,6 +1587,67 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [detailCart, setDetailCart] = useState(null); // 상세 보기 모달용
   const [detailIndex, setDetailIndex] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
+
+  // 날짜 필터링 함수
+  const filterByDate = (cart) => {
+    if (dateFilter === 'all') return true;
+    if (!cart.date) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // cart.date 형식: "2026.01.09" 또는 "2026-01-09"
+    const cartDateStr = cart.date.replace(/\./g, '-');
+    const cartDate = new Date(cartDateStr);
+    cartDate.setHours(0, 0, 0, 0);
+    
+    if (dateFilter === 'today') {
+      return cartDate.getTime() === today.getTime();
+    }
+    if (dateFilter === 'yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return cartDate.getTime() === yesterday.getTime();
+    }
+    if (dateFilter === 'week') {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return cartDate >= weekAgo;
+    }
+    if (dateFilter === 'month') {
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return cartDate >= monthAgo;
+    }
+    return true;
+  };
+
+  // 검색 필터링 함수
+  const filterBySearch = (cart) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase().replace(/\s/g, '');
+    
+    // 이름 검색
+    if (cart.name?.toLowerCase().replace(/\s/g, '').includes(term)) return true;
+    
+    // 아이템 이름 검색
+    if (cart.items?.some(item => item.name?.toLowerCase().replace(/\s/g, '').includes(term))) return true;
+    
+    // 날짜 검색
+    if (cart.date?.includes(searchTerm)) return true;
+    
+    return false;
+  };
+
+  // 필터링된 장바구니 목록
+  const filteredCarts = savedCarts.filter(cart => filterByDate(cart) && filterBySearch(cart));
+  
+  // 필터링된 목록의 원본 인덱스 매핑
+  const filteredCartsWithIndex = savedCarts
+    .map((cart, index) => ({ cart, originalIndex: index }))
+    .filter(({ cart }) => filterByDate(cart) && filterBySearch(cart));
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -1614,12 +1675,13 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
     );
   };
   
-  // 전체 선택/해제
+  // 전체 선택/해제 (필터링된 항목만)
   const toggleSelectAll = () => {
-    if (selectedItems.length === savedCarts.length) {
+    const filteredIndices = filteredCartsWithIndex.map(({ originalIndex }) => originalIndex);
+    if (selectedItems.length === filteredIndices.length && filteredIndices.every(i => selectedItems.includes(i))) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(savedCarts.map((_, i) => i));
+      setSelectedItems(filteredIndices);
     }
   };
   
@@ -1644,6 +1706,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
       }
     }
   };
+
+  // 총 금액 계산
+  const totalAmount = filteredCarts.reduce((sum, cart) => sum + (cart.total || 0), 0);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 select-none">
@@ -1659,7 +1724,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                 <Save className="w-6 h-6 text-violet-400" />
                 <div>
                   <h1 className="text-lg font-bold text-white">저장된 장바구니</h1>
-                  <p className="text-violet-400 text-xs">{savedCarts.length}개</p>
+                  <p className="text-violet-400 text-xs">전체 {savedCarts.length}개 · 필터 {filteredCarts.length}개</p>
                 </div>
               </div>
             </div>
@@ -1693,7 +1758,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                   onClick={toggleSelectAll}
                   className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded"
                 >
-                  {selectedItems.length === savedCarts.length ? '전체 해제' : '전체 선택'}
+                  {selectedItems.length === filteredCartsWithIndex.length && filteredCartsWithIndex.length > 0 ? '전체 해제' : '전체 선택'}
                 </button>
                 <span className="text-violet-300 text-xs">{selectedItems.length}개 선택됨</span>
               </div>
@@ -1719,6 +1784,56 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               </div>
             </div>
           )}
+        </div>
+        
+        {/* 통계 + 필터 + 검색 영역 */}
+        <div className="px-4 pb-4 space-y-3">
+          {/* 통계 카드 */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+              <p className="text-slate-400 text-xs flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> 총 건수</p>
+              <p className="text-white font-bold text-lg">{filteredCarts.length}건</p>
+            </div>
+            <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+              <p className="text-slate-400 text-xs flex items-center gap-1"><Receipt className="w-3 h-3" /> 총 금액</p>
+              <p className="text-emerald-400 font-bold text-lg">{formatPrice(totalAmount)}</p>
+            </div>
+          </div>
+          
+          {/* 날짜 필터 */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'today', label: '오늘' },
+              { key: 'yesterday', label: '어제' },
+              { key: 'week', label: '이번 주' },
+              { key: 'month', label: '이번 달' },
+              { key: 'all', label: '전체' }
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => { setDateFilter(key); setSelectedItems([]); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  dateFilter === key 
+                    ? 'bg-violet-600 text-white' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          
+          {/* 검색창 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="이름, 상품명 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+          </div>
         </div>
       </header>
 
@@ -1750,9 +1865,16 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
             <p className="text-slate-400">저장된 장바구니가 없습니다</p>
             <p className="text-slate-500 text-sm mt-1">장바구니를 저장하면 여기에 표시됩니다</p>
           </div>
+        ) : filteredCartsWithIndex.length === 0 ? (
+          <div className="text-center py-16">
+            <Search className="w-16 h-16 text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400">검색 결과가 없습니다</p>
+            <p className="text-slate-500 text-sm mt-1">다른 날짜나 검색어를 시도해보세요</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {savedCarts.map((cart, index) => {
+            {filteredCartsWithIndex.map(({ cart, originalIndex }) => {
+              const index = originalIndex;
               // 가격 계산 - priceType에 따라
               const cartItemsDisplay = cart.items.map(item => {
                 const itemPrice = cart.priceType === 'wholesale' 
@@ -5375,7 +5497,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [dateFilter, setDateFilter] = useState('all'); // all, today, yesterday, week, month, custom
+  const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [customDate, setCustomDate] = useState('');
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
