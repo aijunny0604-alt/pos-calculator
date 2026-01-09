@@ -717,6 +717,15 @@ const CustomStyles = () => (
       }
     }
     
+    /* 스크롤바 숨기기 */
+    .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
+    
     .animate-pulse-glow {
       animation: pulse-glow 2s ease-in-out infinite;
     }
@@ -3312,52 +3321,29 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
         </div>
         
         {/* 통계 + 검색 + 필터 영역 - 접기/펼치기 */}
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
           <div className="px-4 pb-4 space-y-3">
             {/* 재고 통계 카드 */}
             <div className="grid grid-cols-4 gap-2">
-              <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
-                <p className="text-slate-400 text-xs mb-0.5">전체</p>
-                <p className="text-lg font-bold text-white">{stats.total}</p>
+              <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
+                <p className="text-slate-400 text-[10px] mb-0.5">전체</p>
+                <p className="text-base font-bold text-white">{stats.total}</p>
               </button>
-              <button onClick={() => setStockFilter('normal')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30 border-emerald-500' : 'bg-emerald-600/20 border-emerald-600/30 hover:bg-emerald-600/30'}`}>
-                <p className="text-emerald-300 text-xs mb-0.5">정상</p>
-                <p className="text-lg font-bold text-emerald-400">{stats.normal}</p>
+              <button onClick={() => setStockFilter('normal')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30 border-emerald-500' : 'bg-emerald-600/20 border-emerald-600/30 hover:bg-emerald-600/30'}`}>
+                <p className="text-emerald-300 text-[10px] mb-0.5">정상</p>
+                <p className="text-base font-bold text-emerald-400">{stats.normal}</p>
               </button>
-              <button onClick={() => setStockFilter('low')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30 border-yellow-500' : 'bg-yellow-600/20 border-yellow-600/30 hover:bg-yellow-600/30'}`}>
-                <p className="text-yellow-300 text-xs mb-0.5">부족</p>
-                <p className="text-lg font-bold text-yellow-400">{stats.low}</p>
+              <button onClick={() => setStockFilter('low')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30 border-yellow-500' : 'bg-yellow-600/20 border-yellow-600/30 hover:bg-yellow-600/30'}`}>
+                <p className="text-yellow-300 text-[10px] mb-0.5">부족</p>
+                <p className="text-base font-bold text-yellow-400">{stats.low}</p>
               </button>
-              <button onClick={() => setStockFilter('out')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30 border-red-500' : 'bg-red-600/20 border-red-600/30 hover:bg-red-600/30'}`}>
-                <p className="text-red-300 text-xs mb-0.5">품절</p>
-                <p className="text-lg font-bold text-red-400">{stats.out}</p>
+              <button onClick={() => setStockFilter('out')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30 border-red-500' : 'bg-red-600/20 border-red-600/30 hover:bg-red-600/30'}`}>
+                <p className="text-red-300 text-[10px] mb-0.5">품절</p>
+                <p className="text-base font-bold text-red-400">{stats.out}</p>
               </button>
             </div>
             
-            {/* 카테고리 필터 */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory('전체')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  selectedCategory === '전체' ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                전체
-              </button>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    selectedCategory === cat ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-            
-            {/* 검색창 */}
+            {/* 검색창 - 맨 위로 이동 */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -3367,6 +3353,29 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
                 placeholder="제품 검색..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
+            </div>
+            
+            {/* 카테고리 필터 - 스크롤 가능 */}
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <button
+                onClick={() => setSelectedCategory('전체')}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  selectedCategory === '전체' ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                전체
+              </button>
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    selectedCategory === cat ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -4694,6 +4703,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   
   // 인라인 편집 state
   const [inlineEdit, setInlineEdit] = useState(null); // { id, field, value }
+  const [customerInlineEdit, setCustomerInlineEdit] = useState(null); // { id, field, value }
   
   // 거래처 관련 state
   const [customerSearch, setCustomerSearch] = useState('');
@@ -4742,12 +4752,42 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     }
   };
 
+  // 거래처 인라인 편집 시작
+  const startCustomerInlineEdit = (customer, field) => {
+    setCustomerInlineEdit({ id: customer.id, field, value: customer[field] || '' });
+  };
+
+  // 거래처 인라인 편집 저장
+  const saveCustomerInlineEdit = async () => {
+    if (!customerInlineEdit) return;
+    
+    const { id, field, value } = customerInlineEdit;
+    await onUpdateCustomer(id, { [field]: value });
+    setCustomerInlineEdit(null);
+  };
+
+  // 거래처 인라인 편집 취소
+  const cancelCustomerInlineEdit = () => {
+    setCustomerInlineEdit(null);
+  };
+
+  // 거래처 인라인 편집 키 핸들러
+  const handleCustomerInlineKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      saveCustomerInlineEdit();
+    } else if (e.key === 'Escape') {
+      cancelCustomerInlineEdit();
+    }
+  };
+
   // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (inlineEdit) {
           setInlineEdit(null);
+        } else if (customerInlineEdit) {
+          setCustomerInlineEdit(null);
         } else if (showAddModal) {
           setShowAddModal(false);
         } else if (editingProduct) {
@@ -4769,7 +4809,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit]);
+  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit]);
 
   const categories = ['전체', ...new Set(products.map(p => p.category))];
   
@@ -5237,18 +5277,97 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   </thead>
                   <tbody>
                     {filteredCustomers.map((customer, index) => (
-                      <tr key={customer.id} className={`border-b border-slate-700 hover:bg-slate-700/50 ${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}`}>
+                      <tr key={customer.id} className={`border-b border-slate-700 hover:bg-slate-700/50 transition-colors ${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}`}>
+                        {/* 업체명 - 인라인 편집 */}
                         <td className="px-4 py-3">
-                          <span className="text-white font-medium">{customer.name}</span>
+                          {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'name' ? (
+                            <input
+                              type="text"
+                              value={customerInlineEdit.value}
+                              onChange={(e) => setCustomerInlineEdit({ ...customerInlineEdit, value: e.target.value })}
+                              onKeyDown={handleCustomerInlineKeyDown}
+                              onBlur={saveCustomerInlineEdit}
+                              autoFocus
+                              className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
+                            />
+                          ) : (
+                            <span 
+                              onClick={() => startCustomerInlineEdit(customer, 'name')}
+                              className="text-white font-medium cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                            >
+                              {customer.name}
+                            </span>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-slate-300">{customer.phone || '-'}</td>
-                        <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">{customer.address || '-'}</td>
-                        <td className="px-4 py-3 text-slate-500 text-sm">{customer.memo || '-'}</td>
+                        {/* 연락처 - 인라인 편집 */}
+                        <td className="px-4 py-3">
+                          {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'phone' ? (
+                            <input
+                              type="text"
+                              value={customerInlineEdit.value}
+                              onChange={(e) => setCustomerInlineEdit({ ...customerInlineEdit, value: e.target.value })}
+                              onKeyDown={handleCustomerInlineKeyDown}
+                              onBlur={saveCustomerInlineEdit}
+                              autoFocus
+                              className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
+                            />
+                          ) : (
+                            <span 
+                              onClick={() => startCustomerInlineEdit(customer, 'phone')}
+                              className="text-slate-300 cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                            >
+                              {customer.phone || '-'}
+                            </span>
+                          )}
+                        </td>
+                        {/* 주소 - 인라인 편집 */}
+                        <td className="px-4 py-3">
+                          {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'address' ? (
+                            <input
+                              type="text"
+                              value={customerInlineEdit.value}
+                              onChange={(e) => setCustomerInlineEdit({ ...customerInlineEdit, value: e.target.value })}
+                              onKeyDown={handleCustomerInlineKeyDown}
+                              onBlur={saveCustomerInlineEdit}
+                              autoFocus
+                              className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
+                            />
+                          ) : (
+                            <span 
+                              onClick={() => startCustomerInlineEdit(customer, 'address')}
+                              className="text-slate-400 text-sm cursor-pointer hover:text-amber-400 hover:underline transition-colors max-w-xs truncate block"
+                            >
+                              {customer.address || '-'}
+                            </span>
+                          )}
+                        </td>
+                        {/* 메모 - 인라인 편집 */}
+                        <td className="px-4 py-3">
+                          {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'memo' ? (
+                            <input
+                              type="text"
+                              value={customerInlineEdit.value}
+                              onChange={(e) => setCustomerInlineEdit({ ...customerInlineEdit, value: e.target.value })}
+                              onKeyDown={handleCustomerInlineKeyDown}
+                              onBlur={saveCustomerInlineEdit}
+                              autoFocus
+                              className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
+                            />
+                          ) : (
+                            <span 
+                              onClick={() => startCustomerInlineEdit(customer, 'memo')}
+                              className="text-slate-500 text-sm cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                            >
+                              {customer.memo || '-'}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => setEditingCustomer(customer)}
                               className="p-2 hover:bg-blue-600/20 rounded-lg text-blue-400 transition-colors"
+                              title="전체 수정"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
@@ -5271,6 +5390,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                               <button
                                 onClick={() => setDeleteCustomerConfirm(customer.id)}
                                 className="p-2 hover:bg-red-600/20 rounded-lg text-red-400 transition-colors"
+                                title="삭제"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
