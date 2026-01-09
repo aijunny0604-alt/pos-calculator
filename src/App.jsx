@@ -3172,15 +3172,15 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   }, []);
   
   return (
-    <div className="fixed inset-0 z-50 md:flex md:items-center md:justify-center md:p-4">
-      {/* 배경 오버레이 - PC에서만 표시 */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in bg-black/70 backdrop-blur-sm" style={{ touchAction: 'none' }}>
+      {/* 배경 오버레이 - 클릭 시 닫기 */}
       <div 
-        className="hidden md:block absolute inset-0 bg-black/70 backdrop-blur-sm" 
-        onClick={onBack} 
+        className="absolute inset-0" 
+        onClick={onBack}
+        onTouchMove={(e) => e.preventDefault()}
       />
       
-      {/* 모바일: 전체 화면 / PC: 모달 */}
-      <div className="relative bg-slate-800 w-full h-full md:h-auto md:rounded-2xl md:max-w-3xl md:max-h-[90vh] overflow-hidden md:border md:border-slate-700 md:shadow-2xl flex flex-col">
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-orange-600 to-amber-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -6588,29 +6588,38 @@ export default function PriceCalculator() {
 
   // 장바구니 저장 (Supabase)
   const saveCartWithName = async (name) => {
-    const now = new Date();
-    const total = cart.reduce((sum, item) => {
-      const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-      return sum + (price * item.quantity);
-    }, 0);
-    
-    const newCart = {
-      name,
-      items: cart.map(item => ({ ...item })),
-      total,
-      price_type: priceType,
-      date: now.toLocaleDateString('ko-KR'),
-      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      created_at: now.toISOString()
-    };
-    
-    const result = await supabase.addSavedCart(newCart);
-    if (result) {
-      setSavedCarts(prev => [result[0], ...prev]);
-      setCart([]); // 장바구니 초기화
-      showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
-    } else {
-      showToast('❌ 저장 실패', 'error');
+    try {
+      const now = new Date();
+      const total = cart.reduce((sum, item) => {
+        const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+        return sum + (price * item.quantity);
+      }, 0);
+      
+      const newCart = {
+        name,
+        items: cart.map(item => ({ ...item })),
+        total,
+        price_type: priceType,
+        date: now.toLocaleDateString('ko-KR'),
+        time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        created_at: now.toISOString()
+      };
+      
+      console.log('장바구니 저장 시도:', newCart);
+      const result = await supabase.addSavedCart(newCart);
+      console.log('저장 결과:', result);
+      
+      if (result && result[0]) {
+        setSavedCarts(prev => [result[0], ...prev]);
+        setCart([]); // 장바구니 초기화
+        showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
+      } else {
+        console.error('저장 실패 - result:', result);
+        showToast('❌ 저장 실패', 'error');
+      }
+    } catch (error) {
+      console.error('장바구니 저장 에러:', error);
+      showToast('❌ 저장 실패: ' + error.message, 'error');
     }
   };
 
