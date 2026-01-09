@@ -7326,7 +7326,7 @@ export default function PriceCalculator() {
               
               {/* 저장된 장바구니 */}
               <button
-                onClick={() => { loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
+                onClick={async () => { await loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
                 className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
                 title="저장된 장바구니"
               >
