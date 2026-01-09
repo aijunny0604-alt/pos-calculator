@@ -2892,13 +2892,17 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                           </div>
                           <div>
                             <label className="block text-slate-500 text-xs mb-1">포장</label>
-                            <select 
+                            <input 
+                              type="text"
+                              list={`packaging-options-${order.orderNumber}`}
                               value={setting.packaging} 
                               onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
+                              placeholder="박스1"
                               className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500"
-                            >
-                              {packagingOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                            </select>
+                            />
+                            <datalist id={`packaging-options-${order.orderNumber}`}>
+                              {packagingOptions.map(opt => <option key={opt} value={opt} />)}
+                            </datalist>
                           </div>
                           <div>
                             <label className="block text-slate-500 text-xs mb-1">택배비</label>
