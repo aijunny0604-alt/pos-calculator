@@ -6573,9 +6573,12 @@ export default function PriceCalculator() {
   // 저장된 장바구니 불러오기 (Supabase)
   const loadSavedCartsFromDB = async () => {
     try {
+      console.log('장바구니 불러오기 시도...');
       const data = await supabase.getSavedCarts();
+      console.log('불러온 데이터:', data);
       if (data) {
         setSavedCarts(data);
+        console.log('savedCarts 업데이트 완료:', data.length, '개');
       }
     } catch (e) {
       console.error('저장된 장바구니 불러오기 실패:', e);
@@ -7323,7 +7326,7 @@ export default function PriceCalculator() {
               
               {/* 저장된 장바구니 */}
               <button
-                onClick={() => setIsSavedCartsModalOpen(true)}
+                onClick={() => { loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
                 className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
                 title="저장된 장바구니"
               >
