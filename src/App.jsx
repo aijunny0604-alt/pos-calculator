@@ -1843,37 +1843,38 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
       {/* 헤더 */}
       <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none">
         <div className="w-full px-4 py-3">
+          {/* 첫째 줄: 뒤로가기 + 제목 + 접기버튼 */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
                 <ArrowLeft className="w-5 h-5 text-slate-300" />
               </button>
-              <div className="flex items-center gap-2">
-                <Save className="w-6 h-6 text-violet-400" />
-                <div>
-                  <h1 className="text-lg font-bold text-white">저장된 장바구니</h1>
-                  <p className="text-violet-400 text-xs">전체 {savedCarts.length}개 · 필터 {filteredCarts.length}개</p>
-                </div>
+              <Save className="w-5 h-5 text-violet-400" />
+              <div>
+                <h1 className="text-base font-bold text-white">저장된 장바구니</h1>
+                <p className="text-violet-400 text-xs">전체 {savedCarts.length}개 · 필터 {filteredCarts.length}개</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              {/* 액션 버튼 */}
+            <div className="flex items-center gap-1.5">
+              {/* 액션 버튼 - 아이콘만 모바일에서 */}
               {savedCarts.length > 0 && !selectMode && (
                 <>
                   <button
                     onClick={() => setSelectMode(true)}
-                    className="text-sm px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all hover-lift"
+                    className="p-2 sm:px-3 sm:py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all"
+                    title="선택"
                   >
                     <Check className="w-4 h-4" />
-                    선택
+                    <span className="hidden sm:inline text-sm">선택</span>
                   </button>
                   <button
                     onClick={() => setShowDeleteAllConfirm(true)}
-                    className="text-sm px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all hover-lift"
+                    className="p-2 sm:px-3 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all"
+                    title="전체삭제"
                   >
                     <Trash2 className="w-4 h-4" />
-                    전체삭제
+                    <span className="hidden sm:inline text-sm">전체삭제</span>
                   </button>
                 </>
               )}
@@ -1881,9 +1882,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               {/* 접기/펼치기 버튼 */}
               <button
                 onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-white flex items-center gap-1.5 text-sm"
+                className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-white flex items-center gap-1"
+                title={isHeaderCollapsed ? '펼치기' : '접기'}
               >
-                <span className="hidden sm:inline">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isHeaderCollapsed ? 'rotate-180' : ''}`} />
               </button>
             </div>
@@ -3164,29 +3165,22 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   // 모달 열릴 때 body 스크롤 막기
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${window.scrollY}px`;
     
     return () => {
-      const scrollY = document.body.style.top;
       document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
     };
   }, []);
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 md:flex md:items-center md:justify-center md:p-4">
       {/* 배경 오버레이 - PC에서만 표시 */}
       <div 
         className="hidden md:block absolute inset-0 bg-black/70 backdrop-blur-sm" 
         onClick={onBack} 
       />
       
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
+      {/* 모바일: 전체 화면 / PC: 모달 */}
+      <div className="relative bg-slate-800 w-full h-full md:h-auto md:rounded-2xl md:max-w-3xl md:max-h-[90vh] overflow-hidden md:border md:border-slate-700 md:shadow-2xl flex flex-col">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-orange-600 to-amber-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -3580,9 +3574,9 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
     return sum + (price * item.quantity);
   }, 0);
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!cartName.trim()) return;
-    onSave(cartName.trim());
+    await onSave(cartName.trim());
     // 장바구니 저장 후 메인 페이지로 복귀 (주문서 모달도 닫기)
     if (onCloseAll) {
       onCloseAll();
