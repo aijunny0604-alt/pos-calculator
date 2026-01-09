@@ -7265,7 +7265,7 @@ export default function PriceCalculator() {
         />
       )}
 
-      <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
+      <header className={`bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 ${showShippingModal ? 'relative' : 'sticky top-0 z-40'} animate-fade-in-down`}>
         <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between gap-2">
             {/* 로고 & 타이틀 */}
@@ -7375,8 +7375,8 @@ export default function PriceCalculator() {
         </div>
       </header>
 
-      {/* 검색바 - 완전 고정 */}
-      <div className="fixed top-[70px] sm:top-[85px] left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
+      {/* 검색바 - 완전 고정 (모달 열릴 때 숨김) */}
+      <div className={`fixed top-[70px] sm:top-[85px] left-4 right-4 md:right-[400px] lg:right-[420px] z-30 ${showShippingModal ? 'hidden' : ''}`}>
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch">
             <div className="flex-[3] relative">
@@ -7649,7 +7649,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 z-30 animate-fade-in-up" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 z-30 animate-fade-in-up ${showShippingModal ? 'hidden' : ''}`} style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-emerald-300/70 text-xs">공급가 {formatPrice(calcExVat(totalAmount))} + VAT</p>
