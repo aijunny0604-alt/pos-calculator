@@ -689,6 +689,34 @@ const CustomStyles = () => (
       animation: scaleIn 0.3s ease-out forwards;
     }
     
+    .animate-scale-out {
+      animation: scaleOut 0.2s ease-in forwards;
+    }
+    
+    .animate-fade-out {
+      animation: fadeOut 0.2s ease-in forwards;
+    }
+    
+    @keyframes scaleOut {
+      from {
+        opacity: 1;
+        transform: scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+    }
+    
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+    
     .animate-pulse-glow {
       animation: pulse-glow 2s ease-in-out infinite;
     }
@@ -1585,11 +1613,32 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeleteAllClosing, setIsDeleteAllClosing] = useState(false); // 닫기 애니메이션
   const [detailCart, setDetailCart] = useState(null); // 상세 보기 모달용
   const [detailIndex, setDetailIndex] = useState(null);
+  const [isDetailClosing, setIsDetailClosing] = useState(false); // 상세 모달 닫기 애니메이션
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
+
+  // 전체 삭제 모달 닫기 (애니메이션 포함)
+  const closeDeleteAllModal = () => {
+    setIsDeleteAllClosing(true);
+    setTimeout(() => {
+      setShowDeleteAllConfirm(false);
+      setIsDeleteAllClosing(false);
+    }, 200);
+  };
+
+  // 상세 모달 닫기 (애니메이션 포함)
+  const closeDetailModal = () => {
+    setIsDetailClosing(true);
+    setTimeout(() => {
+      setDetailCart(null);
+      setDetailIndex(null);
+      setIsDetailClosing(false);
+    }, 200);
+  };
 
   // 날짜 필터링 함수
   const filterByDate = (cart) => {
@@ -1654,9 +1703,10 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (detailCart) {
-          setDetailCart(null);
-          setDetailIndex(null);
+        if (showDeleteAllConfirm) {
+          closeDeleteAllModal();
+        } else if (detailCart) {
+          closeDetailModal();
         } else if (selectMode) {
           setSelectMode(false);
           setSelectedItems([]);
@@ -1667,7 +1717,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, selectMode, detailCart]);
+  }, [onBack, selectMode, detailCart, showDeleteAllConfirm]);
   
   // 항목 선택/해제
   const toggleSelect = (index) => {
@@ -1984,12 +2034,12 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
 
       {/* 상세 보기 모달 */}
       {detailCart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ touchAction: 'none' }}>
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isDetailClosing ? 'animate-fade-out' : 'animate-fade-in'}`} style={{ touchAction: 'none' }}>
           <div 
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
-            onClick={() => { setDetailCart(null); setDetailIndex(null); }}
+            onClick={closeDetailModal}
           />
-          <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col animate-fade-in">
+          <div className={`relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col ${isDetailClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
             {/* 모달 헤더 */}
             <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-5 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-4">
@@ -2011,7 +2061,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                 </div>
               </div>
               <button 
-                onClick={() => { setDetailCart(null); setDetailIndex(null); }}
+                onClick={closeDetailModal}
                 className="p-2.5 hover:bg-white/20 rounded-lg transition-colors"
               >
                 <X className="w-7 h-7 text-white" />
@@ -2123,8 +2173,8 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
       
       {/* 전체 삭제 확인 모달 */}
       {showDeleteAllConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-red-600/50 shadow-2xl shadow-red-500/20 overflow-hidden animate-scale-in">
+        <div className={`fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isDeleteAllClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+          <div className={`bg-slate-800 rounded-2xl w-full max-w-md border border-red-600/50 shadow-2xl shadow-red-500/20 overflow-hidden ${isDeleteAllClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
             {/* 모달 헤더 */}
             <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-5">
               <div className="flex items-center gap-3">
@@ -2149,13 +2199,13 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               
               <div className="flex gap-3">
                 <button 
-                  onClick={() => setShowDeleteAllConfirm(false)}
+                  onClick={closeDeleteAllModal}
                   className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-all hover-lift btn-ripple"
                 >
                   취소
                 </button>
                 <button 
-                  onClick={() => { onDeleteAll(); setShowDeleteAllConfirm(false); }}
+                  onClick={() => { onDeleteAll(); closeDeleteAllModal(); }}
                   className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-medium transition-all hover-lift btn-ripple hover:shadow-lg hover:shadow-red-500/30 flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-5 h-5" />
