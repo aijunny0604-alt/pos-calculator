@@ -6799,7 +6799,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="w-full px-4 pt-[140px] sm:pt-[160px] pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
+      <div className="w-full px-4 pt-[125px] sm:pt-[145px] pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className="flex-1">
