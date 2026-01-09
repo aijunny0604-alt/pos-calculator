@@ -6424,17 +6424,6 @@ export default function PriceCalculator() {
   useEffect(() => {
     loadProducts();
     loadCustomers();
-    loadOrders();
-    loadSavedCarts();
-    
-    // 페이지 포커스 시 데이터 새로고침 (다른 기기에서 변경된 내용 반영)
-    const handleFocus = () => {
-      loadOrders();
-      loadSavedCarts();
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // Lenis 부드러운 스크롤 초기화
