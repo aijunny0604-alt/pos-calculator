@@ -2049,7 +2049,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                   const itemTotalSupply = Math.round(itemTotal / 1.1); // 소계 공급가
                   
                   return (
-                    <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500/50 hover:bg-slate-700/70 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg hover:shadow-violet-500/10">
+                    <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500 hover:bg-slate-700/80 transition-all duration-200 transform hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/20 cursor-pointer">
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-semibold text-xl truncate">{item.name}</p>
@@ -2080,7 +2080,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
 
             {/* 금액 요약 + 버튼 */}
             <div className="border-t border-slate-700 p-6 flex-shrink-0 bg-slate-800">
-              <div className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-5 mb-5">
+              <div className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-5 mb-5 hover:from-slate-900/90 hover:to-slate-900/60 transition-all duration-200">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-500">공급가액</span>
                   <span className="text-slate-300 text-lg">{formatPrice(Math.round(detailCart.total / 1.1))}</span>
@@ -2098,7 +2098,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               <div className="flex gap-4">
                 <button 
                   onClick={() => { onLoad(detailCart); onBack(); }}
-                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-xl transition-all hover-lift btn-ripple"
+                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/30 active:translate-y-0 active:scale-95"
                 >
                   <Download className="w-7 h-7" />
                   불러오기
@@ -2111,7 +2111,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                       setDetailIndex(null);
                     }
                   }}
-                  className="px-6 py-5 bg-red-600/20 hover:bg-red-600/40 rounded-xl text-red-400 transition-all hover-lift btn-ripple"
+                  className="px-6 py-5 bg-red-600/20 hover:bg-red-600 rounded-xl text-red-400 hover:text-white transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-red-500/30 active:translate-y-0 active:scale-95"
                 >
                   <Trash2 className="w-7 h-7" />
                 </button>
@@ -2123,12 +2123,12 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
       
       {/* 전체 삭제 확인 모달 */}
       {showDeleteAllConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl animate-fade-in overflow-hidden">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-red-600/50 shadow-2xl shadow-red-500/20 overflow-hidden animate-scale-in">
             {/* 모달 헤더 */}
             <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-5">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center animate-pulse">
                   <Trash2 className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -2150,13 +2150,13 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowDeleteAllConfirm(false)}
-                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-all hover-lift"
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-all hover-lift btn-ripple"
                 >
                   취소
                 </button>
                 <button 
                   onClick={() => { onDeleteAll(); setShowDeleteAllConfirm(false); }}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-medium transition-all hover-lift flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-medium transition-all hover-lift btn-ripple hover:shadow-lg hover:shadow-red-500/30 flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-5 h-5" />
                   전체 삭제
