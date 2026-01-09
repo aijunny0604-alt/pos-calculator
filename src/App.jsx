@@ -1736,16 +1736,16 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                 <>
                   <button
                     onClick={() => setSelectMode(true)}
-                    className="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-1"
+                    className="text-sm px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all hover-lift"
                   >
-                    <Check className="w-3 h-3" />
+                    <Check className="w-4 h-4" />
                     선택
                   </button>
                   <button
                     onClick={() => setShowDeleteAllConfirm(true)}
-                    className="text-xs px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg flex items-center gap-1"
+                    className="text-sm px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all hover-lift"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-4 h-4" />
                     전체삭제
                   </button>
                 </>
@@ -1754,9 +1754,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               {/* 접기/펼치기 버튼 */}
               <button
                 onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white flex items-center gap-1"
+                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-white flex items-center gap-1.5 text-sm"
               >
-                <span className="text-xs hidden sm:inline">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
+                <span className="hidden sm:inline">{isHeaderCollapsed ? '펼치기' : '접기'}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isHeaderCollapsed ? 'rotate-180' : ''}`} />
               </button>
             </div>
