@@ -2332,16 +2332,12 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       }
     }
     
-    // 나체 처리: 나체1 → +12000, 나체2 → +24000
+    // 나체 처리: 나체1 → 12000, 나체2 → 12000,12000
     const nakedMatch = packaging.match(/나체(\d+)/);
     if (nakedMatch) {
       const count = parseInt(nakedMatch[1]) || 1;
-      const additionalCost = 12000 * count;
-      if (costs.length > 0) {
-        // 마지막 박스 비용에 추가
-        costs[costs.length - 1] += additionalCost;
-      } else {
-        costs.push(additionalCost);
+      for (let i = 0; i < count; i++) {
+        costs.push(12000);
       }
     }
     
