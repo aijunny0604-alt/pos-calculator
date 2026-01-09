@@ -3090,10 +3090,10 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const packagingOptions = ['박스1', '박스2', '박스3', '나체1', '나체2', '나체3'];
   
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 touch-none" style={{ touchAction: 'none' }}>
-      <div className="fixed inset-0 bg-slate-900/95 z-[9998]" onClick={onBack} onTouchMove={(e) => e.preventDefault()} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
       
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col z-[9999]">
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-orange-600 to-amber-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -7121,7 +7121,7 @@ export default function PriceCalculator() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 ${showShippingModal ? 'relative z-0' : ''}`}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <CustomStyles />
       
       {/* AI 주문 인식 모달 - 조건부 렌더링 */}
@@ -7147,7 +7147,7 @@ export default function PriceCalculator() {
         />
       )}
 
-      <header className={`bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 animate-fade-in-down ${showShippingModal ? 'z-0' : 'z-40'}`}>
+      <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between gap-2">
             {/* 로고 & 타이틀 */}
