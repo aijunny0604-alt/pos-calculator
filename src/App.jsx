@@ -2263,7 +2263,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
 function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack }) {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [senderList] = useState(['무브모터스', '엠파츠']); // 보내는 곳 목록
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [orderSettings, setOrderSettings] = useState({});
   
   // 포장 옵션별 배송비 설정
@@ -2310,6 +2310,12 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   yesterday.setDate(yesterday.getDate() - 1);
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
+  
+  // 고객 찾기 함수
+  const findCustomer = (name) => {
+    if (!name) return null;
+    return (customers || []).find(c => c.name && c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, ''));
+  };
   
   const filteredOrders = safeOrders.filter(order => {
     if (!order.createdAt) return false;
@@ -2362,11 +2368,6 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   
   const toggleOrder = (orderNumber) => {
     setSelectedOrders(prev => prev.includes(orderNumber) ? prev.filter(o => o !== orderNumber) : [...prev, orderNumber]);
-  };
-  
-  const findCustomer = (name) => {
-    if (!name) return null;
-    return (customers || []).find(c => c.name && c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, ''));
   };
   
   const getMostExpensiveItem = (items) => {
@@ -2786,8 +2787,6 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   
   const packagingOptions = ['박스1', '박스2', '박스3', '나체1', '나체2', '나체3'];
   
-  const [showCostSettings, setShowCostSettings] = useState(false);
-  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
@@ -2813,52 +2812,13 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
           data-lenis-prevent="true"
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
         >
-          {/* 설정 영역 */}
+          {/* 날짜 필터 */}
           <div className="bg-slate-700/50 rounded-xl p-4 mb-4 border border-slate-600">
-            {/* 날짜 필터 */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2">
               {[{ key: 'today', label: '오늘' }, { key: 'yesterday', label: '어제' }, { key: 'week', label: '최근 7일' }, { key: 'all', label: '전체' }].map(({ key, label }) => (
                 <button key={key} onClick={() => { setDateFilter(key); setSelectedOrders([]); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${dateFilter === key ? 'bg-orange-600 text-white' : 'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>{label}</button>
               ))}
             </div>
-            
-            {/* 보내는 곳 목록 안내 */}
-            <div className="mb-3">
-              <label className="block text-slate-400 text-xs mb-1">보내는 곳 (주문별 선택 가능)</label>
-              <div className="flex flex-wrap gap-2">
-                {senderList.map(sender => (
-                  <span key={sender} className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-sm border border-slate-600">
-                    📦 {sender}
-                  </span>
-                ))}
-              </div>
-            </div>
-            
-            {/* 포장별 배송비 설정 토글 */}
-            <button 
-              onClick={() => setShowCostSettings(!showCostSettings)} 
-              className="w-full flex items-center justify-between px-3 py-2 bg-slate-600/50 hover:bg-slate-600 rounded-lg text-sm transition-colors"
-            >
-              <span className="text-slate-300">📦 포장별 배송비 설정</span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showCostSettings ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {/* 포장별 배송비 설정 */}
-            {showCostSettings && (
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {packagingOptions.map(opt => (
-                  <div key={opt} className="flex items-center gap-2">
-                    <label className="text-slate-400 text-xs w-12">{opt}</label>
-                    <input 
-                      type="number" 
-                      value={shippingCosts[opt] || 0} 
-                      onChange={(e) => updateShippingCost(opt, parseInt(e.target.value) || 0)} 
-                      className="flex-1 px-2 py-1.5 bg-slate-900/50 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           
           {/* 전체 선택 */}
