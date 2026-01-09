@@ -3091,8 +3091,15 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const packagingOptions = ['박스1', '박스2', '박스3', '나체1', '나체2', '나체3'];
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', height: '100dvh' }}
+    >
+      <div 
+        className="absolute inset-0 bg-black/80" 
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)' }}
+        onClick={onBack} 
+      />
       
       <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
         {/* 헤더 */}
