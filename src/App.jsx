@@ -2265,16 +2265,6 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const [senderList] = useState(['무브모터스', '엠파츠']); // 보내는 곳 목록
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [orderSettings, setOrderSettings] = useState({});
-  
-  // 포장 옵션별 배송비 설정
-  const [shippingCosts, setShippingCosts] = useState({
-    '박스1': 7300,
-    '박스2': 10000,
-    '박스3': 13000,
-    '나체1': 5000,
-    '나체2': 7000,
-    '나체3': 9000,
-  });
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -2327,12 +2317,48 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     return true;
   });
   
+  // 포장 입력값에 따른 택배비 계산
+  const calculateShippingCost = (packaging) => {
+    if (!packaging) return '7300';
+    
+    let costs = [];
+    
+    // 박스 처리: 박스1 → 7300, 박스2 → 7300,7300, 박스3 → 7300,7300,7300
+    const boxMatch = packaging.match(/박스(\d+)/);
+    if (boxMatch) {
+      const count = parseInt(boxMatch[1]) || 1;
+      for (let i = 0; i < count; i++) {
+        costs.push(7300);
+      }
+    }
+    
+    // 나체 처리: 나체1 → +12000, 나체2 → +24000
+    const nakedMatch = packaging.match(/나체(\d+)/);
+    if (nakedMatch) {
+      const count = parseInt(nakedMatch[1]) || 1;
+      const additionalCost = 12000 * count;
+      if (costs.length > 0) {
+        // 마지막 박스 비용에 추가
+        costs[costs.length - 1] += additionalCost;
+      } else {
+        costs.push(additionalCost);
+      }
+    }
+    
+    // 기본값
+    if (costs.length === 0) {
+      return '7300';
+    }
+    
+    return costs.join(',');
+  };
+  
   const getOrderSetting = (orderNumber) => {
     const defaultPackaging = '박스1';
     return orderSettings[orderNumber] || { 
       paymentType: '착불', 
       packaging: defaultPackaging, 
-      shippingCost: shippingCosts[defaultPackaging] || 7300,
+      shippingCost: '7300',
       sender: senderList[0] // 기본 보내는 곳
     };
   };
@@ -2342,23 +2368,18 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       const current = prev[orderNumber] || { 
         paymentType: '착불', 
         packaging: '박스1', 
-        shippingCost: shippingCosts['박스1'] || 7300,
+        shippingCost: '7300',
         sender: senderList[0]
       };
       let updated = { ...current, [field]: value };
       
-      // 포장 옵션이 변경되면 해당 배송비로 자동 업데이트
-      if (field === 'packaging' && shippingCosts[value]) {
-        updated.shippingCost = shippingCosts[value];
+      // 포장 옵션이 변경되면 택배비 자동 계산
+      if (field === 'packaging') {
+        updated.shippingCost = calculateShippingCost(value);
       }
       
       return { ...prev, [orderNumber]: updated };
     });
-  };
-  
-  // 배송비 설정 업데이트
-  const updateShippingCost = (packaging, cost) => {
-    setShippingCosts(prev => ({ ...prev, [packaging]: cost }));
   };
   
   const handleSelectAll = () => {
