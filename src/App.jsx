@@ -1862,27 +1862,6 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
       </header>
 
       <div className="w-full px-4 py-4">
-        {/* 전체 삭제 확인 */}
-        {showDeleteAllConfirm && (
-          <div className="mb-4 p-4 bg-red-900/30 rounded-xl border border-red-600/30">
-            <p className="text-red-400 text-sm mb-3">모든 저장된 장바구니를 삭제하시겠습니까?</p>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => { onDeleteAll(); setShowDeleteAllConfirm(false); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium"
-              >
-                전체 삭제
-              </button>
-              <button 
-                onClick={() => setShowDeleteAllConfirm(false)}
-                className="flex-1 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        )}
-        
         {savedCarts.length === 0 ? (
           <div className="text-center py-16">
             <ShoppingCart className="w-16 h-16 text-slate-600 mx-auto mb-3" />
@@ -2135,6 +2114,52 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                   className="px-6 py-5 bg-red-600/20 hover:bg-red-600/40 rounded-xl text-red-400 transition-all hover-lift btn-ripple"
                 >
                   <Trash2 className="w-7 h-7" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 전체 삭제 확인 모달 */}
+      {showDeleteAllConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl animate-fade-in overflow-hidden">
+            {/* 모달 헤더 */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Trash2 className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">전체 삭제</h2>
+                  <p className="text-red-200 text-sm">되돌릴 수 없습니다</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 모달 내용 */}
+            <div className="p-6">
+              <p className="text-slate-300 text-center mb-2">
+                모든 저장된 장바구니를 삭제하시겠습니까?
+              </p>
+              <p className="text-slate-500 text-sm text-center mb-6">
+                총 <span className="text-red-400 font-bold">{savedCarts.length}개</span>의 장바구니가 삭제됩니다.
+              </p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowDeleteAllConfirm(false)}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-all hover-lift"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={() => { onDeleteAll(); setShowDeleteAllConfirm(false); }}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-medium transition-all hover-lift flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  전체 삭제
                 </button>
               </div>
             </div>
