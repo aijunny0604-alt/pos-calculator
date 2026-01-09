@@ -1911,7 +1911,16 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
                         <div className="min-w-0">
-                          <h3 className="text-white font-semibold truncate">{cart.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-semibold truncate">{cart.name}</h3>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              cart.priceType === 'wholesale' 
+                                ? 'bg-blue-600/30 text-blue-400' 
+                                : 'bg-purple-600/30 text-purple-400'
+                            }`}>
+                              {cart.priceType === 'wholesale' ? '도매' : '소비자'}
+                            </span>
+                          </div>
                           <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
                         </div>
                         <p className="text-emerald-400 font-bold text-sm ml-2">{formatPrice(cart.total)}</p>
@@ -1985,7 +1994,16 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                   <ShoppingBag className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white truncate max-w-[400px]">{detailCart.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-white truncate max-w-[350px]">{detailCart.name}</h2>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      detailCart.priceType === 'wholesale' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-purple-500 text-white'
+                    }`}>
+                      {detailCart.priceType === 'wholesale' ? '도매' : '소비자'}
+                    </span>
+                  </div>
                   <p className="text-violet-200">{detailCart.date} {detailCart.time}</p>
                 </div>
               </div>
@@ -2024,6 +2042,8 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                   }
                   
                   const itemTotal = itemPrice * item.quantity;
+                  const itemSupply = Math.round(itemPrice / 1.1); // 공급가(VAT제외)
+                  const itemTotalSupply = Math.round(itemTotal / 1.1); // 소계 공급가
                   
                   return (
                     <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500/50 transition-colors">
@@ -2031,13 +2051,19 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-semibold text-xl truncate">{item.name}</p>
                           {itemPrice > 0 && (
-                            <p className="text-blue-400 mt-2">@{formatPrice(itemPrice)}</p>
+                            <div className="mt-2">
+                              <p className="text-blue-400">{formatPrice(itemPrice)}</p>
+                              <p className="text-slate-500 text-sm">(VAT제외 {formatPrice(itemSupply)})</p>
+                            </div>
                           )}
                         </div>
                         <div className="text-right ml-6">
                           <p className="text-slate-300 text-lg">×{item.quantity}개</p>
                           {itemPrice > 0 ? (
-                            <p className="text-emerald-400 font-bold text-2xl mt-1">{formatPrice(itemTotal)}</p>
+                            <div className="mt-1">
+                              <p className="text-emerald-400 font-bold text-2xl">{formatPrice(itemTotal)}</p>
+                              <p className="text-slate-500 text-sm">(VAT제외 {formatPrice(itemTotalSupply)})</p>
+                            </div>
                           ) : (
                             <p className="text-slate-500 text-sm mt-1">가격 정보 없음</p>
                           )}
@@ -2051,9 +2077,19 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
 
             {/* 금액 요약 + 버튼 */}
             <div className="border-t border-slate-700 p-6 flex-shrink-0 bg-slate-800">
-              <div className="flex items-center justify-between mb-5 bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-5">
-                <span className="text-slate-400 text-xl">총 금액</span>
-                <span className="text-4xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
+              <div className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-5 mb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-500">공급가액</span>
+                  <span className="text-slate-300 text-lg">{formatPrice(Math.round(detailCart.total / 1.1))}</span>
+                </div>
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700">
+                  <span className="text-slate-500">부가세</span>
+                  <span className="text-slate-300 text-lg">{formatPrice(detailCart.total - Math.round(detailCart.total / 1.1))}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 text-xl">총 금액</span>
+                  <span className="text-4xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
+                </div>
               </div>
               
               <div className="flex gap-4">
@@ -5751,12 +5787,12 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
             {/* 날짜 필터 버튼 */}
             <div className="flex flex-wrap gap-2 mb-3">
               {[
-                { key: 'all', label: '전체' },
                 { key: 'today', label: '오늘' },
                 { key: 'yesterday', label: '어제' },
                 { key: 'week', label: '이번 주' },
                 { key: 'month', label: '이번 달' },
                 { key: 'custom', label: '날짜 선택' },
+                { key: 'all', label: '전체' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
