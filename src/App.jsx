@@ -504,6 +504,21 @@ const CustomStyles = () => (
       }
     }
     
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-slide-up {
+      animation: slideUp 0.3s ease-out forwards;
+    }
+    
     @keyframes slideInLeft {
       from {
         opacity: 0;
@@ -3075,10 +3090,10 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
   const packagingOptions = ['박스1', '박스2', '박스3', '나체1', '나체2', '나체3'];
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onBack} />
       
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
+      <div className="relative bg-slate-800 w-full sm:rounded-2xl sm:max-w-3xl h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden border-t sm:border border-slate-700 shadow-2xl flex flex-col animate-slide-up sm:animate-scale-in">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-orange-600 to-amber-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
