@@ -2317,15 +2317,19 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     return true;
   });
   
-  // 포장 입력값에 따른 택배비 계산
+  // 포장 입력값에 따른 택배비 계산 (입력 순서대로)
   const calculateShippingCost = (packaging) => {
     if (!packaging) return '7300';
     
     let costs = [];
     const input = String(packaging);
     
-    // 박스 처리: 박스1 → 7300, 박스2 → 7300,7300
-    if (input.includes('박스')) {
+    // 박스와 나체의 위치 찾기
+    const boxIndex = input.indexOf('박스');
+    const nakedIndex = input.indexOf('나체');
+    
+    // 박스 금액 추가 함수
+    const addBoxCosts = () => {
       const boxNum = input.match(/박스(\d)/);
       if (boxNum && boxNum[1]) {
         const count = parseInt(boxNum[1]) || 1;
@@ -2333,10 +2337,10 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
           costs.push(7300);
         }
       }
-    }
+    };
     
-    // 나체 처리: 나체1 → 12000, 나체2 → 12000,12000
-    if (input.includes('나체')) {
+    // 나체 금액 추가 함수
+    const addNakedCosts = () => {
       const nakedNum = input.match(/나체(\d)/);
       if (nakedNum && nakedNum[1]) {
         const count = parseInt(nakedNum[1]) || 1;
@@ -2344,6 +2348,22 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
           costs.push(12000);
         }
       }
+    };
+    
+    // 입력 순서대로 처리
+    if (boxIndex >= 0 && nakedIndex >= 0) {
+      // 둘 다 있을 때 - 먼저 나온 것부터 처리
+      if (boxIndex < nakedIndex) {
+        addBoxCosts();
+        addNakedCosts();
+      } else {
+        addNakedCosts();
+        addBoxCosts();
+      }
+    } else if (boxIndex >= 0) {
+      addBoxCosts();
+    } else if (nakedIndex >= 0) {
+      addNakedCosts();
     }
     
     // 기본값
