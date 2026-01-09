@@ -7395,7 +7395,7 @@ export default function PriceCalculator() {
             </div>
             
             {/* 버튼들 */}
-            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto justify-end flex-1">
               <button
                 onClick={() => setShowAdminLogin(true)}
                 className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
