@@ -1904,10 +1904,15 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                     <span className="hidden sm:inline text-sm">선택</span>
                   </button>
                   {/* 필터별 삭제 - 필터가 all이 아닐 때 */}
-                  {dateFilter !== 'all' && filteredCarts.length > 0 && (
+                  {dateFilter !== 'all' && (
                     <button
                       onClick={() => setShowFilterDeleteConfirm(true)}
-                      className="p-2 sm:px-3 sm:py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all"
+                      disabled={filteredCarts.length === 0}
+                      className={`p-2 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1.5 font-medium transition-all ${
+                        filteredCarts.length > 0 
+                          ? 'bg-orange-600 hover:bg-orange-500 text-white' 
+                          : 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                      }`}
                       title={`${getFilterLabel()} 삭제`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -5294,23 +5299,23 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         {/* 제품 테이블 */}
         <div className="bg-slate-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[700px]">
               <thead className="bg-slate-700/50">
                 <tr>
-                  <th onClick={() => handleSort('name')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                  <th onClick={() => handleSort('name')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700 whitespace-nowrap min-w-[150px]">
                     제품명 {sortField === 'name' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSort('category')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                  <th onClick={() => handleSort('category')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700 whitespace-nowrap min-w-[100px]">
                     카테고리 {sortField === 'category' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSort('wholesale')} className="px-4 py-3 text-right text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                  <th onClick={() => handleSort('wholesale')} className="px-4 py-3 text-right text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700 whitespace-nowrap min-w-[90px]">
                     도매가 {sortField === 'wholesale' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-300">소비자가</th>
-                  <th onClick={() => handleSort('stock')} className="px-4 py-3 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700">
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-300 whitespace-nowrap min-w-[90px]">소비자가</th>
+                  <th onClick={() => handleSort('stock')} className="px-4 py-3 text-center text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700 whitespace-nowrap min-w-[80px]">
                     재고 {sortField === 'stock' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-slate-300">작업</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-slate-300 whitespace-nowrap min-w-[60px]">작업</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
@@ -5463,14 +5468,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             {/* 거래처 목록 */}
             <div className="bg-slate-800 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[650px]">
                   <thead>
                     <tr className="bg-slate-700/50 border-b border-slate-600">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">업체명</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">연락처</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">주소</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300">메모</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-slate-300">관리</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[120px]">업체명</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[120px]">연락처</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[180px]">주소</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[100px]">메모</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-slate-300 whitespace-nowrap min-w-[80px]">관리</th>
                     </tr>
                   </thead>
                   <tbody>
