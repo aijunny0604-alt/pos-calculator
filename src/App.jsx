@@ -213,6 +213,78 @@ const supabase = {
       console.error('Supabase deleteCustomer error:', error);
       return false;
     }
+  },
+
+  // ===== 저장된 장바구니 관련 =====
+  async getSavedCarts() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?order=created_at.desc`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch saved carts');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase getSavedCarts error:', error);
+      return null;
+    }
+  },
+
+  async addSavedCart(cart) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(cart)
+      });
+      if (!response.ok) throw new Error('Failed to add saved cart');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase addSavedCart error:', error);
+      return null;
+    }
+  },
+
+  async deleteSavedCart(id) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete saved cart');
+      return true;
+    } catch (error) {
+      console.error('Supabase deleteSavedCart error:', error);
+      return false;
+    }
+  },
+
+  async deleteAllSavedCarts() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?id=gt.0`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete all saved carts');
+      return true;
+    } catch (error) {
+      console.error('Supabase deleteAllSavedCarts error:', error);
+      return false;
+    }
   }
 };
 
@@ -6491,25 +6563,24 @@ export default function PriceCalculator() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [showAdminLogin]);
 
-  // 저장된 장바구니 불러오기
-  useEffect(() => {
-    const saved = localStorage.getItem('pos_saved_carts');
-    if (saved) {
-      try {
-        setSavedCarts(JSON.parse(saved));
-      } catch (e) {
-        console.error('저장된 장바구니 불러오기 실패:', e);
+  // 저장된 장바구니 불러오기 (Supabase)
+  const loadSavedCartsFromDB = async () => {
+    try {
+      const data = await supabase.getSavedCarts();
+      if (data) {
+        setSavedCarts(data);
       }
+    } catch (e) {
+      console.error('저장된 장바구니 불러오기 실패:', e);
     }
+  };
+
+  useEffect(() => {
+    loadSavedCartsFromDB();
   }, []);
 
-  // 저장된 장바구니 localStorage에 저장
-  useEffect(() => {
-    localStorage.setItem('pos_saved_carts', JSON.stringify(savedCarts));
-  }, [savedCarts]);
-
-  // 장바구니 저장
-  const saveCartWithName = (name) => {
+  // 장바구니 저장 (Supabase)
+  const saveCartWithName = async (name) => {
     const now = new Date();
     const total = cart.reduce((sum, item) => {
       const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
@@ -6520,14 +6591,20 @@ export default function PriceCalculator() {
       name,
       items: cart.map(item => ({ ...item })),
       total,
-      priceType,
+      price_type: priceType,
       date: now.toLocaleDateString('ko-KR'),
-      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      created_at: now.toISOString()
     };
     
-    setSavedCarts(prev => [newCart, ...prev]);
-    setCart([]); // 장바구니 초기화
-    showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
+    const result = await supabase.addSavedCart(newCart);
+    if (result) {
+      setSavedCarts(prev => [result[0], ...prev]);
+      setCart([]); // 장바구니 초기화
+      showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
+    } else {
+      showToast('❌ 저장 실패', 'error');
+    }
   };
 
   // 저장된 장바구니 불러오기
@@ -6548,7 +6625,7 @@ export default function PriceCalculator() {
     }
     
     setCart(validItems);
-    setPriceType(savedCart.priceType);
+    setPriceType(savedCart.price_type || savedCart.priceType || 'wholesale');
     
     if (validItems.length < savedCart.items.length) {
       showToast(`📦 ${validItems.length}/${savedCart.items.length}개 제품 불러옴`);
@@ -6557,16 +6634,33 @@ export default function PriceCalculator() {
     }
   };
 
-  // 저장된 장바구니 삭제
-  const deleteSavedCart = (index) => {
-    setSavedCarts(prev => prev.filter((_, i) => i !== index));
-    showToast('🗑️ 장바구니가 삭제되었습니다');
+  // 저장된 장바구니 삭제 (Supabase)
+  const deleteSavedCart = async (index) => {
+    const cartToDelete = savedCarts[index];
+    if (cartToDelete && cartToDelete.id) {
+      const success = await supabase.deleteSavedCart(cartToDelete.id);
+      if (success) {
+        setSavedCarts(prev => prev.filter((_, i) => i !== index));
+        showToast('🗑️ 장바구니가 삭제되었습니다');
+      } else {
+        showToast('❌ 삭제 실패', 'error');
+      }
+    } else {
+      // id가 없으면 로컬에서만 삭제 (이전 데이터 호환)
+      setSavedCarts(prev => prev.filter((_, i) => i !== index));
+      showToast('🗑️ 장바구니가 삭제되었습니다');
+    }
   };
 
-  // 저장된 장바구니 전체 삭제
-  const deleteSavedCartAll = () => {
-    setSavedCarts([]);
-    showToast('🗑️ 모든 장바구니가 삭제되었습니다');
+  // 저장된 장바구니 전체 삭제 (Supabase)
+  const deleteSavedCartAll = async () => {
+    const success = await supabase.deleteAllSavedCarts();
+    if (success) {
+      setSavedCarts([]);
+      showToast('🗑️ 모든 장바구니가 삭제되었습니다');
+    } else {
+      showToast('❌ 삭제 실패', 'error');
+    }
   };
 
   // ===== 제품 관리 함수들 =====
