@@ -3321,29 +3321,29 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
         </div>
         
         {/* 통계 + 검색 + 필터 영역 - 접기/펼치기 */}
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
           <div className="px-4 pb-4 space-y-3">
             {/* 재고 통계 카드 */}
             <div className="grid grid-cols-4 gap-2">
-              <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
-                <p className="text-slate-400 text-[10px] mb-0.5">전체</p>
-                <p className="text-base font-bold text-white">{stats.total}</p>
+              <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
+                <p className="text-slate-400 text-xs mb-0.5">전체</p>
+                <p className="text-lg font-bold text-white">{stats.total}</p>
               </button>
-              <button onClick={() => setStockFilter('normal')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30 border-emerald-500' : 'bg-emerald-600/20 border-emerald-600/30 hover:bg-emerald-600/30'}`}>
-                <p className="text-emerald-300 text-[10px] mb-0.5">정상</p>
-                <p className="text-base font-bold text-emerald-400">{stats.normal}</p>
+              <button onClick={() => setStockFilter('normal')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30 border-emerald-500' : 'bg-emerald-600/20 border-emerald-600/30 hover:bg-emerald-600/30'}`}>
+                <p className="text-emerald-300 text-xs mb-0.5">정상</p>
+                <p className="text-lg font-bold text-emerald-400">{stats.normal}</p>
               </button>
-              <button onClick={() => setStockFilter('low')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30 border-yellow-500' : 'bg-yellow-600/20 border-yellow-600/30 hover:bg-yellow-600/30'}`}>
-                <p className="text-yellow-300 text-[10px] mb-0.5">부족</p>
-                <p className="text-base font-bold text-yellow-400">{stats.low}</p>
+              <button onClick={() => setStockFilter('low')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30 border-yellow-500' : 'bg-yellow-600/20 border-yellow-600/30 hover:bg-yellow-600/30'}`}>
+                <p className="text-yellow-300 text-xs mb-0.5">부족</p>
+                <p className="text-lg font-bold text-yellow-400">{stats.low}</p>
               </button>
-              <button onClick={() => setStockFilter('out')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30 border-red-500' : 'bg-red-600/20 border-red-600/30 hover:bg-red-600/30'}`}>
-                <p className="text-red-300 text-[10px] mb-0.5">품절</p>
-                <p className="text-base font-bold text-red-400">{stats.out}</p>
+              <button onClick={() => setStockFilter('out')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30 border-red-500' : 'bg-red-600/20 border-red-600/30 hover:bg-red-600/30'}`}>
+                <p className="text-red-300 text-xs mb-0.5">품절</p>
+                <p className="text-lg font-bold text-red-400">{stats.out}</p>
               </button>
             </div>
             
-            {/* 검색창 - 맨 위로 이동 */}
+            {/* 검색창 */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -3355,11 +3355,11 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
               />
             </div>
             
-            {/* 카테고리 필터 - 스크롤 가능 */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {/* 카테고리 필터 - PC: flex-wrap, 모바일: 가로 스크롤 */}
+            <div className="flex gap-2 overflow-x-auto md:overflow-x-visible md:flex-wrap pb-1 md:pb-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
               <button
                 onClick={() => setSelectedCategory('전체')}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex-shrink-0 md:flex-shrink px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   selectedCategory === '전체' ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
               >
@@ -3369,7 +3369,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                  className={`flex-shrink-0 md:flex-shrink px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     selectedCategory === cat ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
@@ -4456,7 +4456,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-medium truncate">{item.name}</p>
                         <p className="text-blue-400 text-sm mt-0.5">
-                          @{formatPrice(price)}
+                          {formatPrice(price)} <span className="text-slate-500 text-xs">(VAT제외 {formatPrice(Math.round(price / 1.1))})</span>
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5">
