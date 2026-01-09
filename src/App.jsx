@@ -1710,6 +1710,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [showFilterDeleteConfirm, setShowFilterDeleteConfirm] = useState(false); // 필터별 삭제
   const [detailCart, setDetailCart] = useState(null); // 상세 보기 모달용
   const [detailIndex, setDetailIndex] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1719,14 +1720,27 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   // 날짜 필터링 함수
   const filterByDate = (cart) => {
     if (dateFilter === 'all') return true;
-    if (!cart.date) return false;
+    if (!cart.date && !cart.created_at) return false;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // cart.date 형식: "2026.01.09" 또는 "2026-01-09"
-    const cartDateStr = cart.date.replace(/\./g, '-');
-    const cartDate = new Date(cartDateStr);
+    let cartDate;
+    
+    // created_at (ISO 형식) 우선 사용
+    if (cart.created_at) {
+      cartDate = new Date(cart.created_at);
+    } else {
+      // cart.date 형식: "2026. 1. 10." 또는 "2026.01.09" 또는 "2026-01-09"
+      const dateStr = cart.date.replace(/\s/g, '').replace(/\./g, '-').replace(/-$/, '');
+      const parts = dateStr.split('-').filter(p => p);
+      if (parts.length === 3) {
+        cartDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      } else {
+        return false;
+      }
+    }
+    
     cartDate.setHours(0, 0, 0, 0);
     
     if (dateFilter === 'today') {
@@ -1765,6 +1779,27 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
     if (cart.date?.includes(searchTerm)) return true;
     
     return false;
+  };
+
+  // 필터 라벨 가져오기
+  const getFilterLabel = () => {
+    switch(dateFilter) {
+      case 'today': return '오늘';
+      case 'yesterday': return '어제';
+      case 'week': return '이번 주';
+      case 'month': return '이번 달';
+      default: return '전체';
+    }
+  };
+
+  // 필터 기준 전체 삭제
+  const handleFilterDelete = async () => {
+    const indicesToDelete = filteredCartsWithIndex.map(({ originalIndex }) => originalIndex);
+    // 인덱스 큰 것부터 삭제해야 인덱스가 밀리지 않음
+    for (const index of indicesToDelete.sort((a, b) => b - a)) {
+      await onDelete(index);
+    }
+    setShowFilterDeleteConfirm(false);
   };
 
   // 필터링된 장바구니 목록
@@ -1868,6 +1903,18 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                     <Check className="w-4 h-4" />
                     <span className="hidden sm:inline text-sm">선택</span>
                   </button>
+                  {/* 필터별 삭제 - 필터가 all이 아닐 때 */}
+                  {dateFilter !== 'all' && filteredCarts.length > 0 && (
+                    <button
+                      onClick={() => setShowFilterDeleteConfirm(true)}
+                      className="p-2 sm:px-3 sm:py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all"
+                      title={`${getFilterLabel()} 삭제`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline text-sm">{getFilterLabel()}</span>
+                    </button>
+                  )}
+                  {/* 전체 삭제 */}
                   <button
                     onClick={() => setShowDeleteAllConfirm(true)}
                     className="p-2 sm:px-3 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1.5 font-medium transition-all"
@@ -2288,6 +2335,55 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                 >
                   <Trash2 className="w-5 h-5" />
                   전체 삭제
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 필터별 삭제 확인 모달 */}
+      {showFilterDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-orange-500/50 shadow-2xl shadow-orange-500/20 overflow-hidden animate-scale-in">
+            {/* 모달 헤더 */}
+            <div className="bg-gradient-to-r from-orange-600 to-amber-600 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">⚠️ 장바구니 일괄 삭제</h2>
+                  <p className="text-orange-200 text-sm">{getFilterLabel()} 장바구니 {filteredCarts.length}개</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 모달 내용 */}
+            <div className="p-6">
+              <div className="bg-orange-600/10 border border-orange-500/30 rounded-xl p-4 mb-6">
+                <p className="text-slate-200 font-medium mb-2">다음 장바구니가 모두 삭제됩니다:</p>
+                <ul className="text-slate-400 text-sm space-y-1">
+                  <li>• 필터: <span className="text-white">{getFilterLabel()}</span></li>
+                  <li>• 삭제 대상: <span className="text-orange-400 font-bold">{filteredCarts.length}개</span></li>
+                  <li>• 총 금액: <span className="text-white">{formatPrice(filteredCarts.reduce((sum, c) => sum + (c.total || 0), 0))}</span></li>
+                </ul>
+                <p className="text-orange-400 text-xs mt-3">⚠️ 이 작업은 되돌릴 수 없습니다!</p>
+              </div>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowFilterDeleteConfirm(false)}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-all"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={handleFilterDelete}
+                  className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-xl text-white font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  삭제 실행
                 </button>
               </div>
             </div>
