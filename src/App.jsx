@@ -7398,7 +7398,7 @@ export default function PriceCalculator() {
             <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto justify-end flex-1">
               <button
                 onClick={() => setShowAdminLogin(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="관리자"
               >
                 <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
@@ -7407,7 +7407,7 @@ export default function PriceCalculator() {
               {/* 주문 이력 - 메인 버튼 */}
               <button
                 onClick={() => { setCurrentPage('history'); loadOrders(); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="주문 이력"
               >
                 <List className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
@@ -7428,7 +7428,7 @@ export default function PriceCalculator() {
               {/* 저장된 장바구니 */}
               <button
                 onClick={async () => { await loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
                 title="저장된 장바구니"
               >
                 <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
@@ -7445,7 +7445,7 @@ export default function PriceCalculator() {
               {/* AI 주문 인식 버튼 - 노란색 */}
               <button
                 onClick={() => setShowTextAnalyzeModal(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-yellow-600/30 hover:bg-yellow-600/50 border border-yellow-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-yellow-600/30 hover:bg-yellow-600/50 border border-yellow-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="AI 주문 인식"
               >
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
@@ -7453,7 +7453,7 @@ export default function PriceCalculator() {
               
               <button
                 onClick={() => { loadCustomers(); setShowCustomerListModal(true); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="거래처 목록"
               >
                 <Building className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
@@ -7461,7 +7461,7 @@ export default function PriceCalculator() {
               
               <button
                 onClick={() => setShowStockOverview(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="재고 현황"
               >
                 <Package className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
@@ -7469,7 +7469,7 @@ export default function PriceCalculator() {
               
               <button
                 onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                className="flex-shrink-0 flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="택배 송장"
               >
                 <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
