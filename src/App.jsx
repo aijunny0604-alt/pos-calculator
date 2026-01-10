@@ -4053,53 +4053,56 @@ MVB 64 Y R 2개`}
                       <p className="text-slate-400 text-xs mb-1 truncate">"{item.originalText}"</p>
                       
                       {item.matchedProduct ? (
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-white font-medium truncate">{item.matchedProduct.name}</p>
-                              <button
-                                onClick={() => { 
-                                  setSearchingIndex(searchingIndex === index ? null : index); 
-                                  setSearchQuery(item.searchText);
-                                }}
-                                className="px-2 py-0.5 text-xs bg-slate-600 hover:bg-purple-600 text-white rounded flex-shrink-0 transition-colors flex items-center gap-1"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                                변경
-                              </button>
-                            </div>
-                            <p className={`text-sm ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
-                              {formatPrice(priceType === 'wholesale' ? item.matchedProduct.wholesale : (item.matchedProduct.retail || item.matchedProduct.wholesale))}
-                            </p>
+                        <div className="space-y-2">
+                          {/* 첫째 줄: 제품명 + 변경 버튼 */}
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-medium truncate flex-1">{item.matchedProduct.name}</p>
+                            <button
+                              onClick={() => { 
+                                setSearchingIndex(searchingIndex === index ? null : index); 
+                                setSearchQuery(item.searchText);
+                              }}
+                              className="px-2 py-0.5 text-xs bg-slate-600 hover:bg-purple-600 text-white rounded flex-shrink-0 transition-colors flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              변경
+                            </button>
                           </div>
                           
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+                          {/* 둘째 줄: 가격 + 수량 + 삭제 */}
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-sm font-medium ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
+                              {formatPrice(priceType === 'wholesale' ? item.matchedProduct.wholesale : (item.matchedProduct.retail || item.matchedProduct.wholesale))}
+                            </p>
+                            
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+                                <button 
+                                  onClick={() => updateQuantity(index, item.quantity - 1)}
+                                  className="w-6 h-6 flex items-center justify-center hover:bg-slate-700 rounded"
+                                >
+                                  <Minus className="w-3 h-3 text-white" />
+                                </button>
+                                <input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
+                                  className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <button 
+                                  onClick={() => updateQuantity(index, item.quantity + 1)}
+                                  className="w-6 h-6 flex items-center justify-center hover:bg-slate-700 rounded"
+                                >
+                                  <Plus className="w-3 h-3 text-white" />
+                                </button>
+                              </div>
                               <button 
-                                onClick={() => updateQuantity(index, item.quantity - 1)}
-                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-700 rounded"
+                                onClick={() => removeItem(index)}
+                                className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
                               >
-                                <Minus className="w-3 h-3 text-white" />
-                              </button>
-                              <input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                                className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                              <button 
-                                onClick={() => updateQuantity(index, item.quantity + 1)}
-                                className="w-6 h-6 flex items-center justify-center hover:bg-slate-700 rounded"
-                              >
-                                <Plus className="w-3 h-3 text-white" />
-                              </button>
-                            </div>
-                            <button 
-                              onClick={() => removeItem(index)}
-                              className="w-7 h-7 flex items-center justify-center bg-red-600/30 hover:bg-red-600/50 rounded-lg transition-colors"
-                            >
                               <Trash2 className="w-3.5 h-3.5 text-red-400" />
                             </button>
+                            </div>
                           </div>
                         </div>
                       ) : (
