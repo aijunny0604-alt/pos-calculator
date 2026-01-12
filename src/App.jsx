@@ -2842,7 +2842,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   // 고객 정보 저장
   const saveCustomerInfo = async (customerId) => {
     try {
-      const updated = await supabaseService.updateCustomer(customerId, {
+      const updated = await supabase.updateCustomer(customerId, {
         address: tempAddress,
         phone: tempPhone
       });
