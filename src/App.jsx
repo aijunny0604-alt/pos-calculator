@@ -2946,7 +2946,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       { width: 22 }    // 연락처
     ];
     
-    const thickBorder = { top: { style: 'medium' }, left: { style: 'medium' }, bottom: { style: 'medium' }, right: { style: 'medium' } };
+    const thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     const headers = ['번호', '받는곳', '배송', '포장', '운임', '품명', '연락처'];
     
     // 보내는 곳별로 그룹화 (항상 모든 보내는 곳 초기화)
@@ -2985,7 +2985,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
       //     fgColor: { argb: 'FFE8F5E9' } // 연한 초록색
       //   };
       // }
-      senderHeaderRow.getCell(1).border = thickBorder;
+      senderHeaderRow.getCell(1).border = thinBorder;
       senderHeaderRow.height = 38;
       rowNum++;
       
@@ -2996,7 +2996,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
         cell.value = header;
         cell.font = { bold: true, size: 14, name: 'Malgun Gothic' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = thickBorder;
+        cell.border = thinBorder;
       });
       colHeaderRow.height = 28;
       rowNum++;
@@ -3009,7 +3009,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
         headers.forEach((_, idx) => {
           const cell = emptyRow.getCell(idx + 1);
           cell.value = '';
-          cell.border = thickBorder;
+          cell.border = thinBorder;
         });
         emptyRow.height = 40;
         rowNum++;
@@ -3056,7 +3056,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
               vertical: 'middle',
               wrapText: true  // 줄바꿈 활성화
             };
-            cell.border = thickBorder;
+            cell.border = thinBorder;
           });
           
           // 쉼표가 여러 개면 행 높이 증가
@@ -3078,14 +3078,84 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
               vertical: 'middle',
               wrapText: true  // 줄바꿈 활성화
             };
-            addrRow.getCell(1).border = thickBorder;
+            addrRow.getCell(1).border = thinBorder;
             addrRow.height = 32;
             rowNum++;
           }
         });
       }
     });
-    
+
+    // 바깥 테두리만 굵게 적용
+    senderList.forEach((sender, senderIndex) => {
+      const orders = groupedBySender[sender] || [];
+      let startRow, endRow;
+
+      // 각 섹션의 시작/끝 행 계산
+      if (senderIndex === 0) {
+        startRow = 1;
+      } else {
+        // 이전 섹션들의 행 수 계산
+        let prevRows = 1; // 첫 섹션 시작
+        for (let i = 0; i < senderIndex; i++) {
+          const prevOrders = groupedBySender[senderList[i]] || [];
+          prevRows += 1; // 빈 줄
+          prevRows += 2; // 보내는곳 헤더 + 컬럼 헤더
+          if (prevOrders.length === 0) {
+            prevRows += 1; // 빈 데이터 행
+          } else {
+            prevOrders.forEach(order => {
+              const customer = order.customerName ? findCustomer(order.customerName) : null;
+              const address = customer?.address || '';
+              prevRows += 1; // 데이터 행
+              if (address) prevRows += 1; // 주소 행
+            });
+          }
+        }
+        startRow = prevRows;
+      }
+
+      // 현재 섹션 끝 행 계산
+      endRow = startRow + 1; // 보내는곳 헤더 + 컬럼 헤더
+      if (orders.length === 0) {
+        endRow += 1; // 빈 데이터 행
+      } else {
+        orders.forEach(order => {
+          const customer = order.customerName ? findCustomer(order.customerName) : null;
+          const address = customer?.address || '';
+          endRow += 1; // 데이터 행
+          if (address) endRow += 1; // 주소 행
+        });
+      }
+
+      // 바깥 테두리 굵게 적용
+      for (let row = startRow; row <= endRow; row++) {
+        for (let col = 1; col <= 7; col++) {
+          const cell = worksheet.getRow(row).getCell(col);
+          const border = { ...cell.border };
+
+          // 상단 테두리
+          if (row === startRow) {
+            border.top = { style: 'medium' };
+          }
+          // 하단 테두리
+          if (row === endRow) {
+            border.bottom = { style: 'medium' };
+          }
+          // 좌측 테두리
+          if (col === 1) {
+            border.left = { style: 'medium' };
+          }
+          // 우측 테두리
+          if (col === 7) {
+            border.right = { style: 'medium' };
+          }
+
+          cell.border = border;
+        }
+      }
+    });
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
