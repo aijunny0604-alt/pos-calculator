@@ -3032,9 +3032,9 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       //   };
       // }
       senderHeaderRow.getCell(1).border = thinBorder;
-      senderHeaderRow.height = 38;
+      senderHeaderRow.height = 45;
       rowNum++;
-      
+
       // 컬럼 헤더
       const colHeaderRow = worksheet.getRow(rowNum);
       headers.forEach((header, idx) => {
@@ -3044,7 +3044,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = thinBorder;
       });
-      colHeaderRow.height = 28;
+      colHeaderRow.height = 35;
       rowNum++;
       
       const orders = groupedBySender[sender] || [];
@@ -3057,7 +3057,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           cell.value = '';
           cell.border = thinBorder;
         });
-        emptyRow.height = 40;
+        emptyRow.height = 50;
         rowNum++;
       } else {
         // 해당 보내는 곳의 주문 데이터
@@ -3110,7 +3110,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             (packagingValue.match(/,/g) || []).length + 1,
             (shippingCostValue.match(/,/g) || []).length + 1
           );
-          dataRow.height = Math.max(40, 25 * maxLines);
+          dataRow.height = Math.max(50, 30 * maxLines);
           rowNum++;
           
           // 주소 행 추가 (줄바꿈 적용)
@@ -3125,7 +3125,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               wrapText: true  // 줄바꿈 활성화
             };
             addrRow.getCell(1).border = thinBorder;
-            addrRow.height = 32;
+            addrRow.height = 40;
             rowNum++;
           }
         });
