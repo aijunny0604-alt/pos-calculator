@@ -2695,11 +2695,14 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
 }
 
 // ==================== 택배 송장 생성 모달 ====================
-function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack }) {
+function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, refreshCustomers }) {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [senderList] = useState(['무브모터스', '엠파츠']); // 보내는 곳 목록
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [orderSettings, setOrderSettings] = useState({});
+  const [editingCustomer, setEditingCustomer] = useState(null); // 수정 중인 고객
+  const [tempAddress, setTempAddress] = useState('');
+  const [tempPhone, setTempPhone] = useState('');
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -2819,10 +2822,53 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
     };
   };
   
+  // 고객 정보 수정 시작
+  const startEditCustomer = (customerName) => {
+    const customer = customers.find(c => c.name === customerName);
+    if (customer) {
+      setEditingCustomer(customer.id);
+      setTempAddress(customer.address || '');
+      setTempPhone(customer.phone || '');
+    }
+  };
+
+  // 고객 정보 수정 취소
+  const cancelEditCustomer = () => {
+    setEditingCustomer(null);
+    setTempAddress('');
+    setTempPhone('');
+  };
+
+  // 고객 정보 저장
+  const saveCustomerInfo = async (customerId) => {
+    try {
+      const updated = await supabaseService.updateCustomer(customerId, {
+        address: tempAddress,
+        phone: tempPhone
+      });
+
+      if (updated) {
+        // 즉시 고객 목록 새로고침
+        if (refreshCustomers) {
+          await refreshCustomers();
+        }
+        setEditingCustomer(null);
+        setTempAddress('');
+        setTempPhone('');
+        showToast('✅ 업체 정보가 업데이트되었습니다', 'success');
+      } else {
+        showToast('⚠️ 업데이트 실패', 'error');
+      }
+    } catch (error) {
+      console.error('고객 정보 업데이트 오류:', error);
+      showToast('⚠️ 업데이트 실패', 'error');
+    }
+  };
+
   const updateOrderSetting = (orderNumber, field, value) => {
     setOrderSettings(prev => {
-      const current = prev[orderNumber] || { 
-        paymentType: '착불', 
+      const current = prev[orderNumber] || {
+        paymentType: '착불',
         packaging: '박스1', 
         shippingCost: '7300',
         sender: senderList[0]
@@ -3428,7 +3474,20 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                           <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
                           <p className="text-slate-500 text-xs mt-1">{order.items?.length || 0}종 · {formatPrice(order.totalAmount)}</p>
                         </div>
-                        <div className="text-right"><p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p></div>
+                        <div className="text-right">
+                          <p className="text-slate-400 text-xs">{customer?.phone || order.customerPhone || '번호 없음'}</p>
+                          {customer && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditCustomer(order.customerName);
+                              }}
+                              className="mt-1 px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs rounded transition-colors"
+                            >
+                              정보 수정
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -3484,6 +3543,49 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack })
                             />
                           </div>
                         </div>
+
+                        {/* 업체 정보 수정 폼 */}
+                        {customer && editingCustomer === customer.id && (
+                          <div className="mt-3 p-3 bg-blue-900/20 border border-blue-600/30 rounded-lg">
+                            <p className="text-blue-400 font-medium text-sm mb-2">📝 {order.customerName} 정보 수정</p>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-slate-400 text-xs mb-1">주소</label>
+                                <input
+                                  type="text"
+                                  value={tempAddress}
+                                  onChange={(e) => setTempAddress(e.target.value)}
+                                  placeholder="주소를 입력하세요"
+                                  className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-400 text-xs mb-1">전화번호</label>
+                                <input
+                                  type="text"
+                                  value={tempPhone}
+                                  onChange={(e) => setTempPhone(e.target.value)}
+                                  placeholder="전화번호를 입력하세요"
+                                  className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => saveCustomerInfo(customer.id)}
+                                  className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors"
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  onClick={cancelEditCustomer}
+                                  className="flex-1 px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium rounded transition-colors"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -8225,6 +8327,7 @@ export default function PriceCalculator() {
           customers={customers}
           formatPrice={formatPrice}
           onBack={() => setShowShippingModal(false)}
+          refreshCustomers={loadCustomers}
         />,
         document.body
       )}
