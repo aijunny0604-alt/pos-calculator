@@ -8006,8 +8006,8 @@ export default function PriceCalculator() {
               </div>
             </div>
 
-            {/* 버튼들 - 스크롤 가능 */}
-            <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 overflow-x-auto scrollbar-hide flex-1 ml-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}>
+            {/* 버튼들 - PC: 우측 정렬, 모바일: 스크롤 가능 */}
+            <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 overflow-x-auto scrollbar-hide flex-1 justify-end" style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}>
               <button
                 onClick={() => setShowAdminLogin(true)}
                 className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
