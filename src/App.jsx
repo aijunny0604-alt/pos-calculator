@@ -4756,120 +4756,197 @@ function NotificationSettingsModal({ isOpen, onClose, settings, onSave }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ touchAction: 'none' }}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden border border-slate-700 shadow-2xl">
+      <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl w-full max-w-lg overflow-hidden border border-slate-700/50 shadow-2xl shadow-blue-500/10 animate-scale-in">
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Bell className="w-6 h-6 text-white" />
-            <h2 className="text-lg font-bold text-white">알림 설정</h2>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-white" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
-          {/* 알림 활성화 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium">배송 알림 사용</p>
-              <p className="text-slate-400 text-xs mt-0.5">브라우저 알림으로 배송 일정을 알려드립니다</p>
+        <div className="relative bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-500 px-6 py-5 overflow-hidden">
+          <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <Bell className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">알림 설정</h2>
+                <p className="text-blue-100 text-xs">배송 일정을 놓치지 마세요</p>
+              </div>
             </div>
             <button
-              onClick={() => setLocalSettings({ ...localSettings, enabled: !localSettings.enabled })}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                localSettings.enabled ? 'bg-blue-500' : 'bg-slate-600'
-              }`}
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200 group"
             >
-              <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                localSettings.enabled ? 'translate-x-6' : ''
-              }`} />
+              <X className="w-5 h-5 text-white group-hover:rotate-90 transition-transform duration-200" />
             </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* 알림 활성화 - 고급 스위치 */}
+          <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-2xl p-5 border border-slate-600/30 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-semibold text-lg">배송 알림</p>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    localSettings.enabled
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-slate-600/30 text-slate-400'
+                  }`}>
+                    {localSettings.enabled ? 'ON' : 'OFF'}
+                  </span>
+                </div>
+                <p className="text-slate-400 text-sm mt-1">브라우저 알림으로 배송 일정을 알려드립니다</p>
+              </div>
+              <button
+                onClick={() => setLocalSettings({ ...localSettings, enabled: !localSettings.enabled })}
+                className={`relative w-16 h-8 rounded-full transition-all duration-300 shadow-inner ${
+                  localSettings.enabled
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 shadow-blue-500/50'
+                    : 'bg-slate-600 shadow-slate-900/50'
+                }`}
+              >
+                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300 ${
+                  localSettings.enabled ? 'left-9' : 'left-1'
+                }`}>
+                  <div className={`w-full h-full flex items-center justify-center ${
+                    localSettings.enabled ? 'text-blue-500' : 'text-slate-400'
+                  }`}>
+                    {localSettings.enabled ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
 
           {localSettings.enabled && (
             <>
-              {/* 알림 시간 */}
-              <div>
-                <label className="block text-white font-medium mb-2">알림 시간</label>
-                <input
-                  type="time"
-                  value={localSettings.time}
-                  onChange={(e) => setLocalSettings({ ...localSettings, time: e.target.value })}
-                  className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-slate-400 text-xs mt-1">매일 이 시간에 알림을 보냅니다</p>
-              </div>
-
-              {/* 알림 조건 */}
-              <div>
-                <label className="block text-white font-medium mb-2">알림 받을 배송 일정</label>
-                <div className="space-y-2">
-                  {[
-                    { day: -1, label: '지연된 배송', color: 'red' },
-                    { day: 0, label: '오늘 배송', color: 'orange' },
-                    { day: 1, label: '내일 배송', color: 'yellow' },
-                    { day: 2, label: '2일 후 배송', color: 'blue' },
-                    { day: 3, label: '3일 후 배송', color: 'blue' }
-                  ].map(({ day, label, color }) => (
-                    <button
-                      key={day}
-                      onClick={() => {
-                        if (day === -1) {
-                          setLocalSettings({ ...localSettings, includeOverdue: !localSettings.includeOverdue });
-                        } else {
-                          toggleDayReminder(day);
-                        }
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
-                        (day === -1 ? localSettings.includeOverdue : localSettings.daysBeforeReminder.includes(day))
-                          ? `bg-${color}-500/20 border-${color}-500/50 text-${color}-400`
-                          : 'bg-slate-700/50 border-slate-600 text-slate-400'
-                      }`}
-                    >
-                      <span className="font-medium">{label}</span>
-                      {(day === -1 ? localSettings.includeOverdue : localSettings.daysBeforeReminder.includes(day)) && (
-                        <Check className="w-5 h-5" />
-                      )}
-                    </button>
-                  ))}
+              {/* 알림 시간 - 개선된 UI */}
+              <div className="bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-2xl p-5 border border-slate-600/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-5 h-5 text-blue-400" />
+                  <label className="text-white font-semibold text-base">알림 시간</label>
+                </div>
+                <div className="relative">
+                  <input
+                    type="time"
+                    value={localSettings.time}
+                    onChange={(e) => setLocalSettings({ ...localSettings, time: e.target.value })}
+                    className="w-full bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-slate-600/50 rounded-xl px-5 py-4 text-white text-xl font-bold focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all shadow-inner"
+                    style={{
+                      colorScheme: 'dark'
+                    }}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
+                  <p className="text-slate-400 text-sm">매일 이 시간에 알림을 전송합니다</p>
                 </div>
               </div>
 
-              {/* 매일 알림 vs 당일만 */}
-              <div>
-                <label className="block text-white font-medium mb-2">알림 빈도</label>
-                <div className="space-y-2">
+              {/* 알림 조건 - 고급스러운 카드 */}
+              <div className="bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-2xl p-5 border border-slate-600/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-5 h-5 text-blue-400" />
+                  <label className="text-white font-semibold text-base">알림 받을 배송 일정</label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { day: -1, label: '지연 배송', icon: '🔴', bgFrom: 'from-red-500/20', bgTo: 'to-red-600/10', border: 'border-red-500/30', text: 'text-red-400', checked: 'bg-red-500' },
+                    { day: 0, label: '오늘', icon: '⚡', bgFrom: 'from-orange-500/20', bgTo: 'to-orange-600/10', border: 'border-orange-500/30', text: 'text-orange-400', checked: 'bg-orange-500' },
+                    { day: 1, label: '내일', icon: '🟡', bgFrom: 'from-yellow-500/20', bgTo: 'to-yellow-600/10', border: 'border-yellow-500/30', text: 'text-yellow-400', checked: 'bg-yellow-500' },
+                    { day: 2, label: 'D-2', icon: '📅', bgFrom: 'from-blue-500/20', bgTo: 'to-blue-600/10', border: 'border-blue-500/30', text: 'text-blue-400', checked: 'bg-blue-500' },
+                    { day: 3, label: 'D-3', icon: '📆', bgFrom: 'from-cyan-500/20', bgTo: 'to-cyan-600/10', border: 'border-cyan-500/30', text: 'text-cyan-400', checked: 'bg-cyan-500' },
+                    { day: 7, label: 'D-7', icon: '📋', bgFrom: 'from-purple-500/20', bgTo: 'to-purple-600/10', border: 'border-purple-500/30', text: 'text-purple-400', checked: 'bg-purple-500' }
+                  ].map(({ day, label, icon, bgFrom, bgTo, border, text, checked }) => {
+                    const isActive = day === -1 ? localSettings.includeOverdue : localSettings.daysBeforeReminder.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => {
+                          if (day === -1) {
+                            setLocalSettings({ ...localSettings, includeOverdue: !localSettings.includeOverdue });
+                          } else {
+                            toggleDayReminder(day);
+                          }
+                        }}
+                        className={`relative overflow-hidden rounded-xl p-4 border-2 transition-all duration-200 ${
+                          isActive
+                            ? `bg-gradient-to-br ${bgFrom} ${bgTo} ${border} shadow-lg scale-[1.02]`
+                            : 'bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span className="text-2xl">{icon}</span>
+                          <span className={`font-bold text-sm ${isActive ? text : 'text-slate-400'}`}>
+                            {label}
+                          </span>
+                        </div>
+                        {isActive && (
+                          <div className={`absolute top-2 right-2 w-5 h-5 ${checked} rounded-full flex items-center justify-center shadow-lg`}>
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-slate-400 text-xs mt-3 text-center">선택한 일정에 대해 알림을 받습니다</p>
+              </div>
+
+              {/* 알림 빈도 - 고급 카드 */}
+              <div className="bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-2xl p-5 border border-slate-600/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <RefreshCw className="w-5 h-5 text-blue-400" />
+                  <label className="text-white font-semibold text-base">알림 빈도</label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setLocalSettings({ ...localSettings, dailyNotification: true })}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                    className={`relative overflow-hidden rounded-xl p-4 border-2 transition-all duration-200 ${
                       localSettings.dailyNotification
-                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                        : 'bg-slate-700/50 border-slate-600 text-slate-400'
+                        ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/30 shadow-lg scale-[1.02]'
+                        : 'bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50'
                     }`}
                   >
-                    <div className="text-left">
-                      <p className="font-medium">매일 알림</p>
-                      <p className="text-xs opacity-70">매일 설정한 시간에 알림을 받습니다</p>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`text-3xl ${localSettings.dailyNotification ? 'animate-pulse' : ''}`}>🔔</div>
+                      <div className="text-center">
+                        <p className={`font-bold text-sm ${localSettings.dailyNotification ? 'text-blue-400' : 'text-slate-400'}`}>
+                          매일 알림
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">정기 알림</p>
+                      </div>
                     </div>
-                    {localSettings.dailyNotification && <Check className="w-5 h-5" />}
+                    {localSettings.dailyNotification && (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
                   </button>
                   <button
                     onClick={() => setLocalSettings({ ...localSettings, dailyNotification: false })}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                    className={`relative overflow-hidden rounded-xl p-4 border-2 transition-all duration-200 ${
                       !localSettings.dailyNotification
-                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                        : 'bg-slate-700/50 border-slate-600 text-slate-400'
+                        ? 'bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border-cyan-500/30 shadow-lg scale-[1.02]'
+                        : 'bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50'
                     }`}
                   >
-                    <div className="text-left">
-                      <p className="font-medium">배송 당일만</p>
-                      <p className="text-xs opacity-70">배송 당일에만 알림을 받습니다</p>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`text-3xl ${!localSettings.dailyNotification ? 'animate-pulse' : ''}`}>📅</div>
+                      <div className="text-center">
+                        <p className={`font-bold text-sm ${!localSettings.dailyNotification ? 'text-cyan-400' : 'text-slate-400'}`}>
+                          당일만
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">배송일만</p>
+                      </div>
                     </div>
-                    {!localSettings.dailyNotification && <Check className="w-5 h-5" />}
+                    {!localSettings.dailyNotification && (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
                   </button>
                 </div>
               </div>
@@ -4877,20 +4954,22 @@ function NotificationSettingsModal({ isOpen, onClose, settings, onSave }) {
           )}
         </div>
 
-        {/* 버튼 */}
-        <div className="p-5 border-t border-slate-700 flex gap-3">
-          <button
-            onClick={handleSave}
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-semibold transition-colors"
-          >
-            저장
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
-          >
-            취소
-          </button>
+        {/* 버튼 - 고급스러운 스타일 */}
+        <div className="p-6 border-t border-slate-700/50 bg-gradient-to-b from-slate-800/50 to-slate-900/50">
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-4 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-slate-300 font-semibold transition-all duration-200 border border-slate-600/30 hover:border-slate-500/50"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl text-white font-bold transition-all duration-200 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              💾 저장하기
+            </button>
+          </div>
         </div>
       </div>
     </div>
