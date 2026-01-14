@@ -8051,24 +8051,24 @@ export default function PriceCalculator() {
 
   // 저장된 장바구니 불러오기
   const loadSavedCart = (savedCart) => {
-    const validItems = savedCart.items.filter(item => 
-      priceData.some(p => p.id === item.id)
+    const validItems = savedCart.items.filter(item =>
+      products.some(p => p.id === item.id)
     ).map(item => {
-      const currentProduct = priceData.find(p => p.id === item.id);
+      const currentProduct = products.find(p => p.id === item.id);
       return currentProduct ? {
         ...currentProduct,
         quantity: item.quantity
       } : null;
     }).filter(Boolean);
-    
+
     if (validItems.length === 0) {
       showToast('⚠️ 불러올 수 있는 제품이 없습니다', 'error');
       return;
     }
-    
+
     setCart(validItems);
     setPriceType(savedCart.price_type || savedCart.priceType || 'wholesale');
-    
+
     if (validItems.length < savedCart.items.length) {
       showToast(`📦 ${validItems.length}/${savedCart.items.length}개 제품 불러옴`);
     } else {
