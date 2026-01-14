@@ -9014,11 +9014,11 @@ export default function PriceCalculator() {
                   }).length;
 
                   return urgentCount > 0 ? (
-                    <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse shadow-lg border-2 border-slate-900">
+                    <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-5 px-1 sm:px-1.5 bg-red-500 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse shadow-lg border border-slate-800">
                       {urgentCount > 9 ? '9+' : urgentCount}
                     </span>
                   ) : savedCarts.length > 0 ? (
-                    <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 bg-violet-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg border-2 border-slate-900">
+                    <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-5 px-1 sm:px-1.5 bg-violet-500 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg border border-slate-800">
                       {savedCarts.length > 9 ? '9+' : savedCarts.length}
                     </span>
                   ) : null;
