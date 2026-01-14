@@ -12,11 +12,26 @@ const matchesSearchQuery = (productName, searchTerm) => {
   const normalizedProductName = normalizeText(productName);
   const normalizedSearchTerm = normalizeText(searchTerm);
 
-  // 방법 1: 검색어 전체를 정규화해서 제품명에 포함되는지 확인
-  // "스덴밴딩51" or "스덴 밴딩 51" 모두 → "스덴밴딩51" → "스덴밴딩파이프51"에 매칭
+  // 방법 1: 검색어 전체가 제품명에 포함되는지 확인
   if (normalizedProductName.includes(normalizedSearchTerm)) return true;
 
-  // 방법 2: 단어별로 분리해서 모든 단어가 포함되는지 확인 (순서 무관)
+  // 방법 2: 검색어를 한글/영문 그룹과 숫자 그룹으로 분리해서 순서대로 매칭
+  // "스덴밴딩51" → ["스덴밴딩", "51"] → "스덴밴딩파이프51"에서 순서대로 찾기
+  const searchParts = normalizedSearchTerm.match(/[가-힣a-z]+|\d+/gi) || [];
+  if (searchParts.length > 0) {
+    let lastIndex = -1;
+    const matchesSequential = searchParts.every(part => {
+      const foundIndex = normalizedProductName.indexOf(part, lastIndex + 1);
+      if (foundIndex > lastIndex) {
+        lastIndex = foundIndex + part.length - 1;
+        return true;
+      }
+      return false;
+    });
+    if (matchesSequential) return true;
+  }
+
+  // 방법 3: 띄어쓰기로 분리된 단어들이 모두 포함되는지 확인 (순서 무관)
   const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
   if (searchWords.length > 1) {
     const matchesAll = searchWords.every(word => {
