@@ -255,6 +255,7 @@ const supabase = {
 
   async addSavedCart(cart) {
     try {
+      console.log('🔵 Supabase에 장바구니 저장 시도:', cart);
       const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts`, {
         method: 'POST',
         headers: {
@@ -268,11 +269,12 @@ const supabase = {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Supabase addSavedCart error response:', errorText);
+        console.error('❌ Supabase addSavedCart error response:', errorText);
 
         // 컬럼이 없는 경우 재시도 (예약 필드 제외)
         if (errorText.includes('column') || errorText.includes('does not exist')) {
           console.log('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 저장...');
+          console.log('⚠️ Supabase 테이블에 다음 컬럼들을 추가하세요: delivery_date, status, priority, memo, reminded');
           const basicCart = {
             name: cart.name,
             items: cart.items,
@@ -298,6 +300,7 @@ const supabase = {
             throw new Error('Failed to add saved cart (retry)');
           }
           const result = await retryResponse.json();
+          console.log('✅ 기본 필드만 저장 완료:', result);
           // 예약 필드를 원본 데이터에서 복원하여 반환
           return [{
             ...result[0],
@@ -313,9 +316,11 @@ const supabase = {
         throw new Error('Failed to add saved cart');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ Supabase 저장 완료:', result);
+      return result;
     } catch (error) {
-      console.error('Supabase addSavedCart error:', error);
+      console.error('❌ Supabase addSavedCart error:', error);
       return null;
     }
   },
@@ -339,6 +344,7 @@ const supabase = {
 
   async updateSavedCart(id, cart) {
     try {
+      console.log('🔵 Supabase 장바구니 업데이트 시도:', { id, cart });
       const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?id=eq.${id}`, {
         method: 'PATCH',
         headers: {
@@ -352,11 +358,12 @@ const supabase = {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Supabase updateSavedCart error response:', errorText);
+        console.error('❌ Supabase updateSavedCart error response:', errorText);
 
         // 컬럼이 없는 경우 재시도 (예약 필드 제외)
         if (errorText.includes('column') || errorText.includes('does not exist')) {
           console.log('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 업데이트...');
+          console.log('⚠️ Supabase 테이블에 다음 컬럼들을 추가하세요: delivery_date, status, priority, memo, reminded');
           const basicCart = {
             name: cart.name,
             items: cart.items,
@@ -379,6 +386,7 @@ const supabase = {
             throw new Error('Failed to update saved cart (retry)');
           }
           const result = await retryResponse.json();
+          console.log('✅ 기본 필드만 업데이트 완료:', result);
           // 예약 필드를 원본 데이터에서 복원하여 반환
           return [{
             ...result[0],
@@ -394,9 +402,11 @@ const supabase = {
         throw new Error('Failed to update saved cart');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ Supabase 업데이트 완료:', result);
+      return result;
     } catch (error) {
-      console.error('Supabase updateSavedCart error:', error);
+      console.error('❌ Supabase updateSavedCart error:', error);
       return null;
     }
   },
@@ -4563,8 +4573,8 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
 // ==================== 장바구니 저장 모달 ====================
 function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', onBack, onCloseAll }) {
   const [cartName, setCartName] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState('');
-  const [status, setStatus] = useState('scheduled');
+  const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [status, setStatus] = useState('pending');
   const [priority, setPriority] = useState('normal');
   const [memo, setMemo] = useState('');
 
@@ -4579,13 +4589,12 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
       setCartName(defaultName);
     }
 
-    // 기본 배송 예정일: 내일
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setDeliveryDate(tomorrow.toISOString().split('T')[0]);
+    // 기본 배송 예정일: 오늘 (당일)
+    const today = new Date();
+    setDeliveryDate(today.toISOString().split('T')[0]);
 
-    // 초기화
-    setStatus('scheduled');
+    // 초기화 - 기본 상태를 '작성중'으로 설정
+    setStatus('pending');
     setPriority('normal');
     setMemo('');
   }, [customerName, isOpen]);
@@ -9001,11 +9010,11 @@ export default function PriceCalculator() {
                   }).length;
 
                   return urgentCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse">
+                    <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse">
                       {urgentCount > 9 ? '9+' : urgentCount}
                     </span>
                   ) : savedCarts.length > 0 ? (
-                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="min-w-5 xs:min-w-5 sm:min-w-6 h-4 xs:h-5 sm:h-5 px-1 xs:px-1.5 sm:px-2 bg-violet-500 text-white text-[9px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                       {savedCarts.length > 9 ? '9+' : savedCarts.length}
                     </span>
                   ) : null;
@@ -9013,13 +9022,39 @@ export default function PriceCalculator() {
               </button>
 
               {/* 알림 설정 버튼 */}
-              <button
-                onClick={() => setShowNotificationSettings(true)}
-                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="알림 설정"
-              >
-                <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
-              </button>
+              <div className="flex-shrink-0 relative">
+                <button
+                  onClick={() => setShowNotificationSettings(true)}
+                  className="flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                  title="알림 설정"
+                >
+                  <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
+                </button>
+                {(() => {
+                  if (!notificationSettings.enabled) return null;
+
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+
+                  const notificationCount = savedCarts.filter(cart => {
+                    if (!cart.delivery_date) return false;
+                    const delivery = new Date(cart.delivery_date);
+                    delivery.setHours(0, 0, 0, 0);
+
+                    return notificationSettings.notifyDays.some(day => {
+                      const targetDate = new Date(delivery);
+                      targetDate.setDate(targetDate.getDate() + day);
+                      return targetDate.getTime() === today.getTime();
+                    });
+                  }).length;
+
+                  return notificationCount > 0 ? (
+                    <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg border-2 border-slate-900">
+                      {notificationCount > 9 ? '9+' : notificationCount}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
 
               {/* 구분선 */}
               <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
