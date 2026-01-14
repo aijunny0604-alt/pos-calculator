@@ -1457,10 +1457,12 @@ const formatDateTime = (dateString) => {
 const STORAGE_KEY = 'pos-orders-shared';
 
 // 주문 상세 보기 모달
-function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }) {
+function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, products }) {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState(null);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
 
   // order가 변경될 때마다 editedOrder 초기화
   useEffect(() => {
@@ -1508,6 +1510,14 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
   const exVat = calcExVat(currentTotal);
   const vat = currentTotal - exVat;
 
+  // 제품 검색 필터링
+  const filteredProducts = products ? products.filter(product => {
+    if (!productSearchTerm) return false;
+    const searchLower = productSearchTerm.toLowerCase().replace(/\s/g, '');
+    const nameLower = product.name.toLowerCase().replace(/\s/g, '');
+    return nameLower.includes(searchLower);
+  }).slice(0, 8) : [];
+
   // 제품 수량 변경
   const handleQuantityChange = (index, delta) => {
     const newItems = [...editedOrder.items];
@@ -1528,6 +1538,30 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
     }
   };
 
+  // 제품 추가
+  const handleAddProduct = (product) => {
+    const price = order.priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
+    const existingIndex = editedOrder.items.findIndex(item => item.id === product.id);
+
+    if (existingIndex >= 0) {
+      // 이미 존재하면 수량 증가
+      const newItems = [...editedOrder.items];
+      newItems[existingIndex].quantity += 1;
+      setEditedOrder({ ...editedOrder, items: newItems });
+    } else {
+      // 새 제품 추가
+      const newItem = {
+        id: product.id,
+        name: product.name,
+        price: price,
+        quantity: 1
+      };
+      setEditedOrder({ ...editedOrder, items: [...editedOrder.items, newItem] });
+    }
+    setProductSearchTerm('');
+    setShowProductSearch(false);
+  };
+
   // 저장
   const handleSave = () => {
     const updatedOrder = {
@@ -1540,6 +1574,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
       onUpdateOrder(updatedOrder);
     }
     setIsEditing(false);
+    setShowProductSearch(false);
   };
 
   // 취소
@@ -1550,6 +1585,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
       items: [...order.items]
     });
     setIsEditing(false);
+    setShowProductSearch(false);
   };
 
   const generateOrderText = () => {
@@ -1724,15 +1760,65 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
           </div>
 
           <div className="p-4 sm:p-6">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <Package className="w-5 h-5 text-emerald-400" />
-              주문 상품 ({currentItems.length}종)
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <Package className="w-5 h-5 text-emerald-400" />
+                주문 상품 ({currentItems.length}종)
+              </h3>
+              {isEditing && (
+                <button
+                  onClick={() => setShowProductSearch(!showProductSearch)}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  제품 추가
+                </button>
+              )}
+            </div>
+
+            {/* 제품 검색 */}
+            {isEditing && showProductSearch && (
+              <div className="mb-4 relative">
+                <input
+                  type="text"
+                  value={productSearchTerm}
+                  onChange={(e) => setProductSearchTerm(e.target.value)}
+                  placeholder="제품명 검색..."
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {productSearchTerm && filteredProducts.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-60 overflow-y-auto z-50">
+                    {filteredProducts.map(product => {
+                      const price = order.priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
+                      const alreadyAdded = editedOrder.items.some(item => item.id === product.id);
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => handleAddProduct(product)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="text-white text-sm">{product.name}</div>
+                              <div className="text-slate-400 text-xs">{product.category}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-medium text-sm">{formatPrice(price)}</span>
+                              {alreadyAdded && <span className="text-xs text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">추가됨</span>}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="bg-slate-900/50 rounded-xl overflow-hidden">
               {/* 헤더 */}
               <div className={`grid ${isEditing ? 'grid-cols-13' : 'grid-cols-12'} gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-slate-700/50 text-slate-300 text-xs sm:text-sm font-medium`}>
-                <div className="col-span-1">No</div>
+                <div className="col-span-1 text-center">No</div>
                 <div className={isEditing ? "col-span-4" : "col-span-5"}>상품명</div>
                 <div className="col-span-2 text-right">단가</div>
                 <div className="col-span-2 text-center">수량</div>
@@ -1743,9 +1829,9 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
               <div className="divide-y divide-slate-700/50">
                 {currentItems.map((item, index) => (
                   <div key={index} className={`grid ${isEditing ? 'grid-cols-13' : 'grid-cols-12'} gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm items-center`}>
-                    <div className="col-span-1 text-slate-400">{index + 1}</div>
+                    <div className="col-span-1 text-slate-400 text-center">{index + 1}</div>
                     <div className={`${isEditing ? 'col-span-4' : 'col-span-5'} text-white break-all leading-tight`}>{item.name}</div>
-                    <div className="col-span-2 text-right text-slate-300 whitespace-nowrap text-[10px] sm:text-sm">{formatPrice(item.price).replace('원', '')}</div>
+                    <div className="col-span-2 text-right text-slate-300 tabular-nums">{formatPrice(item.price)}</div>
                     <div className="col-span-2 text-center text-white">
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
@@ -1755,7 +1841,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
                           >
                             -
                           </button>
-                          <span className="w-8 sm:w-10 text-center">{item.quantity}</span>
+                          <span className="w-8 sm:w-10 text-center tabular-nums">{item.quantity}</span>
                           <button
                             onClick={() => handleQuantityChange(index, 1)}
                             className="w-6 h-6 sm:w-7 sm:h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
@@ -1764,10 +1850,10 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
                           </button>
                         </div>
                       ) : (
-                        `${item.quantity}개`
+                        <span className="tabular-nums">{item.quantity}개</span>
                       )}
                     </div>
-                    <div className="col-span-2 text-right text-emerald-400 font-medium whitespace-nowrap text-[10px] sm:text-sm">{formatPrice(item.price * item.quantity).replace('원', '')}</div>
+                    <div className="col-span-2 text-right text-emerald-400 font-medium tabular-nums">{formatPrice(item.price * item.quantity)}</div>
                     {isEditing && (
                       <div className="col-span-2 flex justify-center">
                         <button
@@ -1796,14 +1882,20 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }
         <div className="border-t border-slate-700 p-4 sm:p-6 bg-slate-900/50 flex-shrink-0">
           <div className="flex items-start justify-between mb-4">
             <div className="text-slate-400 text-sm space-y-1">
-              <p>총 수량: <span className="text-white font-medium">{totalQuantity}개</span></p>
+              <p>총 수량: <span className="text-white font-medium tabular-nums">{totalQuantity}개</span></p>
             </div>
             <div className="text-right">
               <div className="text-sm text-slate-400 space-y-1 mb-2">
-                <p>공급가액: <span className="text-slate-300">{formatPrice(exVat)}</span></p>
-                <p>부가세: <span className="text-slate-300">{formatPrice(vat)}</span></p>
+                <p className="flex justify-between gap-3">
+                  <span>공급가액:</span>
+                  <span className="text-slate-300 tabular-nums">{formatPrice(exVat)}</span>
+                </p>
+                <p className="flex justify-between gap-3">
+                  <span>부가세:</span>
+                  <span className="text-slate-300 tabular-nums">{formatPrice(vat)}</span>
+                </p>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-white">{formatPrice(currentTotal)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-white tabular-nums">{formatPrice(currentTotal)}</p>
             </div>
           </div>
 
@@ -7753,6 +7845,7 @@ export default function PriceCalculator() {
           order={selectedOrder}
           formatPrice={formatPrice}
           onUpdateOrder={updateOrder}
+          products={products.length > 0 ? products : priceData}
         />
       </>
     );
