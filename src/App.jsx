@@ -8022,12 +8022,12 @@ export default function PriceCalculator() {
         created_at: now.toISOString()
       };
 
-      // 예약 관련 필드는 값이 있을 때만 추가
+      // 예약 관련 필드 추가 (항상 포함)
       if (!isLegacyFormat) {
-        if (deliveryDate) newCart.delivery_date = deliveryDate;
-        if (status) newCart.status = status;
-        if (priority) newCart.priority = priority;
-        if (memo) newCart.memo = memo;
+        newCart.delivery_date = deliveryDate || null;
+        newCart.status = status || 'scheduled';
+        newCart.priority = priority || 'normal';
+        newCart.memo = memo || '';
         newCart.reminded = false;
       }
 
@@ -8776,6 +8776,21 @@ export default function PriceCalculator() {
         />
       )}
 
+      {/* 알림 설정 모달 */}
+      {showNotificationSettings && (
+        <NotificationSettingsModal
+          isOpen={showNotificationSettings}
+          onClose={() => setShowNotificationSettings(false)}
+          settings={notificationSettings}
+          onSave={(newSettings) => {
+            setNotificationSettings(newSettings);
+            localStorage.setItem('notificationSettings', JSON.stringify(newSettings));
+            setShowNotificationSettings(false);
+            showToast('✅ 알림 설정이 저장되었습니다');
+          }}
+        />
+      )}
+
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
         <div className="w-full px-1.5 xs:px-2 sm:px-4 py-1.5 xs:py-2 sm:py-3">
           <div className="flex items-center justify-between gap-1 xs:gap-2">
@@ -8862,6 +8877,15 @@ export default function PriceCalculator() {
                     </span>
                   ) : null;
                 })()}
+              </button>
+
+              {/* 알림 설정 버튼 */}
+              <button
+                onClick={() => setShowNotificationSettings(true)}
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="알림 설정"
+              >
+                <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
               </button>
 
               {/* 구분선 */}
