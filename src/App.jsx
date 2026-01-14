@@ -1589,34 +1589,28 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   };
 
   const generateOrderText = () => {
-    let text = `═══════════════════════════════════\n`;
-    text += `           주 문 서\n`;
-    text += `═══════════════════════════════════\n\n`;
+    let text = `[ 주문서 ]\n\n`;
     text += `주문번호: ${order.orderNumber}\n`;
     text += `주문일자: ${formatDate(order.createdAt)}\n`;
     if (order.customerName) text += `고객명: ${order.customerName}\n`;
     if (order.customerPhone) text += `연락처: ${order.customerPhone}\n`;
     text += `단가기준: ${order.priceType === 'wholesale' ? '도매가 (부가세 포함)' : '소비자가 (부가세 포함)'}\n\n`;
-    text += `───────────────────────────────────\n`;
-    text += `상품 목록\n`;
-    text += `───────────────────────────────────\n\n`;
-    
+    text += `[ 상품 목록 ]\n\n`;
+
     order.items.forEach((item, index) => {
       text += `${index + 1}. ${item.name}\n`;
       text += `   ${formatPrice(item.price)} × ${item.quantity}개 = ${formatPrice(item.price * item.quantity)}\n\n`;
     });
-    
-    text += `───────────────────────────────────\n`;
+
+    text += `[ 결제 정보 ]\n\n`;
     text += `총 수량: ${totalQuantity}개\n`;
-    text += `───────────────────────────────────\n`;
     text += `공급가액: ${formatPrice(exVat)}\n`;
     text += `부가세: ${formatPrice(vat)}\n`;
-    text += `총 금액: ${formatPrice(order.totalAmount)}\n`;
-    text += `───────────────────────────────────\n`;
+    text += `총 금액: ${formatPrice(order.totalAmount)}\n\n`;
 
-    if (order.memo) text += `\n메모: ${order.memo}\n`;
+    if (order.memo) text += `메모: ${order.memo}\n\n`;
 
-    text += `\n입금 계좌: 부산은행 010-5858-6046 진태욱\n`;
+    text += `입금 계좌: 부산은행 010-5858-6046 진태욱\n`;
 
     return text;
   };
