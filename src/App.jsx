@@ -265,7 +265,44 @@ const supabase = {
         },
         body: JSON.stringify(cart)
       });
-      if (!response.ok) throw new Error('Failed to add saved cart');
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Supabase addSavedCart error response:', errorText);
+
+        // 컬럼이 없는 경우 재시도 (예약 필드 제외)
+        if (errorText.includes('column') || errorText.includes('does not exist')) {
+          console.log('예약 필드 없이 재시도...');
+          const basicCart = {
+            name: cart.name,
+            items: cart.items,
+            total: cart.total,
+            price_type: cart.price_type,
+            date: cart.date,
+            time: cart.time,
+            created_at: cart.created_at
+          };
+
+          const retryResponse = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(basicCart)
+          });
+
+          if (!retryResponse.ok) {
+            throw new Error('Failed to add saved cart (retry)');
+          }
+          return await retryResponse.json();
+        }
+
+        throw new Error('Failed to add saved cart');
+      }
+
       return await response.json();
     } catch (error) {
       console.error('Supabase addSavedCart error:', error);
@@ -287,6 +324,60 @@ const supabase = {
     } catch (error) {
       console.error('Supabase deleteSavedCart error:', error);
       return false;
+    }
+  },
+
+  async updateSavedCart(id, cart) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(cart)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Supabase updateSavedCart error response:', errorText);
+
+        // 컬럼이 없는 경우 재시도 (예약 필드 제외)
+        if (errorText.includes('column') || errorText.includes('does not exist')) {
+          console.log('예약 필드 없이 업데이트 재시도...');
+          const basicCart = {
+            name: cart.name,
+            items: cart.items,
+            total: cart.total,
+            price_type: cart.price_type
+          };
+
+          const retryResponse = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(basicCart)
+          });
+
+          if (!retryResponse.ok) {
+            throw new Error('Failed to update saved cart (retry)');
+          }
+          return await retryResponse.json();
+        }
+
+        throw new Error('Failed to update saved cart');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase updateSavedCart error:', error);
+      return null;
     }
   },
 
@@ -2013,7 +2104,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
 // ==================== 저장된 장바구니 모달 ====================
 // ==================== 저장된 장바구니 페이지 ====================
-function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice, onBack }) {
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, formatPrice, onBack }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -7927,14 +8018,17 @@ export default function PriceCalculator() {
         price_type: priceType,
         date: now.toLocaleDateString('ko-KR'),
         time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        created_at: now.toISOString(),
-        // 새로운 필드들
-        delivery_date: deliveryDate,
-        status: status,
-        priority: priority,
-        memo: memo,
-        reminded: false // 알림 표시 여부
+        created_at: now.toISOString()
       };
+
+      // 예약 관련 필드는 값이 있을 때만 추가
+      if (!isLegacyFormat) {
+        if (deliveryDate) newCart.delivery_date = deliveryDate;
+        if (status) newCart.status = status;
+        if (priority) newCart.priority = priority;
+        if (memo) newCart.memo = memo;
+        newCart.reminded = false;
+      }
 
       console.log('장바구니 저장 시도:', newCart);
       const result = await supabase.addSavedCart(newCart);
@@ -7978,6 +8072,35 @@ export default function PriceCalculator() {
       showToast(`📦 ${validItems.length}/${savedCart.items.length}개 제품 불러옴`);
     } else {
       showToast(`📦 "${savedCart.name}" 불러옴!`);
+    }
+  };
+
+  // 저장된 장바구니 업데이트 (Supabase)
+  const updateSavedCart = async (index, updatedCart) => {
+    const cartToUpdate = savedCarts[index];
+    if (cartToUpdate && cartToUpdate.id) {
+      const result = await supabase.updateSavedCart(cartToUpdate.id, updatedCart);
+      if (result && result[0]) {
+        setSavedCarts(prev => {
+          const newCarts = [...prev];
+          newCarts[index] = result[0];
+          return newCarts;
+        });
+        showToast('✅ 장바구니가 수정되었습니다');
+        return true;
+      } else {
+        showToast('❌ 수정 실패', 'error');
+        return false;
+      }
+    } else {
+      // id가 없으면 로컬에서만 업데이트 (이전 데이터 호환)
+      setSavedCarts(prev => {
+        const newCarts = [...prev];
+        newCarts[index] = { ...updatedCart };
+        return newCarts;
+      });
+      showToast('✅ 장바구니가 수정되었습니다');
+      return true;
     }
   };
 
@@ -8617,6 +8740,7 @@ export default function PriceCalculator() {
         onLoad={loadSavedCart}
         onDelete={deleteSavedCart}
         onDeleteAll={deleteSavedCartAll}
+        onUpdate={updateSavedCart}
         formatPrice={formatPrice}
         onBack={() => setIsSavedCartsModalOpen(false)}
       />
