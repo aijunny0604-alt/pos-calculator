@@ -4018,9 +4018,9 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
         
         {/* 통계 + 검색 + 필터 영역 - 접기/펼치기 */}
         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
-          <div className="px-4 pb-4 space-y-3">
+          <div className="px-4 pb-4 pt-2 space-y-3">
             {/* 재고 통계 카드 */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-2 mt-1">
               <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
                 <p className="text-slate-400 text-xs mb-0.5">전체</p>
                 <p className="text-lg font-bold text-white">{stats.total}</p>
