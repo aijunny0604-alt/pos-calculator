@@ -1820,59 +1820,111 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
               </div>
             )}
 
-            <div className="bg-slate-900/50 rounded-xl overflow-hidden">
-              {/* 헤더 */}
-              <div className={`grid ${isEditing ? 'grid-cols-13' : 'grid-cols-12'} gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-slate-700/50 text-slate-300 text-xs sm:text-sm font-medium`}>
-                <div className="col-span-1 text-center">No</div>
-                <div className={isEditing ? "col-span-4" : "col-span-5"}>상품명</div>
-                <div className="col-span-2 text-right">단가</div>
-                <div className="col-span-2 text-center">수량</div>
-                <div className="col-span-2 text-right">금액</div>
-                {isEditing && <div className="col-span-2 text-center">작업</div>}
-              </div>
-
-              <div className="divide-y divide-slate-700/50">
-                {currentItems.map((item, index) => (
-                  <div key={index} className={`grid ${isEditing ? 'grid-cols-13' : 'grid-cols-12'} gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm items-center`}>
-                    <div className="col-span-1 text-slate-400 text-center">{index + 1}</div>
-                    <div className={`${isEditing ? 'col-span-4' : 'col-span-5'} text-white break-all leading-tight`}>{item.name}</div>
-                    <div className="col-span-2 text-right text-slate-300 tabular-nums">{formatPrice(item.price)}</div>
-                    <div className="col-span-2 text-center text-white">
-                      {isEditing ? (
-                        <div className="flex items-center justify-center gap-1">
+            {/* 모바일: 카드 형식, 태블릿 이상: 표 형식 */}
+            <div className="space-y-3">
+              {currentItems.map((item, index) => (
+                <div key={index} className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden">
+                  {/* 모바일 카드 형식 */}
+                  <div className="block sm:hidden">
+                    <div className="p-3 space-y-2.5">
+                      {/* 상품명 & 번호 */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">No.{index + 1}</span>
+                          </div>
+                          <div className="text-white font-medium text-sm leading-snug break-words">{item.name}</div>
+                        </div>
+                        {isEditing && (
                           <button
-                            onClick={() => handleQuantityChange(index, -1)}
-                            className="w-6 h-6 sm:w-7 sm:h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
+                            onClick={() => handleRemoveItem(index)}
+                            className="flex-shrink-0 p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded"
                           >
-                            -
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                          <span className="w-8 sm:w-10 text-center tabular-nums">{item.quantity}</span>
+                        )}
+                      </div>
+
+                      {/* 가격 정보 */}
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-slate-800/50 rounded-lg p-2">
+                          <div className="text-slate-400 text-xs mb-0.5">단가</div>
+                          <div className="text-slate-200 font-medium tabular-nums">{formatPrice(item.price)}</div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-2">
+                          <div className="text-slate-400 text-xs mb-0.5">금액</div>
+                          <div className="text-emerald-400 font-bold tabular-nums">{formatPrice(item.price * item.quantity)}</div>
+                        </div>
+                      </div>
+
+                      {/* 수량 조절 */}
+                      <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-2">
+                        <span className="text-slate-400 text-xs">수량</span>
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleQuantityChange(index, -1)}
+                              className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center text-white font-medium"
+                            >
+                              -
+                            </button>
+                            <span className="w-12 text-center text-white font-bold tabular-nums">{item.quantity}</span>
+                            <button
+                              onClick={() => handleQuantityChange(index, 1)}
+                              className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center text-white font-medium"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-white font-medium tabular-nums">{item.quantity}개</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 태블릿/데스크탑 표 형식 */}
+                  <div className="hidden sm:block">
+                    <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
+                      <div className="col-span-1 text-slate-400 text-center font-medium">{index + 1}</div>
+                      <div className="col-span-4 text-white font-medium">{item.name}</div>
+                      <div className="col-span-2 text-right text-slate-300 tabular-nums">{formatPrice(item.price)}</div>
+                      <div className="col-span-2 text-center">
+                        {isEditing ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleQuantityChange(index, -1)}
+                              className="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white font-medium"
+                            >
+                              -
+                            </button>
+                            <span className="w-10 text-center text-white font-medium tabular-nums">{item.quantity}</span>
+                            <button
+                              onClick={() => handleQuantityChange(index, 1)}
+                              className="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white font-medium"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-white font-medium tabular-nums">{item.quantity}개</span>
+                        )}
+                      </div>
+                      <div className="col-span-2 text-right text-emerald-400 font-bold tabular-nums">{formatPrice(item.price * item.quantity)}</div>
+                      {isEditing && (
+                        <div className="col-span-1 flex justify-center">
                           <button
-                            onClick={() => handleQuantityChange(index, 1)}
-                            className="w-6 h-6 sm:w-7 sm:h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
+                            onClick={() => handleRemoveItem(index)}
+                            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded flex items-center justify-center"
                           >
-                            +
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                      ) : (
-                        <span className="tabular-nums">{item.quantity}개</span>
                       )}
                     </div>
-                    <div className="col-span-2 text-right text-emerald-400 font-medium tabular-nums">{formatPrice(item.price * item.quantity)}</div>
-                    {isEditing && (
-                      <div className="col-span-2 flex justify-center">
-                        <button
-                          onClick={() => handleRemoveItem(index)}
-                          className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-[10px] sm:text-xs flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">삭제</span>
-                        </button>
-                      </div>
-                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
 
             {order.memo && (
