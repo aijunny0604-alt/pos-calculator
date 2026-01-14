@@ -5,7 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        'xs': '375px',  // 작은 폰 (iPhone SE, Galaxy S 등)
+      },
+    },
   },
   plugins: [],
 }

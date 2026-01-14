@@ -500,24 +500,34 @@ const CustomStyles = () => (
       }
     }
     
+    /* 스크롤바 숨기기 유틸리티 */
+    .scrollbar-hide {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;  /* Chrome, Safari and Opera */
+    }
+
     /* 커스텀 스크롤바 */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
     }
-    
+
     ::-webkit-scrollbar-track {
       background: rgba(30, 41, 59, 0.5);
       border-radius: 10px;
     }
-    
+
     ::-webkit-scrollbar-thumb {
       background: linear-gradient(180deg, #3b82f6, #8b5cf6);
       border-radius: 10px;
       border: 2px solid rgba(30, 41, 59, 0.5);
       transition: background 0.3s ease;
     }
-    
+
     ::-webkit-scrollbar-thumb:hover {
       background: linear-gradient(180deg, #60a5fa, #a78bfa);
     }
@@ -7814,47 +7824,47 @@ export default function PriceCalculator() {
       )}
 
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
-        <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
-          <div className="flex items-center justify-between gap-2">
+        <div className="w-full px-1.5 xs:px-2 sm:px-4 py-1.5 xs:py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-1 xs:gap-2">
             {/* 로고 & 타이틀 */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
-                <Package className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-1 xs:gap-2 flex-shrink-0">
+              <div className="w-7 h-7 xs:w-8 xs:h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                <Package className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-base font-bold text-amber-400">POS 재고관리 시스템</h1>
               </div>
               <div className="sm:hidden">
-                <h1 className="text-sm font-bold text-amber-400">POS</h1>
+                <h1 className="text-xs xs:text-sm font-bold text-amber-400">POS</h1>
               </div>
               {/* 온라인 상태 표시 */}
               <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                isOnline 
-                  ? 'bg-emerald-500/20 text-emerald-400' 
+                isOnline
+                  ? 'bg-emerald-500/20 text-emerald-400'
                   : 'bg-red-500/20 text-red-400'
               }`}>
                 {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
                 {isOnline ? '클라우드 연결됨' : '오프라인'}
               </div>
             </div>
-            
-            {/* 버튼들 */}
-            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto justify-end flex-1">
+
+            {/* 버튼들 - 스크롤 가능 */}
+            <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 overflow-x-auto scrollbar-hide justify-end flex-1">
               <button
                 onClick={() => setShowAdminLogin(true)}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="관리자"
               >
-                <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                <Settings className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-amber-400" />
               </button>
-              
+
               {/* 주문 이력 - 메인 버튼 */}
               <button
                 onClick={() => { setCurrentPage('history'); loadOrders(); }}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-0.5 xs:gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="주문 이력"
               >
-                <List className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                <List className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-emerald-400" />
                 {(() => {
                   const today = new Date();
                   const todayCount = orders.filter(order => {
@@ -7862,61 +7872,61 @@ export default function PriceCalculator() {
                     return orderDate.toDateString() === today.toDateString();
                   }).length;
                   return todayCount > 0 && (
-                    <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-emerald-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                       {todayCount > 99 ? '99+' : todayCount}
                     </span>
                   );
                 })()}
               </button>
-              
+
               {/* 저장된 장바구니 */}
               <button
                 onClick={async () => { await loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
+                className="flex-shrink-0 flex items-center justify-center gap-0.5 xs:gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple relative"
                 title="저장된 장바구니"
               >
-                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
+                <ShoppingBag className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-violet-400" />
                 {savedCarts.length > 0 && (
-                  <span className="min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 bg-violet-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                  <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                     {savedCarts.length > 9 ? '9+' : savedCarts.length}
                   </span>
                 )}
               </button>
-              
+
               {/* 구분선 */}
               <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
-              
+
               {/* AI 주문 인식 버튼 - 노란색 */}
               <button
                 onClick={() => setShowTextAnalyzeModal(true)}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-yellow-600/30 hover:bg-yellow-600/50 border border-yellow-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-yellow-600/30 hover:bg-yellow-600/50 border border-yellow-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="AI 주문 인식"
               >
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
+                <Sparkles className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-yellow-400" />
               </button>
-              
+
               <button
                 onClick={() => { loadCustomers(); setShowCustomerListModal(true); }}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="거래처 목록"
               >
-                <Building className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
+                <Building className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
               </button>
-              
+
               <button
                 onClick={() => setShowStockOverview(true)}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="재고 현황"
               >
-                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
+                <Package className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
               </button>
-              
+
               <button
                 onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="택배 송장"
               >
-                <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300" />
+                <Truck className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
               </button>
             </div>
           </div>
@@ -7924,7 +7934,7 @@ export default function PriceCalculator() {
       </header>
 
       {/* 검색바 - 완전 고정 */}
-      <div className="fixed top-[70px] sm:top-[85px] left-4 right-4 md:right-[400px] lg:right-[420px] z-30">
+      <div className="fixed top-[56px] xs:top-[64px] sm:top-[85px] left-2 xs:left-4 right-2 xs:right-4 md:right-[400px] lg:right-[420px] z-30">
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch">
             <div className="flex-[3] relative">
