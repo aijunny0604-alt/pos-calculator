@@ -8992,14 +8992,12 @@ export default function PriceCalculator() {
               </button>
 
               {/* 저장된 장바구니 */}
-              <div className="flex-shrink-0 relative">
-                <button
-                  onClick={async () => { await loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
-                  className="flex items-center justify-center gap-0.5 xs:gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                  title="저장된 장바구니"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-violet-400" />
-                </button>
+              <button
+                onClick={async () => { await loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
+                className="flex-shrink-0 flex items-center justify-center gap-0.5 xs:gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="저장된 장바구니"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-violet-400" />
                 {(() => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
@@ -9014,16 +9012,16 @@ export default function PriceCalculator() {
                   }).length;
 
                   return urgentCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-5 px-1 sm:px-1.5 bg-red-500 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse shadow-lg border border-slate-800">
+                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-red-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
                       {urgentCount > 9 ? '9+' : urgentCount}
                     </span>
                   ) : savedCarts.length > 0 ? (
-                    <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-5 px-1 sm:px-1.5 bg-violet-500 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg border border-slate-800">
+                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                       {savedCarts.length > 9 ? '9+' : savedCarts.length}
                     </span>
                   ) : null;
                 })()}
-              </div>
+              </button>
 
               {/* 알림 설정 버튼 */}
               <button
