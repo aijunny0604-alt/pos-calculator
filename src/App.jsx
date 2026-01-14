@@ -2023,7 +2023,45 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [detailIndex, setDetailIndex] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
+  const [deliveryFilter, setDeliveryFilter] = useState('all'); // 배송 예정일 필터
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
+
+  // 상태 및 우선순위 스타일 helper
+  const getStatusStyle = (status, priority) => {
+    // 우선순위가 높으면 우선 적용
+    if (priority === 'urgent' || priority === 'high') {
+      return { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/50', icon: '🔴', label: '긴급' };
+    }
+
+    switch(status) {
+      case 'scheduled':
+        return { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/50', icon: '🟡', label: '예약' };
+      case 'ready':
+        return { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/50', icon: '🔵', label: '준비' };
+      case 'hold':
+        return { bg: 'bg-gray-500/20', text: 'text-gray-400', border: 'border-gray-500/50', icon: '⚪', label: '보류' };
+      case 'draft':
+        return { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/50', icon: '🟣', label: '작성중' };
+      default:
+        return { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/50', icon: '🟢', label: '대기' };
+    }
+  };
+
+  // 배송 예정일 표시 helper
+  const getDeliveryDateLabel = (deliveryDate) => {
+    if (!deliveryDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const delivery = new Date(deliveryDate);
+    delivery.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((delivery - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return { label: '오늘 발송', color: 'text-red-400 font-bold', urgent: true };
+    if (diffDays === 1) return { label: '내일 발송', color: 'text-orange-400 font-semibold', urgent: true };
+    if (diffDays < 0) return { label: `${Math.abs(diffDays)}일 지연`, color: 'text-red-500 font-bold', urgent: true };
+    if (diffDays <= 3) return { label: `${diffDays}일 후`, color: 'text-yellow-400', urgent: false };
+    return { label: new Date(deliveryDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }), color: 'text-slate-400', urgent: false };
+  };
 
   // 날짜 필터링 함수
   const filterByDate = (cart) => {
@@ -2076,17 +2114,37 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const filterBySearch = (cart) => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase().replace(/\s/g, '');
-    
+
     // 이름 검색
     if (cart.name?.toLowerCase().replace(/\s/g, '').includes(term)) return true;
-    
+
     // 아이템 이름 검색
     if (cart.items?.some(item => item.name?.toLowerCase().replace(/\s/g, '').includes(term))) return true;
-    
+
     // 날짜 검색
     if (cart.date?.includes(searchTerm)) return true;
-    
+
     return false;
+  };
+
+  // 배송 예정일 필터링 함수
+  const filterByDelivery = (cart) => {
+    if (deliveryFilter === 'all') return true;
+    if (!cart.delivery_date) return deliveryFilter === 'no_date';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const delivery = new Date(cart.delivery_date);
+    delivery.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((delivery - today) / (1000 * 60 * 60 * 24));
+
+    if (deliveryFilter === 'today') return diffDays === 0;
+    if (deliveryFilter === 'tomorrow') return diffDays === 1;
+    if (deliveryFilter === 'this_week') return diffDays >= 0 && diffDays <= 7;
+    if (deliveryFilter === 'overdue') return diffDays < 0;
+    if (deliveryFilter === 'no_date') return false;
+
+    return true;
   };
 
   // 필터 라벨 가져오기
@@ -2111,12 +2169,23 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   };
 
   // 필터링된 장바구니 목록
-  const filteredCarts = savedCarts.filter(cart => filterByDate(cart) && filterBySearch(cart));
-  
-  // 필터링된 목록의 원본 인덱스 매핑
+  const filteredCarts = savedCarts.filter(cart => filterByDate(cart) && filterBySearch(cart) && filterByDelivery(cart));
+
+  // 필터링된 목록의 원본 인덱스 매핑 및 정렬 (배송일 기준)
   const filteredCartsWithIndex = savedCarts
     .map((cart, index) => ({ cart, originalIndex: index }))
-    .filter(({ cart }) => filterByDate(cart) && filterBySearch(cart));
+    .filter(({ cart }) => filterByDate(cart) && filterBySearch(cart) && filterByDelivery(cart))
+    .sort((a, b) => {
+      // 배송일이 있는 것 우선
+      if (!a.cart.delivery_date && b.cart.delivery_date) return 1;
+      if (a.cart.delivery_date && !b.cart.delivery_date) return -1;
+      if (!a.cart.delivery_date && !b.cart.delivery_date) return 0;
+
+      // 배송일 오름차순 (가까운 날짜 먼저)
+      const dateA = new Date(a.cart.delivery_date);
+      const dateB = new Date(b.cart.delivery_date);
+      return dateA - dateB;
+    });
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -2311,29 +2380,59 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
               </div>
             </div>
             
-            {/* 날짜 필터 */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'today', label: '오늘' },
-                { key: 'yesterday', label: '어제' },
-                { key: 'week', label: '이번 주' },
-                { key: 'month', label: '이번 달' },
-                { key: 'all', label: '전체' }
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => { setDateFilter(key); setSelectedItems([]); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    dateFilter === key 
-                      ? 'bg-violet-600 text-white' 
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+            {/* 저장 날짜 필터 */}
+            <div>
+              <p className="text-slate-400 text-xs mb-2">저장 날짜</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'today', label: '오늘' },
+                  { key: 'yesterday', label: '어제' },
+                  { key: 'week', label: '이번 주' },
+                  { key: 'month', label: '이번 달' },
+                  { key: 'all', label: '전체' }
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setDateFilter(key); setSelectedItems([]); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      dateFilter === key
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-            
+
+            {/* 배송 예정일 필터 */}
+            <div>
+              <p className="text-slate-400 text-xs mb-2">배송 예정일</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'all', label: '전체', icon: '📦' },
+                  { key: 'overdue', label: '지연', icon: '🔴' },
+                  { key: 'today', label: '오늘', icon: '⚡' },
+                  { key: 'tomorrow', label: '내일', icon: '🟡' },
+                  { key: 'this_week', label: '이번주', icon: '📅' },
+                  { key: 'no_date', label: '미지정', icon: '⚪' }
+                ].map(({ key, label, icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setDeliveryFilter(key); setSelectedItems([]); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      deliveryFilter === key
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {icon} {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 검색창 */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -2401,20 +2500,41 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-white font-semibold truncate">{cart.name}</h3>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              cart.priceType === 'wholesale' 
-                                ? 'bg-blue-600/30 text-blue-400' 
+                              cart.priceType === 'wholesale' || cart.price_type === 'wholesale'
+                                ? 'bg-blue-600/30 text-blue-400'
                                 : 'bg-purple-600/30 text-purple-400'
                             }`}>
-                              {cart.priceType === 'wholesale' ? '도매' : '소비자'}
+                              {(cart.priceType === 'wholesale' || cart.price_type === 'wholesale') ? '도매' : '소비자'}
                             </span>
                           </div>
-                          <p className="text-slate-400 text-xs">{cart.date} {cart.time}</p>
+
+                          {/* 상태 & 배송 예정일 */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(() => {
+                              const style = getStatusStyle(cart.status, cart.priority);
+                              return (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border ${style.bg} ${style.text} ${style.border}`}>
+                                  {style.icon} {style.label}
+                                </span>
+                              );
+                            })()}
+                            {cart.delivery_date && (() => {
+                              const dateInfo = getDeliveryDateLabel(cart.delivery_date);
+                              return dateInfo && (
+                                <span className={`text-[10px] ${dateInfo.color}`}>
+                                  📅 {dateInfo.label}
+                                </span>
+                              );
+                            })()}
+                          </div>
+
+                          <p className="text-slate-400 text-xs mt-1">{cart.date} {cart.time}</p>
                         </div>
-                        <p className="text-emerald-400 font-bold text-sm ml-2">{formatPrice(cart.total)}</p>
+                        <p className="text-emerald-400 font-bold text-sm ml-2 flex-shrink-0">{formatPrice(cart.total)}</p>
                       </div>
                       
                       <div className="bg-slate-900/50 rounded-lg p-2 mb-3">
@@ -2422,6 +2542,11 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
                           {cartItemsDisplay}
                         </p>
                         <p className="text-slate-500 text-xs mt-1">{cart.items.length}종 / {cart.items.reduce((sum, item) => sum + item.quantity, 0)}개</p>
+                        {cart.memo && (
+                          <p className="text-cyan-400 text-xs mt-2 border-t border-slate-700 pt-2">
+                            💬 {cart.memo}
+                          </p>
+                        )}
                       </div>
                       
                       {!selectMode && (
@@ -4137,7 +4262,11 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
 // ==================== 장바구니 저장 모달 ====================
 function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', onBack, onCloseAll }) {
   const [cartName, setCartName] = useState('');
-  
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [status, setStatus] = useState('scheduled');
+  const [priority, setPriority] = useState('normal');
+  const [memo, setMemo] = useState('');
+
   useEffect(() => {
     if (!isOpen) return;
     // 고객명이 있으면 고객명으로, 없으면 날짜로
@@ -4148,6 +4277,16 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
       const defaultName = `${now.getMonth() + 1}월 ${now.getDate()}일 ${now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
       setCartName(defaultName);
     }
+
+    // 기본 배송 예정일: 내일
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setDeliveryDate(tomorrow.toISOString().split('T')[0]);
+
+    // 초기화
+    setStatus('scheduled');
+    setPriority('normal');
+    setMemo('');
   }, [customerName, isOpen]);
 
   // ESC/Enter 키 이벤트
@@ -4172,7 +4311,13 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
   
   const handleSave = async () => {
     if (!cartName.trim()) return;
-    await onSave(cartName.trim());
+    await onSave({
+      name: cartName.trim(),
+      deliveryDate,
+      status,
+      priority,
+      memo: memo.trim()
+    });
     // 장바구니 저장 후 메인 페이지로 복귀 (주문서 모달도 닫기)
     if (onCloseAll) {
       onCloseAll();
@@ -4199,8 +4344,8 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
           </button>
         </div>
 
-        <div className="p-5">
-          <div className="mb-5">
+        <div className="p-5 max-h-[80vh] overflow-y-auto">
+          <div className="mb-4">
             <label className="block text-slate-400 text-sm mb-2">저장 이름</label>
             <input
               type="text"
@@ -4212,7 +4357,60 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
               onFocus={(e) => e.target.select()}
             />
           </div>
-          
+
+          {/* 배송 예정일 */}
+          <div className="mb-4">
+            <label className="block text-slate-400 text-sm mb-2">배송 예정일</label>
+            <input
+              type="date"
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
+              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+          </div>
+
+          {/* 상태 & 우선순위 */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-2">상태</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="draft">작성 중</option>
+                <option value="scheduled">예약됨</option>
+                <option value="ready">준비 완료</option>
+                <option value="hold">보류</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-2">우선순위</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="low">낮음</option>
+                <option value="normal">보통</option>
+                <option value="high">높음</option>
+                <option value="urgent">긴급</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 메모 */}
+          <div className="mb-4">
+            <label className="block text-slate-400 text-sm mb-2">메모</label>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="배송 관련 메모 (선택)"
+              rows="2"
+              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+            />
+          </div>
+
           <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
             <div className="flex justify-between items-center mb-2">
               <span className="text-slate-400">상품</span>
@@ -4223,7 +4421,7 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
               <span className="text-emerald-400 font-bold text-xl">{formatPrice(total)}</span>
             </div>
           </div>
-          
+
           <div className="bg-slate-900/30 rounded-xl p-3 mb-5 border border-slate-700/50 max-h-32 overflow-y-auto">
             <p className="text-slate-400 text-sm">
               {cart.map(item => `${item.name}(${item.quantity})`).join(', ')}
@@ -7242,15 +7440,84 @@ export default function PriceCalculator() {
     loadSavedCartsFromDB();
   }, []);
 
+  // 브라우저 알림 권한 요청 및 알림 표시
+  useEffect(() => {
+    // 알림 권한 요청
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // 저장된 장바구니가 로드된 후 알림 체크
+    if (savedCarts.length === 0) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 오늘/내일 배송 건수 계산
+    const todayDeliveries = savedCarts.filter(cart => {
+      if (!cart.delivery_date) return false;
+      const delivery = new Date(cart.delivery_date);
+      delivery.setHours(0, 0, 0, 0);
+      return delivery.getTime() === today.getTime();
+    });
+
+    const tomorrowDeliveries = savedCarts.filter(cart => {
+      if (!cart.delivery_date) return false;
+      const delivery = new Date(cart.delivery_date);
+      delivery.setHours(0, 0, 0, 0);
+      return delivery.getTime() === tomorrow.getTime();
+    });
+
+    const overdueDeliveries = savedCarts.filter(cart => {
+      if (!cart.delivery_date) return false;
+      const delivery = new Date(cart.delivery_date);
+      delivery.setHours(0, 0, 0, 0);
+      return delivery < today;
+    });
+
+    // 알림 표시 (하루 한 번만)
+    const lastNotificationDate = localStorage.getItem('lastDeliveryNotification');
+    const todayStr = today.toISOString().split('T')[0];
+
+    if (lastNotificationDate !== todayStr && (todayDeliveries.length > 0 || tomorrowDeliveries.length > 0 || overdueDeliveries.length > 0)) {
+      if (Notification.permission === 'granted') {
+        let body = '';
+        if (overdueDeliveries.length > 0) body += `🔴 배송 지연: ${overdueDeliveries.length}건\n`;
+        if (todayDeliveries.length > 0) body += `⚡ 오늘 배송: ${todayDeliveries.length}건\n`;
+        if (tomorrowDeliveries.length > 0) body += `🟡 내일 배송: ${tomorrowDeliveries.length}건`;
+
+        new Notification('📦 배송 알림', {
+          body: body.trim(),
+          icon: '/icon-192.png', // 앱 아이콘 (있다면)
+          badge: '/icon-192.png',
+          tag: 'delivery-reminder',
+          renotify: false
+        });
+
+        localStorage.setItem('lastDeliveryNotification', todayStr);
+      }
+    }
+  }, [savedCarts]);
+
   // 장바구니 저장 (Supabase)
-  const saveCartWithName = async (name) => {
+  const saveCartWithName = async (cartData) => {
     try {
       const now = new Date();
       const total = cart.reduce((sum, item) => {
         const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
         return sum + (price * item.quantity);
       }, 0);
-      
+
+      // 기존 string으로 전달된 경우 하위 호환성 유지
+      const isLegacyFormat = typeof cartData === 'string';
+      const name = isLegacyFormat ? cartData : cartData.name;
+      const deliveryDate = isLegacyFormat ? null : cartData.deliveryDate;
+      const status = isLegacyFormat ? 'scheduled' : cartData.status;
+      const priority = isLegacyFormat ? 'normal' : cartData.priority;
+      const memo = isLegacyFormat ? '' : cartData.memo;
+
       const newCart = {
         name,
         items: cart.map(item => ({ ...item })),
@@ -7258,13 +7525,19 @@ export default function PriceCalculator() {
         price_type: priceType,
         date: now.toLocaleDateString('ko-KR'),
         time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        created_at: now.toISOString()
+        created_at: now.toISOString(),
+        // 새로운 필드들
+        delivery_date: deliveryDate,
+        status: status,
+        priority: priority,
+        memo: memo,
+        reminded: false // 알림 표시 여부
       };
-      
+
       console.log('장바구니 저장 시도:', newCart);
       const result = await supabase.addSavedCart(newCart);
       console.log('저장 결과:', result);
-      
+
       if (result && result[0]) {
         setSavedCarts(prev => [result[0], ...prev]);
         setCart([]); // 장바구니 초기화
@@ -8038,11 +8311,29 @@ export default function PriceCalculator() {
                 title="저장된 장바구니"
               >
                 <ShoppingBag className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-violet-400" />
-                {savedCarts.length > 0 && (
-                  <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                    {savedCarts.length > 9 ? '9+' : savedCarts.length}
-                  </span>
-                )}
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const tomorrow = new Date(today);
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+
+                  const urgentCount = savedCarts.filter(cart => {
+                    if (!cart.delivery_date) return false;
+                    const delivery = new Date(cart.delivery_date);
+                    delivery.setHours(0, 0, 0, 0);
+                    return delivery <= tomorrow; // 오늘 또는 내일
+                  }).length;
+
+                  return urgentCount > 0 ? (
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse">
+                      {urgentCount > 9 ? '9+' : urgentCount}
+                    </span>
+                  ) : savedCarts.length > 0 ? (
+                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                      {savedCarts.length > 9 ? '9+' : savedCarts.length}
+                    </span>
+                  ) : null;
+                })()}
               </button>
 
               {/* 구분선 */}
