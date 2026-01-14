@@ -1675,9 +1675,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   // 제품 검색 필터링
   const filteredProducts = products ? products.filter(product => {
     if (!productSearchTerm) return false;
-    const searchLower = productSearchTerm.toLowerCase().replace(/\s/g, '');
-    const nameLower = product.name.toLowerCase().replace(/\s/g, '');
-    return nameLower.includes(searchLower);
+    return matchesSearchQuery(product.name, productSearchTerm);
   }).slice(0, 8) : [];
 
   // 제품 수량 변경
@@ -2775,9 +2773,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, p
         // 제품 검색 필터링
         const filteredProductsDetail = products.length > 0 ? products.filter(product => {
           if (!productSearchTermDetail) return false;
-          const searchLower = productSearchTermDetail.toLowerCase().replace(/\s/g, '');
-          const nameLower = product.name.toLowerCase().replace(/\s/g, '');
-          return nameLower.includes(searchLower);
+          return matchesSearchQuery(product.name, productSearchTermDetail);
         }).slice(0, 8) : [];
 
         return (
