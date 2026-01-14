@@ -2104,7 +2104,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
 // ==================== 저장된 장바구니 모달 ====================
 // ==================== 저장된 장바구니 페이지 ====================
-function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, formatPrice, onBack }) {
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, products = [], formatPrice, onBack }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -8742,6 +8742,7 @@ export default function PriceCalculator() {
         onDelete={deleteSavedCart}
         onDeleteAll={deleteSavedCartAll}
         onUpdate={updateSavedCart}
+        products={products}
         formatPrice={formatPrice}
         onBack={() => setIsSavedCartsModalOpen(false)}
       />
