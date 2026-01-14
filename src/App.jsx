@@ -7,35 +7,26 @@ import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, M
 const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
 
 const matchesSearchQuery = (productName, searchTerm) => {
+  if (!searchTerm || !searchTerm.trim()) return true;
+
   const normalizedProductName = normalizeText(productName);
+  const normalizedSearchTerm = normalizeText(searchTerm);
+
+  // 방법 1: 검색어 전체를 정규화해서 제품명에 포함되는지 확인
+  // "스덴밴딩51" or "스덴 밴딩 51" 모두 → "스덴밴딩51" → "스덴밴딩파이프51"에 매칭
+  if (normalizedProductName.includes(normalizedSearchTerm)) return true;
+
+  // 방법 2: 단어별로 분리해서 모든 단어가 포함되는지 확인 (순서 무관)
   const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
+  if (searchWords.length > 1) {
+    const matchesAll = searchWords.every(word => {
+      const normalizedWord = normalizeText(word);
+      return normalizedProductName.includes(normalizedWord);
+    });
+    if (matchesAll) return true;
+  }
 
-  if (searchWords.length === 0) return true;
-
-  // 방법 1: 검색어를 모두 합쳐서 제품명에 포함되는지 확인 (예: "스덴 밴딩 51" → "스덴밴딩51" → "스덴밴딩파이프51"에 매칭)
-  const combinedSearch = normalizeText(searchWords.join(''));
-  if (normalizedProductName.includes(combinedSearch)) return true;
-
-  // 방법 2: 각 단어가 순서대로 제품명에 나타나는지 확인
-  let lastIndex = -1;
-  const matchesSequential = searchWords.every(word => {
-    const normalizedWord = normalizeText(word);
-    const foundIndex = normalizedProductName.indexOf(normalizedWord, lastIndex + 1);
-    if (foundIndex > lastIndex) {
-      lastIndex = foundIndex;
-      return true;
-    }
-    return normalizedProductName.includes(normalizedWord);
-  });
-  if (matchesSequential) return true;
-
-  // 방법 3: 모든 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
-  const matchesAll = searchWords.every(word => {
-    const normalizedWord = normalizeText(word);
-    return normalizedProductName.includes(normalizedWord);
-  });
-
-  return matchesAll;
+  return false;
 };
 
 // ==================== SUPABASE 설정 ====================
