@@ -2121,6 +2121,13 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, f
   const [deliveryFilter, setDeliveryFilter] = useState('all'); // 배송 예정일 필터
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
 
+  // 편집 모드 초기화 useEffect
+  useEffect(() => {
+    if (isEditingDetail && !editedDetailCart && detailCart) {
+      setEditedDetailCart({ ...detailCart });
+    }
+  }, [isEditingDetail, editedDetailCart, detailCart]);
+
   // 상태 및 우선순위 스타일 helper
   const getStatusStyle = (status, priority) => {
     // 우선순위가 높으면 우선 적용
@@ -2692,13 +2699,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, f
 
       {/* 상세 보기 모달 */}
       {detailCart && (() => {
-        // 편집 모드 초기화
-        if (isEditingDetail && !editedDetailCart) {
-          setEditedDetailCart({ ...detailCart });
-        }
-
-        const currentCart = isEditingDetail ? editedDetailCart : detailCart;
-        if (!currentCart) return null;
+        const currentCart = isEditingDetail ? (editedDetailCart || detailCart) : detailCart;
 
         // 제품 검색 필터링
         const filteredProductsDetail = products.length > 0 ? products.filter(product => {
