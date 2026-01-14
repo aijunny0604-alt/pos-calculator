@@ -8115,7 +8115,17 @@ export default function PriceCalculator() {
       console.log('저장 결과:', result);
 
       if (result && result[0]) {
-        setSavedCarts(prev => [result[0], ...prev]);
+        // Supabase에서 반환된 데이터에 예약 필드가 없을 수 있으므로 병합
+        const savedCart = {
+          ...newCart, // 로컬에서 준비한 전체 데이터
+          ...result[0], // Supabase에서 반환된 데이터 (id 등)
+          delivery_date: result[0].delivery_date || newCart.delivery_date,
+          status: result[0].status || newCart.status,
+          priority: result[0].priority || newCart.priority,
+          memo: result[0].memo || newCart.memo,
+          reminded: result[0].reminded !== undefined ? result[0].reminded : newCart.reminded
+        };
+        setSavedCarts(prev => [savedCart, ...prev]);
         setCart([]); // 장바구니 초기화
         showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
       } else {
