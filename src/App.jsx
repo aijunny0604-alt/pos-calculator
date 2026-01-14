@@ -8736,12 +8736,35 @@ export default function PriceCalculator() {
       // 검색어를 단어별로 분리
       const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
 
-      // 모든 검색 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
-      const matchesSearch = searchWords.every(word => {
+      if (searchWords.length === 0) {
+        const matchesCategory = selectedCategory === '전체' || product.category === selectedCategory;
+        return matchesCategory;
+      }
+
+      // 방법 1: 검색어를 모두 합쳐서 제품명에 포함되는지 확인 (예: "스덴 밴딩 51" → "스덴밴딩51" → "스덴밴딩파이프51"에 매칭)
+      const combinedSearch = normalizeText(searchWords.join(''));
+      const matchesCombined = productName.includes(combinedSearch);
+
+      // 방법 2: 각 단어가 순서대로 제품명에 나타나는지 확인
+      let lastIndex = -1;
+      const matchesSequential = searchWords.every(word => {
+        const normalizedWord = normalizeText(word);
+        const foundIndex = productName.indexOf(normalizedWord, lastIndex + 1);
+        if (foundIndex > lastIndex) {
+          lastIndex = foundIndex;
+          return true;
+        }
+        // 순서 무시하고 포함 여부만 확인
+        return productName.includes(normalizedWord);
+      });
+
+      // 방법 3: 모든 단어가 제품명에 포함되어 있는지 확인 (순서 무관, 기존 방식)
+      const matchesAll = searchWords.every(word => {
         const normalizedWord = normalizeText(word);
         return productName.includes(normalizedWord);
       });
 
+      const matchesSearch = matchesCombined || matchesSequential || matchesAll;
       const matchesCategory = selectedCategory === '전체' || product.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
