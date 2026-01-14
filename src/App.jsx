@@ -4573,7 +4573,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
 // ==================== 장바구니 저장 모달 ====================
 function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', onBack, onCloseAll }) {
   const [cartName, setCartName] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [deliveryDate, setDeliveryDate] = useState('');
   const [status, setStatus] = useState('pending');
   const [priority, setPriority] = useState('normal');
   const [memo, setMemo] = useState('');
@@ -8027,7 +8027,7 @@ export default function PriceCalculator() {
   // 브라우저 알림 권한 요청 및 알림 표시
   useEffect(() => {
     // 알림이 비활성화되어 있으면 리턴
-    if (!notificationSettings.enabled) return;
+    if (!notificationSettings?.enabled) return;
 
     // 알림 권한 요청
     if ('Notification' in window && Notification.permission === 'default') {
@@ -8042,12 +8042,13 @@ export default function PriceCalculator() {
     today.setHours(0, 0, 0, 0);
 
     // 설정된 알림 시간 체크
-    const [settingHour, settingMinute] = notificationSettings.time.split(':').map(Number);
+    const timeStr = notificationSettings?.time || '09:00';
+    const [settingHour, settingMinute] = timeStr.split(':').map(Number);
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
 
     // 시간이 맞지 않으면 리턴 (매일 알림인 경우)
-    if (notificationSettings.dailyNotification) {
+    if (notificationSettings?.dailyNotification) {
       // 정확한 시간이 아니면 리턴 (±5분 이내)
       if (Math.abs(currentHour - settingHour) > 0 || Math.abs(currentMinute - settingMinute) > 5) {
         return;
@@ -8057,6 +8058,7 @@ export default function PriceCalculator() {
     // 배송일별로 분류
     const deliveriesByDay = {};
     const overdueDeliveries = [];
+    const daysBeforeReminder = notificationSettings?.daysBeforeReminder || [];
 
     savedCarts.forEach(cart => {
       if (!cart.delivery_date) return;
@@ -8065,9 +8067,9 @@ export default function PriceCalculator() {
       delivery.setHours(0, 0, 0, 0);
       const diffDays = Math.floor((delivery - today) / (1000 * 60 * 60 * 24));
 
-      if (diffDays < 0 && notificationSettings.includeOverdue) {
+      if (diffDays < 0 && notificationSettings?.includeOverdue) {
         overdueDeliveries.push(cart);
-      } else if (notificationSettings.daysBeforeReminder.includes(diffDays)) {
+      } else if (Array.isArray(daysBeforeReminder) && daysBeforeReminder.includes(diffDays)) {
         if (!deliveriesByDay[diffDays]) deliveriesByDay[diffDays] = [];
         deliveriesByDay[diffDays].push(cart);
       }
@@ -8078,11 +8080,11 @@ export default function PriceCalculator() {
     if (!hasNotifications) return;
 
     // 알림 표시 (하루 한 번만 or 시간마다)
-    const lastNotificationKey = notificationSettings.dailyNotification
+    const lastNotificationKey = notificationSettings?.dailyNotification
       ? 'lastDeliveryNotification'
       : 'lastDeliveryNotificationTime';
     const lastNotification = localStorage.getItem(lastNotificationKey);
-    const nowStr = notificationSettings.dailyNotification
+    const nowStr = notificationSettings?.dailyNotification
       ? today.toISOString().split('T')[0]
       : now.toISOString();
 
@@ -9022,39 +9024,13 @@ export default function PriceCalculator() {
               </button>
 
               {/* 알림 설정 버튼 */}
-              <div className="flex-shrink-0 relative">
-                <button
-                  onClick={() => setShowNotificationSettings(true)}
-                  className="flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                  title="알림 설정"
-                >
-                  <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
-                </button>
-                {(() => {
-                  if (!notificationSettings.enabled) return null;
-
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-
-                  const notificationCount = savedCarts.filter(cart => {
-                    if (!cart.delivery_date) return false;
-                    const delivery = new Date(cart.delivery_date);
-                    delivery.setHours(0, 0, 0, 0);
-
-                    return notificationSettings.notifyDays.some(day => {
-                      const targetDate = new Date(delivery);
-                      targetDate.setDate(targetDate.getDate() + day);
-                      return targetDate.getTime() === today.getTime();
-                    });
-                  }).length;
-
-                  return notificationCount > 0 ? (
-                    <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg border-2 border-slate-900">
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </span>
-                  ) : null;
-                })()}
-              </div>
+              <button
+                onClick={() => setShowNotificationSettings(true)}
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="알림 설정"
+              >
+                <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
+              </button>
 
               {/* 구분선 */}
               <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
