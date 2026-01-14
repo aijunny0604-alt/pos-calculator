@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft } from 'lucide-react';
 
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
@@ -46,7 +46,27 @@ const supabase = {
       return null;
     }
   },
-  
+
+  async updateOrder(id, order) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(order)
+      });
+      if (!response.ok) throw new Error('Failed to update order');
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase updateOrder error:', error);
+      return null;
+    }
+  },
+
   async deleteOrder(id) {
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
@@ -1427,8 +1447,21 @@ const formatDateTime = (dateString) => {
 const STORAGE_KEY = 'pos-orders-shared';
 
 // 주문 상세 보기 모달
-function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
+function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder }) {
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedOrder, setEditedOrder] = useState(null);
+
+  // order가 변경될 때마다 editedOrder 초기화
+  useEffect(() => {
+    if (order) {
+      setEditedOrder({
+        ...order,
+        customerAddress: order.customerAddress || '',
+        items: [...order.items]
+      });
+    }
+  }, [order]);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -1456,11 +1489,58 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
     };
   }, [isOpen]);
 
-  if (!isOpen || !order) return null;
+  if (!isOpen || !order || !editedOrder) return null;
 
-  const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const exVat = calcExVat(order.totalAmount);
-  const vat = order.totalAmount - exVat;
+  // 편집된 주문의 총계 계산
+  const currentItems = isEditing ? editedOrder.items : order.items;
+  const currentTotal = currentItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalQuantity = currentItems.reduce((sum, item) => sum + item.quantity, 0);
+  const exVat = calcExVat(currentTotal);
+  const vat = currentTotal - exVat;
+
+  // 제품 수량 변경
+  const handleQuantityChange = (index, delta) => {
+    const newItems = [...editedOrder.items];
+    const newQuantity = newItems[index].quantity + delta;
+    if (newQuantity > 0) {
+      newItems[index].quantity = newQuantity;
+      setEditedOrder({ ...editedOrder, items: newItems });
+    }
+  };
+
+  // 제품 삭제
+  const handleRemoveItem = (index) => {
+    const newItems = editedOrder.items.filter((_, i) => i !== index);
+    if (newItems.length > 0) {
+      setEditedOrder({ ...editedOrder, items: newItems });
+    } else {
+      alert('최소 1개의 제품이 필요합니다.');
+    }
+  };
+
+  // 저장
+  const handleSave = () => {
+    const updatedOrder = {
+      ...editedOrder,
+      totalAmount: currentTotal,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (onUpdateOrder) {
+      onUpdateOrder(updatedOrder);
+    }
+    setIsEditing(false);
+  };
+
+  // 취소
+  const handleCancel = () => {
+    setEditedOrder({
+      ...order,
+      customerAddress: order.customerAddress || '',
+      items: [...order.items]
+    });
+    setIsEditing(false);
+  };
 
   const generateOrderText = () => {
     let text = `═══════════════════════════════════\n`;
@@ -1557,7 +1637,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in touch-none">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} onTouchMove={(e) => e.preventDefault()} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} onTouchMove={(e) => e.preventDefault()} />
       
       <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
@@ -1575,7 +1655,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
 
         <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="p-4 sm:p-6 border-b border-slate-700">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 text-sm">
               <div>
                 <span className="text-slate-400">주문일시:</span>
                 <span className="text-white ml-2">{formatDateTime(order.createdAt)}</span>
@@ -1588,65 +1668,107 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
                   {order.priceType === 'wholesale' ? '도매가' : '소비자가'}
                 </span>
               </div>
-              {order.customerName && (
-                <div>
-                  <span className="text-slate-400">고객명:</span>
-                  <span className="text-white ml-2">{order.customerName}</span>
-                </div>
-              )}
-              {order.customerPhone && (
-                <div>
-                  <span className="text-slate-400">연락처:</span>
-                  <span className="text-white ml-2">{order.customerPhone}</span>
-                </div>
-              )}
+              <div>
+                <span className="text-slate-400">업체명:</span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedOrder.customerName || ''}
+                    onChange={(e) => setEditedOrder({ ...editedOrder, customerName: e.target.value })}
+                    className="ml-2 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="업체명 입력"
+                  />
+                ) : (
+                  <span className="text-white ml-2">{order.customerName || '-'}</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-400">전화번호:</span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedOrder.customerPhone || ''}
+                    onChange={(e) => setEditedOrder({ ...editedOrder, customerPhone: e.target.value })}
+                    className="ml-2 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="전화번호 입력"
+                  />
+                ) : (
+                  <span className="text-white ml-2">{order.customerPhone || '-'}</span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-400 block mb-1">배송주소:</span>
+                {isEditing ? (
+                  <textarea
+                    value={editedOrder.customerAddress || ''}
+                    onChange={(e) => setEditedOrder({ ...editedOrder, customerAddress: e.target.value })}
+                    className="w-full px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="배송주소 입력"
+                    rows="2"
+                  />
+                ) : (
+                  <span className="text-white block">{order.customerAddress || '-'}</span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <Package className="w-5 h-5 text-emerald-400" />
-              주문 상품 ({order.items.length}종)
+              주문 상품 ({currentItems.length}종)
             </h3>
-            
+
             <div className="bg-slate-900/50 rounded-xl overflow-hidden">
-              {/* 데스크톱 헤더 */}
-              <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 bg-slate-700/50 text-slate-300 text-sm font-medium">
+              {/* 헤더 */}
+              <div className={`grid ${isEditing ? 'grid-cols-13' : 'grid-cols-12'} gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-slate-700/50 text-slate-300 text-xs sm:text-sm font-medium`}>
                 <div className="col-span-1">No</div>
-                <div className="col-span-5">상품명</div>
+                <div className={isEditing ? "col-span-4" : "col-span-5"}>상품명</div>
                 <div className="col-span-2 text-right">단가</div>
                 <div className="col-span-2 text-center">수량</div>
                 <div className="col-span-2 text-right">금액</div>
+                {isEditing && <div className="col-span-2 text-center">작업</div>}
               </div>
-              
-              {/* 모바일 헤더 */}
-              <div className="sm:hidden grid grid-cols-12 gap-1 px-3 py-2 bg-slate-700/50 text-slate-300 text-xs font-medium">
-                <div className="col-span-1">No</div>
-                <div className="col-span-5">상품명</div>
-                <div className="col-span-2 text-right">단가</div>
-                <div className="col-span-2 text-center">수량</div>
-                <div className="col-span-2 text-right">금액</div>
-              </div>
-              
+
               <div className="divide-y divide-slate-700/50">
-                {order.items.map((item, index) => (
-                  <div key={index}>
-                    {/* 데스크톱 행 */}
-                    <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 text-sm">
-                      <div className="col-span-1 text-slate-400">{index + 1}</div>
-                      <div className="col-span-5 text-white truncate">{item.name}</div>
-                      <div className="col-span-2 text-right text-slate-300">{formatPrice(item.price)}</div>
-                      <div className="col-span-2 text-center text-white">{item.quantity}개</div>
-                      <div className="col-span-2 text-right text-emerald-400 font-medium">{formatPrice(item.price * item.quantity)}</div>
+                {currentItems.map((item, index) => (
+                  <div key={index} className={`grid ${isEditing ? 'grid-cols-13' : 'grid-cols-12'} gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm items-center`}>
+                    <div className="col-span-1 text-slate-400">{index + 1}</div>
+                    <div className={`${isEditing ? 'col-span-4' : 'col-span-5'} text-white break-all leading-tight`}>{item.name}</div>
+                    <div className="col-span-2 text-right text-slate-300 whitespace-nowrap text-[10px] sm:text-sm">{formatPrice(item.price).replace('원', '')}</div>
+                    <div className="col-span-2 text-center text-white">
+                      {isEditing ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleQuantityChange(index, -1)}
+                            className="w-6 h-6 sm:w-7 sm:h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 sm:w-10 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => handleQuantityChange(index, 1)}
+                            className="w-6 h-6 sm:w-7 sm:h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        `${item.quantity}개`
+                      )}
                     </div>
-                    {/* 모바일 행 */}
-                    <div className="sm:hidden grid grid-cols-12 gap-1 px-3 py-2 text-xs">
-                      <div className="col-span-1 text-slate-400">{index + 1}</div>
-                      <div className="col-span-5 text-white truncate" title={item.name}>{item.name}</div>
-                      <div className="col-span-2 text-right text-slate-300 whitespace-nowrap">{formatPrice(item.price).replace('원', '')}</div>
-                      <div className="col-span-2 text-center text-white">{item.quantity}개</div>
-                      <div className="col-span-2 text-right text-emerald-400 font-medium whitespace-nowrap">{formatPrice(item.price * item.quantity).replace('원', '')}</div>
-                    </div>
+                    <div className="col-span-2 text-right text-emerald-400 font-medium whitespace-nowrap text-[10px] sm:text-sm">{formatPrice(item.price * item.quantity).replace('원', '')}</div>
+                    {isEditing && (
+                      <div className="col-span-2 flex justify-center">
+                        <button
+                          onClick={() => handleRemoveItem(index)}
+                          className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-[10px] sm:text-xs flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span className="hidden sm:inline">삭제</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1671,32 +1793,57 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice }) {
                 <p>공급가액: <span className="text-slate-300">{formatPrice(exVat)}</span></p>
                 <p>부가세: <span className="text-slate-300">{formatPrice(vat)}</span></p>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-white">{formatPrice(order.totalAmount)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{formatPrice(currentTotal)}</p>
             </div>
           </div>
 
-          <div className="flex gap-2 sm:gap-3">
-            <button
-              onClick={handleCopy}
-              className={`flex-1 py-2.5 sm:py-3 rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-all ${
-                copied ? 'bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'
-              }`}
-            >
-              {copied ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" />복사됨</> : <><Copy className="w-4 h-4 sm:w-5 sm:h-5" />복사</>}
-            </button>
-            <button
-              onClick={handlePrint}
-              className="flex-1 py-2.5 sm:py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-colors"
-            >
-              <Printer className="w-4 h-4 sm:w-5 sm:h-5" />인쇄
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-medium text-sm sm:text-base transition-colors"
-            >
-              확인
-            </button>
-          </div>
+          {isEditing ? (
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 py-2.5 sm:py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium text-sm sm:text-base transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-medium text-sm sm:text-base transition-colors"
+              >
+                저장
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex-1 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-colors"
+              >
+                <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
+                수정
+              </button>
+              <button
+                onClick={handleCopy}
+                className={`flex-1 py-2.5 sm:py-3 rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-all ${
+                  copied ? 'bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'
+                }`}
+              >
+                {copied ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" />복사됨</> : <><Copy className="w-4 h-4 sm:w-5 sm:h-5" />복사</>}
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex-1 py-2.5 sm:py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-colors"
+              >
+                <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+                인쇄
+              </button>
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-medium text-sm sm:text-base transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -7362,6 +7509,49 @@ export default function PriceCalculator() {
     }
   };
 
+  // Supabase에서 주문 업데이트
+  const updateOrder = async (updatedOrder) => {
+    setIsLoading(true);
+    try {
+      // Supabase 형식으로 변환
+      const supabaseOrder = {
+        customer_name: updatedOrder.customerName || null,
+        customer_phone: updatedOrder.customerPhone || null,
+        customer_address: updatedOrder.customerAddress || null,
+        price_type: updatedOrder.priceType,
+        items: updatedOrder.items,
+        subtotal: Math.round(updatedOrder.totalAmount / 1.1),
+        vat: updatedOrder.totalAmount - Math.round(updatedOrder.totalAmount / 1.1),
+        total: updatedOrder.totalAmount,
+        memo: updatedOrder.memo || null,
+        updated_at: updatedOrder.updatedAt || new Date().toISOString()
+      };
+
+      const result = await supabase.updateOrder(updatedOrder.orderNumber, supabaseOrder);
+      if (result) {
+        // 주문 목록 업데이트
+        setOrders(prev => prev.map(order =>
+          order.orderNumber === updatedOrder.orderNumber ? updatedOrder : order
+        ));
+        setSelectedOrder(updatedOrder); // 모달에 표시된 주문도 업데이트
+        setIsOnline(true);
+        showToast('✅ 주문이 수정되었습니다');
+        return true;
+      } else {
+        setIsOnline(false);
+        showToast('❌ 수정에 실패했습니다', 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error('수정 실패:', error);
+      setIsOnline(false);
+      showToast('❌ 수정에 실패했습니다', 'error');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Supabase에서 주문 삭제
   const deleteOrder = async (orderNumber) => {
     setIsLoading(true);
@@ -7552,6 +7742,7 @@ export default function PriceCalculator() {
           onClose={() => { setIsDetailModalOpen(false); setSelectedOrder(null); }}
           order={selectedOrder}
           formatPrice={formatPrice}
+          onUpdateOrder={updateOrder}
         />
       </>
     );
