@@ -2021,6 +2021,10 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
   const [showFilterDeleteConfirm, setShowFilterDeleteConfirm] = useState(false); // 필터별 삭제
   const [detailCart, setDetailCart] = useState(null); // 상세 보기 모달용
   const [detailIndex, setDetailIndex] = useState(null);
+  const [isEditingDetail, setIsEditingDetail] = useState(false); // 상세보기 편집 모드
+  const [editedDetailCart, setEditedDetailCart] = useState(null); // 편집 중인 장바구니
+  const [showProductSearchDetail, setShowProductSearchDetail] = useState(false); // 제품 검색
+  const [productSearchTermDetail, setProductSearchTermDetail] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [deliveryFilter, setDeliveryFilter] = useState('all'); // 배송 예정일 필터
@@ -2596,92 +2600,233 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
       </div>
 
       {/* 상세 보기 모달 */}
-      {detailCart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
-          <div 
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
-            onClick={() => { setDetailCart(null); setDetailIndex(null); }}
+      {detailCart && (() => {
+        // 편집 모드 초기화
+        if (isEditingDetail && !editedDetailCart) {
+          setEditedDetailCart({ ...detailCart });
+        }
+
+        const currentCart = isEditingDetail ? editedDetailCart : detailCart;
+        if (!currentCart) return null;
+
+        // 제품 검색 필터링
+        const filteredProductsDetail = products.length > 0 ? products.filter(product => {
+          if (!productSearchTermDetail) return false;
+          const searchLower = productSearchTermDetail.toLowerCase().replace(/\s/g, '');
+          const nameLower = product.name.toLowerCase().replace(/\s/g, '');
+          return nameLower.includes(searchLower);
+        }).slice(0, 8) : [];
+
+        return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in bg-black/80 backdrop-blur-md" style={{ touchAction: 'none' }}>
+          <div
+            className="absolute inset-0"
+            onClick={() => {
+              if (!isEditingDetail) {
+                setDetailCart(null);
+                setDetailIndex(null);
+              }
+            }}
           />
           <div className="relative bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col animate-scale-in">
             {/* 모달 헤더 */}
-            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-5 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <ShoppingBag className="w-7 h-7 text-white" />
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <ShoppingBag className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-white truncate max-w-[350px]">{detailCart.name}</h2>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                      detailCart.priceType === 'wholesale' 
-                        ? 'bg-blue-500 text-white' 
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isEditingDetail ? (
+                      <input
+                        type="text"
+                        value={currentCart.name}
+                        onChange={(e) => setEditedDetailCart({ ...editedDetailCart, name: e.target.value })}
+                        className="text-lg sm:text-2xl font-bold text-white bg-white/20 px-3 py-1 rounded-lg border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 max-w-full"
+                        placeholder="업체명/이름"
+                      />
+                    ) : (
+                      <h2 className="text-lg sm:text-2xl font-bold text-white break-words">{currentCart.name}</h2>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${
+                      currentCart.priceType === 'wholesale' || currentCart.price_type === 'wholesale'
+                        ? 'bg-blue-500 text-white'
                         : 'bg-purple-500 text-white'
                     }`}>
-                      {detailCart.priceType === 'wholesale' ? '도매' : '소비자'}
+                      {(currentCart.priceType === 'wholesale' || currentCart.price_type === 'wholesale') ? '도매' : '소비자'}
                     </span>
                   </div>
-                  <p className="text-violet-200">{detailCart.date} {detailCart.time}</p>
+                  <p className="text-violet-200 text-sm">{currentCart.date} {currentCart.time}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => { setDetailCart(null); setDetailIndex(null); }}
-                className="p-2.5 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <X className="w-7 h-7 text-white" />
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {!isEditingDetail && (
+                  <button
+                    onClick={() => { setIsEditingDetail(true); setEditedDetailCart({ ...detailCart }); }}
+                    className="p-2 sm:p-2.5 hover:bg-white/20 rounded-lg transition-colors"
+                    title="수정"
+                  >
+                    <Edit3 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setDetailCart(null);
+                    setDetailIndex(null);
+                    setIsEditingDetail(false);
+                    setEditedDetailCart(null);
+                  }}
+                  className="p-2 sm:p-2.5 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+                </button>
+              </div>
             </div>
 
             {/* 상품 목록 */}
-            <div 
-              className="flex-1 overflow-y-auto p-6 modal-scroll-area" 
+            <div
+              className="flex-1 overflow-y-auto p-4 sm:p-6 modal-scroll-area"
               data-lenis-prevent="true"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <h3 className="text-white font-semibold mb-5 flex items-center gap-2 text-xl">
-                <Package className="w-6 h-6 text-violet-400" />
-                상품 목록 ({detailCart.items.length}종 / {detailCart.items.reduce((sum, item) => sum + item.quantity, 0)}개)
-              </h3>
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
+                <h3 className="text-white font-semibold flex items-center gap-2 text-lg sm:text-xl">
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />
+                  상품 목록 ({currentCart.items.length}종 / {currentCart.items.reduce((sum, item) => sum + item.quantity, 0)}개)
+                </h3>
+                {isEditingDetail && (
+                  <button
+                    onClick={() => setShowProductSearchDetail(!showProductSearchDetail)}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors flex-shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">제품 추가</span>
+                  </button>
+                )}
+              </div>
+
+              {/* 제품 검색 */}
+              {isEditingDetail && showProductSearchDetail && (
+                <div className="mb-4 relative">
+                  <input
+                    type="text"
+                    value={productSearchTermDetail}
+                    onChange={(e) => setProductSearchTermDetail(e.target.value)}
+                    placeholder="제품명 검색..."
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {productSearchTermDetail && filteredProductsDetail.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-60 overflow-y-auto z-50">
+                      {filteredProductsDetail.map(product => {
+                        const price = (currentCart.priceType === 'wholesale' || currentCart.price_type === 'wholesale') ? product.wholesale : (product.retail || product.wholesale);
+                        const alreadyAdded = currentCart.items.some(item => item.id === product.id);
+                        return (
+                          <button
+                            key={product.id}
+                            onClick={() => {
+                              if (!alreadyAdded) {
+                                const newItems = [...currentCart.items, { ...product, quantity: 1, price }];
+                                setEditedDetailCart({ ...editedDetailCart, items: newItems });
+                              }
+                              setProductSearchTermDetail('');
+                            }}
+                            className="w-full px-3 py-2 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-0"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="text-white text-sm">{product.name}</div>
+                                <div className="text-slate-400 text-xs">{product.category}</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-emerald-400 font-medium text-sm">{formatPrice(price)}</span>
+                                {alreadyAdded && <span className="text-xs text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">추가됨</span>}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="space-y-4">
-                {detailCart.items.map((item, idx) => {
+                {currentCart.items.map((item, idx) => {
                   // 가격 계산 - 여러 필드 확인
                   let itemPrice = 0;
-                  if (detailCart.priceType === 'wholesale') {
+                  if (currentCart.priceType === 'wholesale' || currentCart.price_type === 'wholesale') {
                     itemPrice = item.wholesale || item.price || item.unitPrice || 0;
                   } else {
                     itemPrice = item.retail || item.wholesale || item.price || item.unitPrice || 0;
                   }
-                  
+
                   // total에서 역산 (가격 정보가 없는 경우)
-                  if (itemPrice === 0 && detailCart.total && detailCart.items.length === 1) {
-                    itemPrice = detailCart.total / item.quantity;
+                  if (itemPrice === 0 && currentCart.total && currentCart.items.length === 1) {
+                    itemPrice = currentCart.total / item.quantity;
                   }
-                  
+
                   const itemTotal = itemPrice * item.quantity;
                   const itemSupply = Math.round(itemPrice / 1.1); // 공급가(VAT제외)
                   const itemTotalSupply = Math.round(itemTotal / 1.1); // 소계 공급가
-                  
+
                   return (
-                    <div key={idx} className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-violet-500 hover:bg-slate-700/80 transition-all duration-200 transform hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/20 cursor-pointer">
-                      <div className="flex items-center justify-between">
+                    <div key={idx} className="bg-slate-700/50 rounded-xl p-3 sm:p-5 border border-slate-600 hover:border-violet-500 hover:bg-slate-700/80 transition-all duration-200">
+                      <div className="flex items-start sm:items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-white font-semibold text-xl truncate">{item.name}</p>
+                          <p className="text-white font-semibold text-base sm:text-xl break-words">{item.name}</p>
                           {itemPrice > 0 && (
                             <div className="mt-2">
-                              <p className="text-blue-400">{formatPrice(itemPrice)}</p>
-                              <p className="text-slate-500 text-sm">(VAT제외 {formatPrice(itemSupply)})</p>
+                              <p className="text-blue-400 text-sm sm:text-base">{formatPrice(itemPrice)}</p>
+                              <p className="text-slate-500 text-xs sm:text-sm">(VAT제외 {formatPrice(itemSupply)})</p>
                             </div>
                           )}
                         </div>
-                        <div className="text-right ml-6">
-                          <p className="text-slate-300 text-lg">×{item.quantity}개</p>
-                          {itemPrice > 0 ? (
-                            <div className="mt-1">
-                              <p className="text-emerald-400 font-bold text-2xl">{formatPrice(itemTotal)}</p>
-                              <p className="text-slate-500 text-sm">(VAT제외 {formatPrice(itemTotalSupply)})</p>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          {isEditingDetail ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const newItems = [...currentCart.items];
+                                  if (newItems[idx].quantity > 1) {
+                                    newItems[idx] = { ...newItems[idx], quantity: newItems[idx].quantity - 1 };
+                                    setEditedDetailCart({ ...editedDetailCart, items: newItems });
+                                  }
+                                }}
+                                className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-600 hover:bg-slate-500 rounded-lg flex items-center justify-center text-white transition-colors"
+                              >
+                                <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                              </button>
+                              <span className="text-white font-semibold text-base sm:text-lg min-w-[3rem] text-center">×{item.quantity}</span>
+                              <button
+                                onClick={() => {
+                                  const newItems = [...currentCart.items];
+                                  newItems[idx] = { ...newItems[idx], quantity: newItems[idx].quantity + 1 };
+                                  setEditedDetailCart({ ...editedDetailCart, items: newItems });
+                                }}
+                                className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center justify-center text-white transition-colors"
+                              >
+                                <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const newItems = currentCart.items.filter((_, i) => i !== idx);
+                                  setEditedDetailCart({ ...editedDetailCart, items: newItems });
+                                }}
+                                className="w-7 h-7 sm:w-8 sm:h-8 bg-red-600/20 hover:bg-red-600 rounded-lg flex items-center justify-center text-red-400 hover:text-white transition-colors ml-1"
+                              >
+                                <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                              </button>
                             </div>
                           ) : (
-                            <p className="text-slate-500 text-sm mt-1">가격 정보 없음</p>
+                            <p className="text-slate-300 text-base sm:text-lg">×{item.quantity}개</p>
+                          )}
+                          {itemPrice > 0 ? (
+                            <div className="text-right">
+                              <p className="text-emerald-400 font-bold text-lg sm:text-2xl">{formatPrice(itemTotal)}</p>
+                              <p className="text-slate-500 text-xs sm:text-sm">(VAT제외 {formatPrice(itemTotalSupply)})</p>
+                            </div>
+                          ) : (
+                            <p className="text-slate-500 text-xs sm:text-sm mt-1">가격 정보 없음</p>
                           )}
                         </div>
                       </div>
@@ -2692,48 +2837,92 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, formatPrice
             </div>
 
             {/* 금액 요약 + 버튼 */}
-            <div className="border-t border-slate-700 p-6 flex-shrink-0 bg-slate-800">
-              <div className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-5 mb-5 hover:from-slate-900/90 hover:to-slate-900/60 transition-all duration-200">
+            <div className="border-t border-slate-700 p-4 sm:p-6 flex-shrink-0 bg-slate-800">
+              <div className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-4 sm:p-5 mb-4 sm:mb-5 hover:from-slate-900/90 hover:to-slate-900/60 transition-all duration-200">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-slate-500">공급가액</span>
-                  <span className="text-slate-300 text-lg">{formatPrice(Math.round(detailCart.total / 1.1))}</span>
+                  <span className="text-slate-500 text-sm sm:text-base">공급가액</span>
+                  <span className="text-slate-300 text-base sm:text-lg">{formatPrice(Math.round(currentCart.total / 1.1))}</span>
                 </div>
                 <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700">
-                  <span className="text-slate-500">부가세</span>
-                  <span className="text-slate-300 text-lg">{formatPrice(detailCart.total - Math.round(detailCart.total / 1.1))}</span>
+                  <span className="text-slate-500 text-sm sm:text-base">부가세</span>
+                  <span className="text-slate-300 text-base sm:text-lg">{formatPrice(currentCart.total - Math.round(currentCart.total / 1.1))}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-xl">총 금액</span>
-                  <span className="text-4xl font-bold text-emerald-400">{formatPrice(detailCart.total)}</span>
+                  <span className="text-slate-400 text-lg sm:text-xl">총 금액</span>
+                  <span className="text-2xl sm:text-4xl font-bold text-emerald-400">{formatPrice(currentCart.total)}</span>
                 </div>
               </div>
-              
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => { onLoad(detailCart); onBack(); }}
-                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/30 active:translate-y-0 active:scale-95"
-                >
-                  <Download className="w-7 h-7" />
-                  불러오기
-                </button>
-                <button 
-                  onClick={() => { 
-                    if (detailIndex !== null) {
-                      onDelete(detailIndex); 
-                      setDetailCart(null); 
-                      setDetailIndex(null);
-                    }
-                  }}
-                  className="px-6 py-5 bg-red-600/20 hover:bg-red-600 rounded-xl text-red-400 hover:text-white transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-red-500/30 active:translate-y-0 active:scale-95"
-                >
-                  <Trash2 className="w-7 h-7" />
-                </button>
-              </div>
+
+              {isEditingDetail ? (
+                <div className="flex gap-3 sm:gap-4">
+                  <button
+                    onClick={async () => {
+                      if (detailIndex !== null && editedDetailCart) {
+                        // 총액 재계산
+                        const newTotal = editedDetailCart.items.reduce((sum, item) => {
+                          let price = 0;
+                          if (editedDetailCart.priceType === 'wholesale' || editedDetailCart.price_type === 'wholesale') {
+                            price = item.wholesale || item.price || item.unitPrice || 0;
+                          } else {
+                            price = item.retail || item.wholesale || item.price || item.unitPrice || 0;
+                          }
+                          return sum + (price * item.quantity);
+                        }, 0);
+
+                        const updatedCart = { ...editedDetailCart, total: newTotal };
+                        await onUpdate(detailIndex, updatedCart);
+                        setDetailCart(updatedCart);
+                        setIsEditingDetail(false);
+                        setEditedDetailCart(null);
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-4 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-semibold text-base sm:text-lg transition-all duration-200"
+                  >
+                    <Save className="w-5 h-5 sm:w-6 sm:h-6" />
+                    저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingDetail(false);
+                      setEditedDetailCart(null);
+                      setShowProductSearchDetail(false);
+                      setProductSearchTermDetail('');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-4 bg-slate-600 hover:bg-slate-500 rounded-xl text-white font-semibold text-base sm:text-lg transition-all duration-200"
+                  >
+                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3 sm:gap-4">
+                  <button
+                    onClick={() => { onLoad(currentCart); onBack(); }}
+                    className="flex-1 flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold text-base sm:text-xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/30 active:translate-y-0 active:scale-95"
+                  >
+                    <Download className="w-5 h-5 sm:w-7 sm:h-7" />
+                    불러오기
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (detailIndex !== null) {
+                        onDelete(detailIndex);
+                        setDetailCart(null);
+                        setDetailIndex(null);
+                      }
+                    }}
+                    className="px-4 sm:px-6 py-3 sm:py-5 bg-red-600/20 hover:bg-red-600 rounded-xl text-red-400 hover:text-white transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-red-500/30 active:translate-y-0 active:scale-95"
+                  >
+                    <Trash2 className="w-5 h-5 sm:w-7 sm:h-7" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
-      
+        );
+      })()}
+
       {/* 전체 삭제 확인 모달 */}
       {showDeleteAllConfirm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -4444,6 +4633,172 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
               취소
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== 알림 설정 모달 ====================
+function NotificationSettingsModal({ isOpen, onClose, settings, onSave }) {
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSettings(settings);
+    }
+  }, [isOpen, settings]);
+
+  const handleSave = () => {
+    onSave(localSettings);
+    onClose();
+  };
+
+  const toggleDayReminder = (day) => {
+    const newDays = localSettings.daysBeforeReminder.includes(day)
+      ? localSettings.daysBeforeReminder.filter(d => d !== day)
+      : [...localSettings.daysBeforeReminder, day].sort((a, b) => a - b);
+    setLocalSettings({ ...localSettings, daysBeforeReminder: newDays });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ touchAction: 'none' }}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden border border-slate-700 shadow-2xl">
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Bell className="w-6 h-6 text-white" />
+            <h2 className="text-lg font-bold text-white">알림 설정</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* 알림 활성화 */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">배송 알림 사용</p>
+              <p className="text-slate-400 text-xs mt-0.5">브라우저 알림으로 배송 일정을 알려드립니다</p>
+            </div>
+            <button
+              onClick={() => setLocalSettings({ ...localSettings, enabled: !localSettings.enabled })}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                localSettings.enabled ? 'bg-blue-500' : 'bg-slate-600'
+              }`}
+            >
+              <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                localSettings.enabled ? 'translate-x-6' : ''
+              }`} />
+            </button>
+          </div>
+
+          {localSettings.enabled && (
+            <>
+              {/* 알림 시간 */}
+              <div>
+                <label className="block text-white font-medium mb-2">알림 시간</label>
+                <input
+                  type="time"
+                  value={localSettings.time}
+                  onChange={(e) => setLocalSettings({ ...localSettings, time: e.target.value })}
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-slate-400 text-xs mt-1">매일 이 시간에 알림을 보냅니다</p>
+              </div>
+
+              {/* 알림 조건 */}
+              <div>
+                <label className="block text-white font-medium mb-2">알림 받을 배송 일정</label>
+                <div className="space-y-2">
+                  {[
+                    { day: -1, label: '지연된 배송', color: 'red' },
+                    { day: 0, label: '오늘 배송', color: 'orange' },
+                    { day: 1, label: '내일 배송', color: 'yellow' },
+                    { day: 2, label: '2일 후 배송', color: 'blue' },
+                    { day: 3, label: '3일 후 배송', color: 'blue' }
+                  ].map(({ day, label, color }) => (
+                    <button
+                      key={day}
+                      onClick={() => {
+                        if (day === -1) {
+                          setLocalSettings({ ...localSettings, includeOverdue: !localSettings.includeOverdue });
+                        } else {
+                          toggleDayReminder(day);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                        (day === -1 ? localSettings.includeOverdue : localSettings.daysBeforeReminder.includes(day))
+                          ? `bg-${color}-500/20 border-${color}-500/50 text-${color}-400`
+                          : 'bg-slate-700/50 border-slate-600 text-slate-400'
+                      }`}
+                    >
+                      <span className="font-medium">{label}</span>
+                      {(day === -1 ? localSettings.includeOverdue : localSettings.daysBeforeReminder.includes(day)) && (
+                        <Check className="w-5 h-5" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 매일 알림 vs 당일만 */}
+              <div>
+                <label className="block text-white font-medium mb-2">알림 빈도</label>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setLocalSettings({ ...localSettings, dailyNotification: true })}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                      localSettings.dailyNotification
+                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                        : 'bg-slate-700/50 border-slate-600 text-slate-400'
+                    }`}
+                  >
+                    <div className="text-left">
+                      <p className="font-medium">매일 알림</p>
+                      <p className="text-xs opacity-70">매일 설정한 시간에 알림을 받습니다</p>
+                    </div>
+                    {localSettings.dailyNotification && <Check className="w-5 h-5" />}
+                  </button>
+                  <button
+                    onClick={() => setLocalSettings({ ...localSettings, dailyNotification: false })}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                      !localSettings.dailyNotification
+                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                        : 'bg-slate-700/50 border-slate-600 text-slate-400'
+                    }`}
+                  >
+                    <div className="text-left">
+                      <p className="font-medium">배송 당일만</p>
+                      <p className="text-xs opacity-70">배송 당일에만 알림을 받습니다</p>
+                    </div>
+                    {!localSettings.dailyNotification && <Check className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 버튼 */}
+        <div className="p-5 border-t border-slate-700 flex gap-3">
+          <button
+            onClick={handleSave}
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-semibold transition-colors"
+          >
+            저장
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
+          >
+            취소
+          </button>
         </div>
       </div>
     </div>
@@ -7341,6 +7696,19 @@ export default function PriceCalculator() {
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showCustomerListModal, setShowCustomerListModal] = useState(false);
   const [showTextAnalyzeModal, setShowTextAnalyzeModal] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+
+  // 알림 설정 (localStorage에서 로드)
+  const [notificationSettings, setNotificationSettings] = useState(() => {
+    const saved = localStorage.getItem('notificationSettings');
+    return saved ? JSON.parse(saved) : {
+      enabled: true,
+      time: '09:00', // 알림 시간
+      daysBeforeReminder: [0, 1], // 오늘(0), 내일(1) 알림
+      includeOverdue: true, // 지연 건 포함
+      dailyNotification: true // 매일 알림 vs 배송일 당일만
+    };
+  });
 
   // 동적 카테고리 목록 (Supabase products 기반)
   const dynamicCategories = useMemo(() => {
@@ -7440,8 +7808,18 @@ export default function PriceCalculator() {
     loadSavedCartsFromDB();
   }, []);
 
+  // 알림 설정 저장
+  const saveNotificationSettings = (newSettings) => {
+    setNotificationSettings(newSettings);
+    localStorage.setItem('notificationSettings', JSON.stringify(newSettings));
+    showToast('✅ 알림 설정이 저장되었습니다');
+  };
+
   // 브라우저 알림 권한 요청 및 알림 표시
   useEffect(() => {
+    // 알림이 비활성화되어 있으면 리턴
+    if (!notificationSettings.enabled) return;
+
     // 알림 권한 요청
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -7450,56 +7828,80 @@ export default function PriceCalculator() {
     // 저장된 장바구니가 로드된 후 알림 체크
     if (savedCarts.length === 0) return;
 
+    const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // 오늘/내일 배송 건수 계산
-    const todayDeliveries = savedCarts.filter(cart => {
-      if (!cart.delivery_date) return false;
-      const delivery = new Date(cart.delivery_date);
-      delivery.setHours(0, 0, 0, 0);
-      return delivery.getTime() === today.getTime();
-    });
+    // 설정된 알림 시간 체크
+    const [settingHour, settingMinute] = notificationSettings.time.split(':').map(Number);
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
 
-    const tomorrowDeliveries = savedCarts.filter(cart => {
-      if (!cart.delivery_date) return false;
-      const delivery = new Date(cart.delivery_date);
-      delivery.setHours(0, 0, 0, 0);
-      return delivery.getTime() === tomorrow.getTime();
-    });
-
-    const overdueDeliveries = savedCarts.filter(cart => {
-      if (!cart.delivery_date) return false;
-      const delivery = new Date(cart.delivery_date);
-      delivery.setHours(0, 0, 0, 0);
-      return delivery < today;
-    });
-
-    // 알림 표시 (하루 한 번만)
-    const lastNotificationDate = localStorage.getItem('lastDeliveryNotification');
-    const todayStr = today.toISOString().split('T')[0];
-
-    if (lastNotificationDate !== todayStr && (todayDeliveries.length > 0 || tomorrowDeliveries.length > 0 || overdueDeliveries.length > 0)) {
-      if (Notification.permission === 'granted') {
-        let body = '';
-        if (overdueDeliveries.length > 0) body += `🔴 배송 지연: ${overdueDeliveries.length}건\n`;
-        if (todayDeliveries.length > 0) body += `⚡ 오늘 배송: ${todayDeliveries.length}건\n`;
-        if (tomorrowDeliveries.length > 0) body += `🟡 내일 배송: ${tomorrowDeliveries.length}건`;
-
-        new Notification('📦 배송 알림', {
-          body: body.trim(),
-          icon: '/icon-192.png', // 앱 아이콘 (있다면)
-          badge: '/icon-192.png',
-          tag: 'delivery-reminder',
-          renotify: false
-        });
-
-        localStorage.setItem('lastDeliveryNotification', todayStr);
+    // 시간이 맞지 않으면 리턴 (매일 알림인 경우)
+    if (notificationSettings.dailyNotification) {
+      // 정확한 시간이 아니면 리턴 (±5분 이내)
+      if (Math.abs(currentHour - settingHour) > 0 || Math.abs(currentMinute - settingMinute) > 5) {
+        return;
       }
     }
-  }, [savedCarts]);
+
+    // 배송일별로 분류
+    const deliveriesByDay = {};
+    const overdueDeliveries = [];
+
+    savedCarts.forEach(cart => {
+      if (!cart.delivery_date) return;
+
+      const delivery = new Date(cart.delivery_date);
+      delivery.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((delivery - today) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0 && notificationSettings.includeOverdue) {
+        overdueDeliveries.push(cart);
+      } else if (notificationSettings.daysBeforeReminder.includes(diffDays)) {
+        if (!deliveriesByDay[diffDays]) deliveriesByDay[diffDays] = [];
+        deliveriesByDay[diffDays].push(cart);
+      }
+    });
+
+    // 알림 표시 여부 결정
+    const hasNotifications = overdueDeliveries.length > 0 || Object.keys(deliveriesByDay).length > 0;
+    if (!hasNotifications) return;
+
+    // 알림 표시 (하루 한 번만 or 시간마다)
+    const lastNotificationKey = notificationSettings.dailyNotification
+      ? 'lastDeliveryNotification'
+      : 'lastDeliveryNotificationTime';
+    const lastNotification = localStorage.getItem(lastNotificationKey);
+    const nowStr = notificationSettings.dailyNotification
+      ? today.toISOString().split('T')[0]
+      : now.toISOString();
+
+    if (lastNotification === nowStr) return;
+
+    if (Notification.permission === 'granted') {
+      let body = '';
+      if (overdueDeliveries.length > 0) body += `🔴 배송 지연: ${overdueDeliveries.length}건\n`;
+
+      // 오늘/내일 배송 추가
+      Object.keys(deliveriesByDay).forEach(diffDays => {
+        const count = deliveriesByDay[diffDays].length;
+        if (diffDays === '0') body += `⚡ 오늘 배송: ${count}건\n`;
+        else if (diffDays === '1') body += `🟡 내일 배송: ${count}건\n`;
+        else body += `📅 ${diffDays}일 후 배송: ${count}건\n`;
+      });
+
+      new Notification('📦 배송 알림', {
+        body: body.trim(),
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'delivery-reminder',
+        renotify: false
+      });
+
+      localStorage.setItem(lastNotificationKey, nowStr);
+    }
+  }, [savedCarts, notificationSettings]);
 
   // 장바구니 저장 (Supabase)
   const saveCartWithName = async (cartData) => {
