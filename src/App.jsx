@@ -9035,7 +9035,7 @@ export default function PriceCalculator() {
                   }).length;
 
                   return urgentCount > 0 ? (
-                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-red-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-red-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                       {urgentCount > 9 ? '9+' : urgentCount}
                     </span>
                   ) : savedCarts.length > 0 ? (
