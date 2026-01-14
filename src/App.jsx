@@ -272,7 +272,7 @@ const supabase = {
 
         // 컬럼이 없는 경우 재시도 (예약 필드 제외)
         if (errorText.includes('column') || errorText.includes('does not exist')) {
-          console.log('예약 필드 없이 재시도...');
+          console.log('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 저장...');
           const basicCart = {
             name: cart.name,
             items: cart.items,
@@ -297,7 +297,17 @@ const supabase = {
           if (!retryResponse.ok) {
             throw new Error('Failed to add saved cart (retry)');
           }
-          return await retryResponse.json();
+          const result = await retryResponse.json();
+          // 예약 필드를 원본 데이터에서 복원하여 반환
+          return [{
+            ...result[0],
+            delivery_date: cart.delivery_date,
+            status: cart.status,
+            priority: cart.priority,
+            memo: cart.memo,
+            reminded: cart.reminded,
+            _localOnly: true // 로컬 전용 플래그
+          }];
         }
 
         throw new Error('Failed to add saved cart');
@@ -346,7 +356,7 @@ const supabase = {
 
         // 컬럼이 없는 경우 재시도 (예약 필드 제외)
         if (errorText.includes('column') || errorText.includes('does not exist')) {
-          console.log('예약 필드 없이 업데이트 재시도...');
+          console.log('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 업데이트...');
           const basicCart = {
             name: cart.name,
             items: cart.items,
@@ -368,7 +378,17 @@ const supabase = {
           if (!retryResponse.ok) {
             throw new Error('Failed to update saved cart (retry)');
           }
-          return await retryResponse.json();
+          const result = await retryResponse.json();
+          // 예약 필드를 원본 데이터에서 복원하여 반환
+          return [{
+            ...result[0],
+            delivery_date: cart.delivery_date,
+            status: cart.status,
+            priority: cart.priority,
+            memo: cart.memo,
+            reminded: cart.reminded,
+            _localOnly: true
+          }];
         }
 
         throw new Error('Failed to update saved cart');
@@ -7966,9 +7986,18 @@ export default function PriceCalculator() {
       console.log('장바구니 불러오기 시도...');
       const data = await supabase.getSavedCarts();
       console.log('불러온 데이터:', data);
+
+      // localStorage에서 예약 필드 불러오기
+      const localExtras = JSON.parse(localStorage.getItem('cart_extras') || '{}');
+
       if (data) {
-        setSavedCarts(data);
-        console.log('savedCarts 업데이트 완료:', data.length, '개');
+        // Supabase 데이터와 localStorage 데이터 병합
+        const mergedData = data.map(cart => ({
+          ...cart,
+          ...(localExtras[cart.id] || {})
+        }));
+        setSavedCarts(mergedData);
+        console.log('savedCarts 업데이트 완료:', mergedData.length, '개');
       }
     } catch (e) {
       console.error('저장된 장바구니 불러오기 실패:', e);
@@ -8125,6 +8154,21 @@ export default function PriceCalculator() {
           memo: result[0].memo || newCart.memo,
           reminded: result[0].reminded !== undefined ? result[0].reminded : newCart.reminded
         };
+
+        // localStorage에 예약 필드 저장
+        if (result[0]._localOnly && result[0].id) {
+          const localExtras = JSON.parse(localStorage.getItem('cart_extras') || '{}');
+          localExtras[result[0].id] = {
+            delivery_date: newCart.delivery_date,
+            status: newCart.status,
+            priority: newCart.priority,
+            memo: newCart.memo,
+            reminded: newCart.reminded
+          };
+          localStorage.setItem('cart_extras', JSON.stringify(localExtras));
+          console.log('💾 예약 필드를 localStorage에 저장:', localExtras[result[0].id]);
+        }
+
         setSavedCarts(prev => [savedCart, ...prev]);
         setCart([]); // 장바구니 초기화
         showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
