@@ -3,6 +3,41 @@ import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
 import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell } from 'lucide-react';
 
+// ==================== 공통 검색 함수 ====================
+const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
+
+const matchesSearchQuery = (productName, searchTerm) => {
+  const normalizedProductName = normalizeText(productName);
+  const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
+
+  if (searchWords.length === 0) return true;
+
+  // 방법 1: 검색어를 모두 합쳐서 제품명에 포함되는지 확인 (예: "스덴 밴딩 51" → "스덴밴딩51" → "스덴밴딩파이프51"에 매칭)
+  const combinedSearch = normalizeText(searchWords.join(''));
+  if (normalizedProductName.includes(combinedSearch)) return true;
+
+  // 방법 2: 각 단어가 순서대로 제품명에 나타나는지 확인
+  let lastIndex = -1;
+  const matchesSequential = searchWords.every(word => {
+    const normalizedWord = normalizeText(word);
+    const foundIndex = normalizedProductName.indexOf(normalizedWord, lastIndex + 1);
+    if (foundIndex > lastIndex) {
+      lastIndex = foundIndex;
+      return true;
+    }
+    return normalizedProductName.includes(normalizedWord);
+  });
+  if (matchesSequential) return true;
+
+  // 방법 3: 모든 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
+  const matchesAll = searchWords.every(word => {
+    const normalizedWord = normalizeText(word);
+    return normalizedProductName.includes(normalizedWord);
+  });
+
+  return matchesAll;
+};
+
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_YB9UnUwuMql8hUGHgC0bsg_DhrAxpji';
@@ -4376,19 +4411,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   // 필터링된 제품
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
-
-    // 특수문자 제거 및 띄어쓰기 제거
-    const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-    const productName = normalizeText(p.name);
-
-    // 검색어를 단어별로 분리
-    const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
-    // 모든 검색 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
-    const matchesSearch = searchWords.every(word => {
-      const normalizedWord = normalizeText(word);
-      return productName.includes(normalizedWord);
-    });
+    const matchesSearch = matchesSearchQuery(p.name, searchTerm);
 
     const stock = p.stock ?? 50;
     const minStock = p.min_stock || 5;
@@ -5095,37 +5118,24 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
 
       if (!searchText) return;
 
-      // 특수문자 제거 및 띄어쓰기 제거
-      const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-
-      // 검색어를 단어별로 분리
-      const searchWords = searchText.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
       let bestMatch = null;
       let bestScore = 0;
 
       products.forEach(product => {
-        const productName = normalizeText(product.name);
         let score = 0;
 
-        // 모든 검색 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
-        const allWordsMatched = searchWords.every(word => {
-          const normalizedWord = normalizeText(word);
-          return productName.includes(normalizedWord);
-        });
-
-        if (allWordsMatched) {
+        // 공통 검색 함수 사용
+        if (matchesSearchQuery(product.name, searchText)) {
+          const searchWords = searchText.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
           // 일치하는 단어가 많을수록 점수 증가
           searchWords.forEach(word => {
-            const normalizedWord = normalizeText(word);
-            if (productName.includes(normalizedWord)) {
+            if (normalizeText(product.name).includes(normalizeText(word))) {
               score += word.length;
             }
           });
 
           // 완전 일치 시 보너스 점수
-          const searchNormalized = normalizeText(searchText);
-          if (productName.includes(searchNormalized)) {
+          if (normalizeText(product.name).includes(normalizeText(searchText))) {
             score += 10;
           }
         }
@@ -5182,21 +5192,7 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const getSearchResults = () => {
     if (!searchQuery.trim()) return [];
 
-    // 특수문자 제거 및 띄어쓰기 제거
-    const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-
-    // 검색어를 단어별로 분리
-    const searchWords = searchQuery.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
-    return products.filter(p => {
-      const productName = normalizeText(p.name);
-
-      // 모든 검색 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
-      return searchWords.every(word => {
-        const normalizedWord = normalizeText(word);
-        return productName.includes(normalizedWord);
-      });
-    }).slice(0, 8);
+    return products.filter(p => matchesSearchQuery(p.name, searchQuery)).slice(0, 8);
   };
 
   const addSelectedToCart = () => {
@@ -5561,19 +5557,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   // 검색 결과 필터링 (특수문자 무시, 단어 순서 무관)
   const searchResults = productSearch.length >= 1
     ? products.filter(p => {
-        // 특수문자 제거 및 띄어쓰기 제거
-        const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-        const productName = normalizeText(p.name);
-        const productCategory = normalizeText(p.category);
-
-        // 검색어를 단어별로 분리
-        const searchWords = productSearch.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
-        // 모든 검색 단어가 제품명이나 카테고리에 포함되어 있는지 확인 (순서 무관)
-        return searchWords.every(word => {
-          const normalizedWord = normalizeText(word);
-          return productName.includes(normalizedWord) || productCategory.includes(normalizedWord);
-        });
+        return matchesSearchQuery(p.name, productSearch) || matchesSearchQuery(p.category, productSearch);
       }).slice(0, 8)
     : [];
 
@@ -5930,20 +5914,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                   ? products.filter(p => {
                       if (p.id === item.id) return false; // 현재 제품 제외
                       if (cart.some(c => c.id === p.id)) return false; // 장바구니에 있는 제품 제외
-
-                      // 특수문자 제거 및 띄어쓰기 제거
-                      const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-                      const productName = normalizeText(p.name);
-                      const productCategory = normalizeText(p.category || '');
-
-                      // 검색어를 단어별로 분리
-                      const searchWords = changeSearchQuery.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
-                      // 모든 검색 단어가 제품명이나 카테고리에 포함되어 있는지 확인 (순서 무관)
-                      return searchWords.every(word => {
-                        const normalizedWord = normalizeText(word);
-                        return productName.includes(normalizedWord) || productCategory.includes(normalizedWord);
-                      });
+                      return matchesSearchQuery(p.name, changeSearchQuery) || matchesSearchQuery(p.category || '', changeSearchQuery);
                     }).slice(0, 8)
                   : [];
                 
@@ -6413,19 +6384,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const filteredProducts = useMemo(() => {
     return products
       .filter(p => {
-        // 특수문자 제거 및 띄어쓰기 제거
-        const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-        const productName = normalizeText(p.name);
-
-        // 검색어를 단어별로 분리
-        const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
-        // 모든 검색 단어가 제품명에 포함되어 있는지 확인 (순서 무관)
-        const matchesSearch = searchWords.every(word => {
-          const normalizedWord = normalizeText(word);
-          return productName.includes(normalizedWord);
-        });
-
+        const matchesSearch = matchesSearchQuery(p.name, searchTerm);
         const matchesCategory = selectedCategory === '전체' || p.category === selectedCategory;
         let matchesStock = true;
         const stock = p.stock ?? 50;
@@ -8729,42 +8688,7 @@ export default function PriceCalculator() {
     // Supabase products 사용, 없으면 priceData fallback
     const sourceProducts = products.length > 0 ? products : priceData;
     return sourceProducts.filter(product => {
-      // 특수문자 제거 및 띄어쓰기 제거
-      const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
-      const productName = normalizeText(product.name);
-
-      // 검색어를 단어별로 분리
-      const searchWords = searchTerm.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-
-      if (searchWords.length === 0) {
-        const matchesCategory = selectedCategory === '전체' || product.category === selectedCategory;
-        return matchesCategory;
-      }
-
-      // 방법 1: 검색어를 모두 합쳐서 제품명에 포함되는지 확인 (예: "스덴 밴딩 51" → "스덴밴딩51" → "스덴밴딩파이프51"에 매칭)
-      const combinedSearch = normalizeText(searchWords.join(''));
-      const matchesCombined = productName.includes(combinedSearch);
-
-      // 방법 2: 각 단어가 순서대로 제품명에 나타나는지 확인
-      let lastIndex = -1;
-      const matchesSequential = searchWords.every(word => {
-        const normalizedWord = normalizeText(word);
-        const foundIndex = productName.indexOf(normalizedWord, lastIndex + 1);
-        if (foundIndex > lastIndex) {
-          lastIndex = foundIndex;
-          return true;
-        }
-        // 순서 무시하고 포함 여부만 확인
-        return productName.includes(normalizedWord);
-      });
-
-      // 방법 3: 모든 단어가 제품명에 포함되어 있는지 확인 (순서 무관, 기존 방식)
-      const matchesAll = searchWords.every(word => {
-        const normalizedWord = normalizeText(word);
-        return productName.includes(normalizedWord);
-      });
-
-      const matchesSearch = matchesCombined || matchesSequential || matchesAll;
+      const matchesSearch = matchesSearchQuery(product.name, searchTerm);
       const matchesCategory = selectedCategory === '전체' || product.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
