@@ -1682,9 +1682,14 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in touch-none">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} onTouchMove={(e) => e.preventDefault()} />
-      
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in bg-black/80 backdrop-blur-md" style={{ touchAction: 'none' }}>
+      {/* 배경 오버레이 - 클릭 시 닫기 */}
+      <div
+        className="absolute inset-0"
+        onClick={onClose}
+        onTouchMove={(e) => e.preventDefault()}
+      />
+
       <div className="relative bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl animate-scale-in flex flex-col">
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
