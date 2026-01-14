@@ -1613,9 +1613,11 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
     text += `부가세: ${formatPrice(vat)}\n`;
     text += `총 금액: ${formatPrice(order.totalAmount)}\n`;
     text += `───────────────────────────────────\n`;
-    
+
     if (order.memo) text += `\n메모: ${order.memo}\n`;
-    
+
+    text += `\n입금 계좌: 부산은행 010-5858-6046 진태욱\n`;
+
     return text;
   };
 
@@ -1647,6 +1649,8 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
             .total p { margin: 5px 0; }
             .total .grand { font-size: 20px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
             .memo { margin-top: 20px; padding: 10px; background: #f9f9f9; border-radius: 5px; }
+            .account { margin-top: 30px; padding: 15px; background: #f0f8ff; border: 1px solid #3b82f6; border-radius: 5px; text-align: center; }
+            .account strong { color: #1e40af; font-size: 18px; }
             @media print { body { padding: 20px; } }
           </style>
         </head>
@@ -1674,6 +1678,10 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
             <p class="grand">총 금액: ${formatPrice(order.totalAmount)}</p>
           </div>
           ${order.memo ? `<div class="memo"><strong>메모:</strong> ${order.memo}</div>` : ''}
+          <div class="account">
+            <strong>입금 계좌</strong><br>
+            부산은행 010-5858-6046 진태욱
+          </div>
           <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
