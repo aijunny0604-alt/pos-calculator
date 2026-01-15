@@ -3442,18 +3442,18 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                               </span>
                             )}
                           </div>
-                          {customer.phone && (
-                            <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
-                              <Phone className="w-3.5 h-3.5" />
-                              {customer.phone}
-                            </p>
-                          )}
-                          {customer.address && (
-                            <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
-                              <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
+                            <Phone className="w-3.5 h-3.5" />
+                            {customer.phone || <span className="text-slate-500">전화번호 미등록</span>}
+                          </p>
+                          <p className="text-slate-400 text-sm flex items-start gap-1.5 mt-1">
+                            <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                            {customer.address ? (
                               <span className="truncate">{customer.address}</span>
-                            </p>
-                          )}
+                            ) : (
+                              <span className="text-slate-500">주소 미등록</span>
+                            )}
+                          </p>
                           {totalAmount > 0 && (
                             <p className="text-blue-400 text-xs mt-2">
                               총 거래: {formatPrice(totalAmount)}
