@@ -6346,7 +6346,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit]);
 
-  const categories = ['전체', ...new Set(products.map(p => p.category))];
+  const categories = ['전체', ...new Set((products || []).map(p => p.category))];
   
   // 재고 일괄 초기화
   const handleResetAllStock = async () => {
@@ -6441,6 +6441,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   };
 
   const stockStats = useMemo(() => {
+    if (!products || !Array.isArray(products)) return { outOfStock: 0, lowStock: 0, normalStock: 0, total: 0 };
     const outOfStock = products.filter(p => (p.stock ?? 50) === 0).length;
     const lowStock = products.filter(p => (p.stock ?? 50) > 0 && (p.stock ?? 50) <= (p.min_stock || 5)).length;
     const normalStock = products.filter(p => (p.stock ?? 50) > (p.min_stock || 5)).length;
@@ -6448,6 +6449,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   }, [products]);
 
   const filteredProducts = useMemo(() => {
+    if (!products || !Array.isArray(products)) return [];
     return products
       .filter(p => {
         const matchesSearch = matchesSearchQuery(p.name, searchTerm);
