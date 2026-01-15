@@ -8256,16 +8256,26 @@ function WelcomeSplash({ onComplete }) {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-500 overflow-hidden ${phase >= 4 ? 'opacity-0' : 'opacity-100'}`}
+      className={`fixed z-[9999] flex items-center justify-center transition-opacity duration-500 overflow-hidden ${phase >= 4 ? 'opacity-0' : 'opacity-100'}`}
+      style={{
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        position: 'fixed'
+      }}
     >
       {/* 배경 그라데이션 - 전체 화면 꽉 채움 */}
       <div
-        className="absolute bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+        className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
         style={{
-          top: '-200px',
-          left: '-200px',
-          right: '-200px',
-          bottom: '-300px'
+          position: 'absolute',
+          top: '-50%',
+          left: '-50%',
+          width: '200%',
+          height: '200%'
         }}
       />
 
