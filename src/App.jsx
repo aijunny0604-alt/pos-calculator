@@ -8556,12 +8556,12 @@ export default function PriceCalculator() {
       const result = await supabase.saveOrder(supabaseOrder);
       if (result) {
         // 신규 업체 자동 등록 체크
-        if (orderData.customerName && !orderData.existingCustomerId) {
+        if (orderData.customerName && Array.isArray(customers)) {
           // 기존 거래처인지 확인
-          const existingCustomer = customers.find(c => 
-            c.name.toLowerCase().replace(/\s/g, '') === orderData.customerName.toLowerCase().replace(/\s/g, '')
+          const existingCustomer = customers.find(c =>
+            c?.name?.toLowerCase().replace(/\s/g, '') === orderData.customerName.toLowerCase().replace(/\s/g, '')
           );
-          
+
           if (!existingCustomer) {
             // 신규 업체 등록
             try {
@@ -8577,6 +8577,23 @@ export default function PriceCalculator() {
               }
             } catch (err) {
               console.log('신규 거래처 등록 실패:', err);
+            }
+          } else if (existingCustomer && (orderData.customerPhone || orderData.customerAddress)) {
+            // 기존 업체인데 전화번호/주소가 없으면 업데이트
+            const needsUpdate = (!existingCustomer.phone && orderData.customerPhone) || (!existingCustomer.address && orderData.customerAddress);
+            if (needsUpdate) {
+              try {
+                const updatedCustomer = await supabase.updateCustomer(existingCustomer.id, {
+                  phone: orderData.customerPhone || existingCustomer.phone,
+                  address: orderData.customerAddress || existingCustomer.address
+                });
+                if (updatedCustomer) {
+                  setCustomers(prev => prev.map(c => c.id === existingCustomer.id ? updatedCustomer : c));
+                  console.log('✅ 기존 거래처 정보 업데이트:', orderData.customerName);
+                }
+              } catch (err) {
+                console.log('거래처 정보 업데이트 실패:', err);
+              }
             }
           }
         }
