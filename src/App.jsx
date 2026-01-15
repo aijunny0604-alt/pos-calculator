@@ -4596,7 +4596,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
 }
 
 // ==================== 장바구니 저장 모달 ====================
-function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', onBack, onCloseAll }) {
+function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', initialPhone = '', initialAddress = '', onBack, onCloseAll }) {
   const [cartName, setCartName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -4624,9 +4624,10 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
     setStatus('pending');
     setPriority('normal');
     setMemo('');
-    setCustomerPhone('');
-    setCustomerAddress('');
-  }, [customerName, isOpen]);
+    // 전화번호/주소는 주문서에서 전달받은 값으로 초기화
+    setCustomerPhone(initialPhone || '');
+    setCustomerAddress(initialAddress || '');
+  }, [customerName, initialPhone, initialAddress, isOpen]);
 
   // ESC 키 이벤트 (Enter는 폼 제출로 처리)
   useEffect(() => {
@@ -6135,7 +6136,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                  <><Check className="w-5 h-5" />주문 완료</>}
               </button>
               <button
-                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart(customerName); }}
+                onClick={() => { if (cart.length > 0 && onSaveCart) onSaveCart({ name: customerName, phone: customerPhone, address: customerAddress }); }}
                 disabled={cart.length === 0}
                 className={`py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
                   cart.length === 0 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
@@ -7871,6 +7872,8 @@ export default function PriceCalculator() {
   const [savedCarts, setSavedCarts] = useState([]);
   const [isSaveCartModalOpen, setIsSaveCartModalOpen] = useState(false);
   const [saveCartCustomerName, setSaveCartCustomerName] = useState('');
+  const [saveCartCustomerPhone, setSaveCartCustomerPhone] = useState('');
+  const [saveCartCustomerAddress, setSaveCartCustomerAddress] = useState('');
   const [isSavedCartsModalOpen, setIsSavedCartsModalOpen] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -9678,7 +9681,13 @@ export default function PriceCalculator() {
           onRemoveItem={removeFromCart}
           onAddItem={addToCart}
           products={priceData}
-          onSaveCart={(name) => { setSaveCartCustomerName(name || ''); setIsSaveCartModalOpen(true); }}
+          onSaveCart={(data) => {
+            const isObject = typeof data === 'object';
+            setSaveCartCustomerName(isObject ? (data.name || '') : (data || ''));
+            setSaveCartCustomerPhone(isObject ? (data.phone || '') : '');
+            setSaveCartCustomerAddress(isObject ? (data.address || '') : '');
+            setIsSaveCartModalOpen(true);
+          }}
           customers={customers}
           onBack={() => setIsOrderModalOpen(false)}
         />
@@ -9692,10 +9701,12 @@ export default function PriceCalculator() {
         priceType={priceType}
         formatPrice={formatPrice}
         customerName={saveCartCustomerName}
+        initialPhone={saveCartCustomerPhone}
+        initialAddress={saveCartCustomerAddress}
         onBack={() => setIsSaveCartModalOpen(false)}
-        onCloseAll={() => { 
-          setIsSaveCartModalOpen(false); 
-          setIsOrderModalOpen(false); 
+        onCloseAll={() => {
+          setIsSaveCartModalOpen(false);
+          setIsOrderModalOpen(false);
         }}
       />
 
