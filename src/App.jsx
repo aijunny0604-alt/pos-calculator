@@ -3241,11 +3241,11 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col select-none">
       {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none">
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none pt-3">
         <div className="w-full px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={selectedCustomer ? () => setSelectedCustomer(null) : onBack}
                 className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
               >
