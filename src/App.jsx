@@ -4624,20 +4624,17 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
     setMemo('');
   }, [customerName, isOpen]);
 
-  // ESC/Enter 키 이벤트
+  // ESC 키 이벤트 (Enter는 폼 제출로 처리)
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onBack();
-      } else if (e.key === 'Enter' && cartName.trim()) {
-        e.preventDefault();
-        handleSave();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onBack, cartName]);
+  }, [isOpen, onBack]);
   
   const total = cart.reduce((sum, item) => {
     const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
@@ -8114,14 +8111,14 @@ export default function PriceCalculator() {
       console.log('장바구니 저장 시도:', newCart);
 
       // 신규 업체 자동 등록 체크
-      if (name && name.trim()) {
-        const existingCustomer = customers.find(c =>
-          c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
-        );
+      if (name && name.trim() && Array.isArray(customers)) {
+        try {
+          const existingCustomer = customers.find(c =>
+            c?.name?.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
+          );
 
-        if (!existingCustomer) {
-          // 신규 업체 등록
-          try {
+          if (!existingCustomer) {
+            // 신규 업체 등록
             const newCustomer = await supabase.addCustomer({
               name: name.trim(),
               phone: null,
@@ -8132,9 +8129,9 @@ export default function PriceCalculator() {
               setCustomers(prev => [...prev, newCustomer]);
               console.log('✅ 신규 거래처 자동 등록 (장바구니):', name);
             }
-          } catch (err) {
-            console.log('신규 거래처 등록 실패:', err);
           }
+        } catch (err) {
+          console.log('신규 거래처 등록 실패:', err);
         }
       }
 
