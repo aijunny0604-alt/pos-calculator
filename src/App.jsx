@@ -8112,6 +8112,32 @@ export default function PriceCalculator() {
       }
 
       console.log('장바구니 저장 시도:', newCart);
+
+      // 신규 업체 자동 등록 체크
+      if (name && name.trim()) {
+        const existingCustomer = customers.find(c =>
+          c.name.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
+        );
+
+        if (!existingCustomer) {
+          // 신규 업체 등록
+          try {
+            const newCustomer = await supabase.addCustomer({
+              name: name.trim(),
+              phone: null,
+              address: null,
+              memo: `자동 등록 - 장바구니 저장 (${new Date().toLocaleDateString()})`
+            });
+            if (newCustomer) {
+              setCustomers(prev => [...prev, newCustomer]);
+              console.log('✅ 신규 거래처 자동 등록 (장바구니):', name);
+            }
+          } catch (err) {
+            console.log('신규 거래처 등록 실패:', err);
+          }
+        }
+      }
+
       const result = await supabase.addSavedCart(newCart);
       console.log('저장 결과:', result);
 
