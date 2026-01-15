@@ -9175,16 +9175,18 @@ export default function PriceCalculator() {
         <TextAnalyzePage
           products={products.length > 0 ? products : priceData}
           onAddToCart={(product, qty) => {
-            const existing = cart.find(item => item.id === product.id);
-            if (existing) {
-              setCart(cart.map(item => 
-                item.id === product.id 
-                  ? { ...item, quantity: item.quantity + qty }
-                  : item
-              ));
-            } else {
-              setCart([...cart, { ...product, quantity: qty }]);
-            }
+            setCart(prevCart => {
+              const existing = prevCart.find(item => item.id === product.id);
+              if (existing) {
+                return prevCart.map(item =>
+                  item.id === product.id
+                    ? { ...item, quantity: item.quantity + qty }
+                    : item
+                );
+              } else {
+                return [...prevCart, { ...product, quantity: qty }];
+              }
+            });
             showToast(`✅ ${product.name} ${qty}개 추가`);
           }}
           formatPrice={formatPrice}
