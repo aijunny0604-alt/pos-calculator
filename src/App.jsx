@@ -3241,8 +3241,8 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col select-none">
       {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}>
-        <div className="w-full px-4 py-2">
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="w-full px-4 pt-1 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -3292,7 +3292,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
         {/* 검색 영역 - 거래처 목록에서만 표시 (접기/펼치기) */}
         {!selectedCustomer && (
           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[200px] opacity-100'}`}>
-            <div className="px-4 pb-4">
+            <div className="px-4 pt-2 pb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
