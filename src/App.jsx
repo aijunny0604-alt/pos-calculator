@@ -5113,10 +5113,162 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
     };
   }, []);
 
+  // 유사어/동의어 매핑
+  const synonyms = {
+    '스텐': '스덴', '스테인': '스덴', '스테인레스': '스덴', 'sus': '스덴',
+    '밴드': '밴딩', '벤딩': '밴딩', '벤드': '밴딩',
+    '파이프': '파이프', '관': '파이프', '튜브': '파이프',
+    '환봉': '환봉', '원봉': '환봉', '봉': '환봉',
+    '각파이프': '각파이프', '각관': '각파이프', '사각': '각파이프',
+    '플랜지': '플랜지', '후렌지': '플랜지', '후란지': '플랜지',
+    '엘보': '엘보', '엘보우': '엘보', 'elbow': '엘보',
+    '티': '티', 'tee': '티',
+    '레듀샤': '레듀샤', '레듀서': '레듀샤', '리듀서': '레듀샤',
+    '니플': '니플', '니쁠': '니플', 'nipple': '니플',
+    '소켓': '소켓', '쏘켓': '소켓', 'socket': '소켓',
+    '유니온': '유니온', '유니언': '유니온', 'union': '유니온',
+    '캡': '캡', 'cap': '캡',
+    '부싱': '부싱', '붓싱': '부싱', 'bushing': '부싱',
+    '카플링': '카플링', '커플링': '카플링', 'coupling': '카플링',
+    '게이트': '게이트', '겐또': '게이트', 'gate': '게이트',
+    '볼밸브': '볼밸브', '볼벨브': '볼밸브', '볼브': '볼밸브',
+    '체크': '체크', '첵크': '체크', 'check': '체크',
+  };
+
+  // 초성 추출 함수
+  const getChosung = (str) => {
+    const cho = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    let result = '';
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i) - 44032;
+      if (code >= 0 && code <= 11171) {
+        result += cho[Math.floor(code / 588)];
+      }
+    }
+    return result;
+  };
+
+  // 유사어 변환
+  const applySynonyms = (text) => {
+    let result = text.toLowerCase();
+    Object.entries(synonyms).forEach(([key, value]) => {
+      result = result.replace(new RegExp(key, 'gi'), value);
+    });
+    return result;
+  };
+
+  // 숫자+단위 추출 (예: "51파이", "12mm", "2m")
+  const extractNumberUnits = (text) => {
+    const patterns = [
+      /(\d+(?:\.\d+)?)\s*(파이|pai|phi|mm|cm|m|인치|inch|")/gi,
+      /(\d+(?:\.\d+)?)\s*(A|B|호)/gi,
+    ];
+    const units = [];
+    patterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        units.push({ number: parseFloat(match[1]), unit: match[2].toLowerCase() });
+      }
+    });
+    return units;
+  };
+
+  // 고급 매칭 점수 계산
+  const calculateMatchScore = (productName, searchText) => {
+    let score = 0;
+    const normalizedProduct = normalizeText(productName);
+    const normalizedSearch = normalizeText(searchText);
+    const synonymProduct = applySynonyms(productName);
+    const synonymSearch = applySynonyms(searchText);
+
+    // 1. 완전 일치 (최고 점수)
+    if (normalizedProduct === normalizedSearch) {
+      return 1000;
+    }
+
+    // 2. 포함 매칭
+    if (normalizedProduct.includes(normalizedSearch)) {
+      score += 100 + normalizedSearch.length * 5;
+    }
+
+    // 3. 유사어 적용 후 매칭
+    if (applySynonyms(normalizedProduct).includes(applySynonyms(normalizedSearch))) {
+      score += 80 + normalizedSearch.length * 4;
+    }
+
+    // 4. 숫자+단위 매칭 (크기 매칭)
+    const searchUnits = extractNumberUnits(searchText);
+    const productUnits = extractNumberUnits(productName);
+    searchUnits.forEach(su => {
+      productUnits.forEach(pu => {
+        if (su.number === pu.number) {
+          score += 50; // 숫자 일치
+          if (su.unit === pu.unit ||
+              (su.unit === '파이' && pu.unit === 'mm') ||
+              (su.unit === 'mm' && pu.unit === '파이')) {
+            score += 30; // 단위도 일치하거나 호환
+          }
+        }
+      });
+    });
+
+    // 5. 단어별 순차 매칭
+    const searchParts = normalizedSearch.match(/[가-힣a-z]+|\d+/gi) || [];
+    if (searchParts.length > 0) {
+      let lastIndex = -1;
+      let sequentialMatches = 0;
+      searchParts.forEach(part => {
+        const foundIndex = normalizedProduct.indexOf(part, lastIndex + 1);
+        if (foundIndex > lastIndex) {
+          sequentialMatches++;
+          lastIndex = foundIndex + part.length - 1;
+          score += part.length * 3;
+        }
+      });
+      // 모든 파트가 순차적으로 매칭되면 보너스
+      if (sequentialMatches === searchParts.length) {
+        score += 40;
+      }
+    }
+
+    // 6. 개별 단어 매칭
+    const searchWords = searchText.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
+    let matchedWords = 0;
+    searchWords.forEach(word => {
+      const normalizedWord = normalizeText(word);
+      const synonymWord = applySynonyms(word);
+      if (normalizedProduct.includes(normalizedWord) || synonymProduct.includes(synonymWord)) {
+        matchedWords++;
+        score += word.length * 2;
+      }
+    });
+    // 모든 단어가 매칭되면 보너스
+    if (matchedWords === searchWords.length && searchWords.length > 1) {
+      score += 30;
+    }
+
+    // 7. 초성 매칭 (한글만)
+    const searchChosung = getChosung(searchText);
+    const productChosung = getChosung(productName);
+    if (searchChosung.length >= 2 && productChosung.includes(searchChosung)) {
+      score += 20;
+    }
+
+    // 8. 제품명 길이 대비 매칭 비율 보너스
+    if (score > 0) {
+      const matchRatio = normalizedSearch.length / normalizedProduct.length;
+      if (matchRatio > 0.5) {
+        score += Math.floor(matchRatio * 20);
+      }
+    }
+
+    return score;
+  };
+
   // 텍스트 분석 함수
   const analyzeText = () => {
     if (!inputText.trim()) return;
-    
+
     setIsAnalyzing(true);
     setSearchingIndex(null);
     const lines = inputText.split('\n').filter(line => line.trim());
@@ -5126,14 +5278,19 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       const cleanLine = line.trim();
       if (!cleanLine) return;
 
+      // 수량 패턴 (더 다양하게)
       const qtyPatterns = [
         /(\d+)\s*개/,
         /(\d+)\s*세트/,
+        /(\d+)\s*set/i,
         /(\d+)\s*ea/i,
-        /(\d+)\s*EA/,
+        /(\d+)\s*pcs/i,
+        /(\d+)\s*본/,
+        /(\d+)\s*장/,
+        /(\d+)\s*박스/,
+        /(\d+)\s*box/i,
+        /[x×*]\s*(\d+)/i,
         /(\d+)\s*$/,
-        /^(\d+)\s+/,
-        /[x×]\s*(\d+)/i,
       ];
 
       let quantity = 1;
@@ -5142,14 +5299,19 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       for (const pattern of qtyPatterns) {
         const match = cleanLine.match(pattern);
         if (match) {
-          quantity = parseInt(match[1]) || 1;
-          searchText = cleanLine.replace(pattern, '').trim();
-          break;
+          const qty = parseInt(match[1]);
+          // 수량으로 보기 어려운 숫자 제외 (파이프 규격 등)
+          if (qty > 0 && qty <= 9999 && !/파이|mm|cm|m|인치|inch|A|B/i.test(match[0])) {
+            quantity = qty;
+            searchText = cleanLine.replace(pattern, '').trim();
+            break;
+          }
         }
       }
 
+      // 검색어 정리 (구분자 제거, 공백 정리)
       searchText = searchText
-        .replace(/[,.\-_\/\\]/g, ' ')
+        .replace(/[,.\-_\/\\()[\]{}]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 
@@ -5158,38 +5320,25 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       let bestMatch = null;
       let bestScore = 0;
 
+      // 모든 제품과 매칭 점수 계산
       products.forEach(product => {
-        let score = 0;
-
-        // 공통 검색 함수 사용
-        if (matchesSearchQuery(product.name, searchText)) {
-          const searchWords = searchText.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
-          // 일치하는 단어가 많을수록 점수 증가
-          searchWords.forEach(word => {
-            if (normalizeText(product.name).includes(normalizeText(word))) {
-              score += word.length;
-            }
-          });
-
-          // 완전 일치 시 보너스 점수
-          if (normalizeText(product.name).includes(normalizeText(searchText))) {
-            score += 10;
-          }
-        }
-
+        const score = calculateMatchScore(product.name, searchText);
         if (score > bestScore) {
           bestScore = score;
           bestMatch = product;
         }
       });
 
+      // 최소 점수 기준 (너무 낮은 점수는 매칭 실패로 처리)
+      const MIN_MATCH_SCORE = 15;
+
       results.push({
         originalText: cleanLine,
         searchText,
         quantity,
-        matchedProduct: bestMatch,
+        matchedProduct: bestScore >= MIN_MATCH_SCORE ? bestMatch : null,
         score: bestScore,
-        selected: bestScore > 0
+        selected: bestScore >= MIN_MATCH_SCORE
       });
     });
 
