@@ -5511,12 +5511,12 @@ MVB 64 Y R 2개`}
 }
 
 // ==================== 주문 확인 페이지 ====================
-function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, onSaveCart, customers = [], onBack }) {
+function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, initialCustomer, onSaveCart, customers = [], onBack }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerName, setCustomerName] = useState(initialCustomer?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(initialCustomer?.phone || '');
+  const [customerAddress, setCustomerAddress] = useState(initialCustomer?.address || '');
   const [memo, setMemo] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -7868,6 +7868,7 @@ export default function PriceCalculator() {
   const [activeTab, setActiveTab] = useState('catalog');
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [orderInitialCustomer, setOrderInitialCustomer] = useState(null); // 주문서 초기 고객 정보
   const [currentPage, setCurrentPage] = useState('main'); // main, history, admin
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -8133,6 +8134,8 @@ export default function PriceCalculator() {
 
       const newCart = {
         name,
+        phone: phone || null,
+        address: address || null,
         items: cart.map(item => ({ ...item })),
         total,
         price_type: priceType,
@@ -8934,9 +8937,15 @@ export default function PriceCalculator() {
         onDelete={deleteSavedCart}
         onDeleteAll={deleteSavedCartAll}
         onUpdate={updateSavedCart}
-        onOrder={(cart) => {
+        onOrder={(savedCart) => {
           // 장바구니 불러오기 후 주문서 모달 열기
-          loadSavedCart(cart);
+          loadSavedCart(savedCart);
+          // 저장된 고객 정보 설정
+          setOrderInitialCustomer({
+            name: savedCart.name || '',
+            phone: savedCart.phone || '',
+            address: savedCart.address || ''
+          });
           setIsSavedCartsModalOpen(false);
           setIsOrderModalOpen(true);
         }}
@@ -9694,6 +9703,7 @@ export default function PriceCalculator() {
           onRemoveItem={removeFromCart}
           onAddItem={addToCart}
           products={priceData}
+          initialCustomer={orderInitialCustomer}
           onSaveCart={(data) => {
             const isObject = typeof data === 'object';
             setSaveCartCustomerName(isObject ? (data.name || '') : (data || ''));
@@ -9702,7 +9712,7 @@ export default function PriceCalculator() {
             setIsSaveCartModalOpen(true);
           }}
           customers={customers}
-          onBack={() => setIsOrderModalOpen(false)}
+          onBack={() => { setIsOrderModalOpen(false); setOrderInitialCustomer(null); }}
         />
       )}
 

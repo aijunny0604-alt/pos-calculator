@@ -24,7 +24,15 @@ ADD COLUMN IF NOT EXISTS memo TEXT;
 ALTER TABLE saved_carts
 ADD COLUMN IF NOT EXISTS reminded BOOLEAN DEFAULT false;
 
--- 6. 인덱스 생성 (빠른 조회를 위해)
+-- 6. phone 컬럼 추가 (전화번호)
+ALTER TABLE saved_carts
+ADD COLUMN IF NOT EXISTS phone TEXT;
+
+-- 7. address 컬럼 추가 (주소)
+ALTER TABLE saved_carts
+ADD COLUMN IF NOT EXISTS address TEXT;
+
+-- 8. 인덱스 생성 (빠른 조회를 위해)
 CREATE INDEX IF NOT EXISTS idx_saved_carts_delivery_date ON saved_carts(delivery_date);
 CREATE INDEX IF NOT EXISTS idx_saved_carts_status ON saved_carts(status);
 CREATE INDEX IF NOT EXISTS idx_saved_carts_priority ON saved_carts(priority);
@@ -39,4 +47,6 @@ BEGIN
   RAISE NOTICE '  - priority (TEXT): 우선순위 (normal/high)';
   RAISE NOTICE '  - memo (TEXT): 메모';
   RAISE NOTICE '  - reminded (BOOLEAN): 알림 전송 여부';
+  RAISE NOTICE '  - phone (TEXT): 전화번호';
+  RAISE NOTICE '  - address (TEXT): 주소';
 END $$;
