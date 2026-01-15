@@ -4598,6 +4598,8 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
 // ==================== 장바구니 저장 모달 ====================
 function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerName = '', onBack, onCloseAll }) {
   const [cartName, setCartName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [status, setStatus] = useState('pending');
   const [priority, setPriority] = useState('normal');
@@ -4622,6 +4624,8 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
     setStatus('pending');
     setPriority('normal');
     setMemo('');
+    setCustomerPhone('');
+    setCustomerAddress('');
   }, [customerName, isOpen]);
 
   // ESC 키 이벤트 (Enter는 폼 제출로 처리)
@@ -4645,6 +4649,8 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
     if (!cartName.trim()) return;
     await onSave({
       name: cartName.trim(),
+      phone: customerPhone.trim(),
+      address: customerAddress.trim(),
       deliveryDate,
       status,
       priority,
@@ -4678,7 +4684,7 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
 
         <div className="p-5 max-h-[80vh] overflow-y-auto">
           <div className="mb-4">
-            <label className="block text-slate-400 text-sm mb-2">저장 이름</label>
+            <label className="block text-slate-400 text-sm mb-2">저장 이름 (업체명)</label>
             <input
               type="text"
               value={cartName}
@@ -4688,6 +4694,30 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
               autoFocus
               onFocus={(e) => e.target.select()}
             />
+          </div>
+
+          {/* 전화번호 & 주소 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-2">전화번호</label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="010-0000-0000"
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-2">주소</label>
+              <input
+                type="text"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                placeholder="배송 주소 입력"
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
           </div>
 
           {/* 배송 예정일 */}
@@ -8084,6 +8114,8 @@ export default function PriceCalculator() {
       // 기존 string으로 전달된 경우 하위 호환성 유지
       const isLegacyFormat = typeof cartData === 'string';
       const name = isLegacyFormat ? cartData : cartData.name;
+      const phone = isLegacyFormat ? '' : (cartData.phone || '');
+      const address = isLegacyFormat ? '' : (cartData.address || '');
       const deliveryDate = isLegacyFormat ? null : cartData.deliveryDate;
       const status = isLegacyFormat ? 'scheduled' : cartData.status;
       const priority = isLegacyFormat ? 'normal' : cartData.priority;
@@ -8121,13 +8153,30 @@ export default function PriceCalculator() {
             // 신규 업체 등록
             const newCustomer = await supabase.addCustomer({
               name: name.trim(),
-              phone: null,
-              address: null,
+              phone: phone || null,
+              address: address || null,
               memo: `자동 등록 - 장바구니 저장 (${new Date().toLocaleDateString()})`
             });
             if (newCustomer) {
               setCustomers(prev => [...prev, newCustomer]);
               console.log('✅ 신규 거래처 자동 등록 (장바구니):', name);
+            }
+          } else if (existingCustomer && (phone || address)) {
+            // 기존 업체인데 전화번호/주소가 없으면 업데이트
+            const needsUpdate = (!existingCustomer.phone && phone) || (!existingCustomer.address && address);
+            if (needsUpdate) {
+              try {
+                const updatedCustomer = await supabase.updateCustomer(existingCustomer.id, {
+                  phone: phone || existingCustomer.phone,
+                  address: address || existingCustomer.address
+                });
+                if (updatedCustomer) {
+                  setCustomers(prev => prev.map(c => c.id === existingCustomer.id ? updatedCustomer : c));
+                  console.log('✅ 기존 거래처 정보 업데이트:', name);
+                }
+              } catch (err) {
+                console.log('거래처 정보 업데이트 실패:', err);
+              }
             }
           }
         } catch (err) {
