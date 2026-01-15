@@ -8262,10 +8262,10 @@ function WelcomeSplash({ onComplete }) {
       <div
         className="absolute bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
         style={{
-          top: '-150px',
-          left: '-150px',
-          right: '-150px',
-          bottom: '-150px'
+          top: '-200px',
+          left: '-200px',
+          right: '-200px',
+          bottom: '-300px'
         }}
       />
 
