@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square, Maximize2, Minimize2 } from 'lucide-react';
 
 // ==================== 공통 검색 함수 ====================
 const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
@@ -8247,6 +8247,7 @@ export default function PriceCalculator() {
   const [activeTab, setActiveTab] = useState('catalog');
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isCartExpandedModal, setIsCartExpandedModal] = useState(false); // 주문 목록 확대 모달
   const [orderInitialCustomer, setOrderInitialCustomer] = useState(null); // 주문서 초기 고객 정보
   const [currentPage, setCurrentPage] = useState('main'); // main, history, admin
   const [orders, setOrders] = useState([]);
@@ -9695,6 +9696,13 @@ export default function PriceCalculator() {
                   <h2 className="text-sm font-semibold text-white">주문 목록</h2>
                   <span className="text-xs text-emerald-300 bg-emerald-800/50 px-2 py-0.5 rounded-full">{cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개</span>
                 </div>
+                <button
+                  onClick={() => setIsCartExpandedModal(true)}
+                  className="p-1.5 hover:bg-emerald-700/50 rounded-lg transition-colors"
+                  title="전체보기"
+                >
+                  <Maximize2 className="w-4 h-4 text-emerald-400" />
+                </button>
               </div>
 
               <div className="max-h-[calc(100vh-280px)] overflow-y-auto order-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
@@ -9820,6 +9828,141 @@ export default function PriceCalculator() {
           toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
         } text-white font-medium animate-fade-in`}>
           {toast.message}
+        </div>
+      )}
+
+      {/* 주문 목록 확대 모달 */}
+      {isCartExpandedModal && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
+          onClick={() => setIsCartExpandedModal(false)}
+        >
+          <div
+            className="bg-gradient-to-br from-emerald-900 to-teal-900 rounded-2xl border border-emerald-500/50 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="px-6 py-4 border-b border-emerald-700/50 flex items-center justify-between bg-emerald-950/50">
+              <div className="flex items-center gap-3">
+                <ShoppingCart className="w-6 h-6 text-emerald-400" />
+                <h2 className="text-xl font-bold text-white">주문 목록</h2>
+                <span className="text-sm text-emerald-300 bg-emerald-800/50 px-3 py-1 rounded-full">
+                  {cart.length}종 / {cart.reduce((sum, item) => sum + item.quantity, 0)}개
+                </span>
+              </div>
+              <button
+                onClick={() => setIsCartExpandedModal(false)}
+                className="p-2 hover:bg-emerald-700/50 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-emerald-400" />
+              </button>
+            </div>
+
+            {/* 내용 */}
+            <div className="max-h-[calc(90vh-200px)] overflow-y-auto p-4">
+              {cart.length === 0 ? (
+                <div className="py-16 text-center">
+                  <ShoppingCart className="w-16 h-16 text-emerald-700 mx-auto mb-4" />
+                  <p className="text-emerald-400/70 text-lg">주문 목록이 비어있습니다</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {cart.map(item => {
+                    const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+                    const itemTotal = price * item.quantity;
+                    const baseStock = item.stock !== undefined ? item.stock : 50;
+                    const remainingStock = baseStock - item.quantity;
+                    return (
+                      <div key={item.id} className="bg-emerald-950/60 rounded-xl p-4 hover:bg-emerald-900/50 transition-colors group relative border border-emerald-800/50">
+                        {/* 삭제 버튼 */}
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+
+                        {/* 상품명 + 남은재고 */}
+                        <div className="mb-3">
+                          <p className="text-white text-sm font-medium line-clamp-2 pr-6 min-h-[40px]">{item.name}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded mt-1 inline-block ${remainingStock <= 0 ? 'bg-red-600/30 text-red-400' : remainingStock <= 5 ? 'bg-yellow-600/30 text-yellow-400' : 'bg-slate-600/30 text-slate-400'}`}>
+                            {remainingStock <= 0 ? '마지막 재고' : `잔여 ${remainingStock}개`}
+                          </span>
+                        </div>
+
+                        {/* 단가 */}
+                        <p className="text-emerald-400/70 text-xs mb-2">단가: {formatPrice(price)}</p>
+
+                        {/* 수량 조절 */}
+                        <div className="flex items-center justify-center gap-1 bg-emerald-800/50 rounded-lg px-2 py-1 mb-3">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-emerald-700 rounded text-emerald-300 transition-colors"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              if (val >= 0) updateQuantity(item.id, val);
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            className="w-14 h-8 text-center text-white text-lg font-bold bg-transparent border-none focus:outline-none focus:bg-emerald-700/50 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-emerald-700 rounded text-emerald-300 transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* 소계 */}
+                        <p className="text-emerald-400 text-base font-bold text-center">{formatPrice(itemTotal)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 하단 요약 */}
+            {cart.length > 0 && (
+              <div className="p-4 border-t border-emerald-700/50 bg-emerald-950/50">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-emerald-300/70 text-sm">
+                    <p>공급가 {formatPrice(calcExVat(totalAmount))}</p>
+                    <p>VAT {formatPrice(totalAmount - calcExVat(totalAmount))}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-emerald-400/70 text-sm">총 금액</p>
+                    <p className="text-3xl font-bold text-white">{formatPrice(totalAmount)}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCart([])}
+                    className="py-3 px-6 bg-emerald-800/50 hover:bg-emerald-700/50 text-emerald-200 rounded-xl text-sm font-medium transition-all"
+                  >
+                    초기화
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCartExpandedModal(false);
+                      setIsOrderModalOpen(true);
+                    }}
+                    className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/50"
+                  >
+                    <Calculator className="w-5 h-5" />
+                    주문 확인
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
