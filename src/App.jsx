@@ -2173,7 +2173,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
 // ==================== 저장된 장바구니 모달 ====================
 // ==================== 저장된 장바구니 페이지 ====================
-function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, products = [], formatPrice, onBack }) {
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], formatPrice, onBack }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -2722,14 +2722,21 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, p
                       
                       {!selectMode && (
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); onLoad(cart); onBack(); }}
                             className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors"
                           >
                             <Download className="w-4 h-4" />
                             불러오기
                           </button>
-                          <button 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (onOrder) onOrder(cart); }}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors"
+                          >
+                            <FileText className="w-4 h-4" />
+                            주문확인
+                          </button>
+                          <button
                             onClick={(e) => { e.stopPropagation(); setDeleteConfirm(index); }}
                             className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 text-sm transition-colors"
                           >
@@ -8927,6 +8934,12 @@ export default function PriceCalculator() {
         onDelete={deleteSavedCart}
         onDeleteAll={deleteSavedCartAll}
         onUpdate={updateSavedCart}
+        onOrder={(cart) => {
+          // 장바구니 불러오기 후 주문서 모달 열기
+          loadSavedCart(cart);
+          setIsSavedCartsModalOpen(false);
+          setIsOrderModalOpen(true);
+        }}
         products={products}
         formatPrice={formatPrice}
         onBack={() => setIsSavedCartsModalOpen(false)}
