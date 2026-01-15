@@ -3241,8 +3241,8 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col select-none">
       {/* 헤더 */}
-      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none" style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top, 0px))' }}>
-        <div className="w-full px-4 py-3">
+      <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}>
+        <div className="w-full px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
