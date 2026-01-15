@@ -3605,7 +3605,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   
   // 고객 정보 수정 시작
   const startEditCustomer = (customerName) => {
-    const customer = customers.find(c => c.name === customerName);
+    const customer = (customers || []).find(c => c?.name === customerName);
     if (customer) {
       setEditingCustomer(customer.id);
       setTempAddress(customer.address || '');
@@ -5570,8 +5570,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
 
   // 거래처 검색 결과
   const customerSuggestions = customerName.length >= 1
-    ? customers.filter(c => 
-        c.name.toLowerCase().replace(/\s/g, '').includes(customerName.toLowerCase().replace(/\s/g, ''))
+    ? (customers || []).filter(c =>
+        c?.name?.toLowerCase().replace(/\s/g, '').includes(customerName.toLowerCase().replace(/\s/g, ''))
       ).slice(0, 6)
     : [];
 
@@ -5667,8 +5667,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     
     const success = await onSaveOrder(orderData);
     if (success) {
-      const isNewCustomer = customerName && !selectedCustomerId && 
-        !customers.find(c => c.name.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, ''));
+      const isNewCustomer = customerName && !selectedCustomerId &&
+        !(customers || []).find(c => c?.name?.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, ''));
       
       let message = `✅ 주문이 저장되었습니다!\n\n주문번호: ${orderNumber}\n총 금액: ${formatPrice(currentTotal)}`;
       if (isNewCustomer) {
