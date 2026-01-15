@@ -8166,7 +8166,7 @@ export default function PriceCalculator() {
 
         setSavedCarts(prev => [savedCart, ...prev]);
         setCart([]); // 장바구니 초기화
-        showToast(`💾 "${name}" 저장됨! (장바구니 초기화)`);
+        showToast(`💾 "${name}" 저장됨!`);
       } else {
         console.error('저장 실패 - result:', result);
         showToast('❌ 저장 실패', 'error');
