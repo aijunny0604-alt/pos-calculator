@@ -8297,13 +8297,16 @@ function WelcomeSplash({ onComplete }) {
         </div>
 
         {/* 메인 타이틀 */}
-        <h1 className={`text-4xl md:text-5xl font-black bg-gradient-to-r from-white via-emerald-200 to-teal-200 bg-clip-text text-transparent mb-3 transition-all duration-700 delay-100 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-          POS 재고관리
+        <h1 className={`text-3xl md:text-4xl font-black bg-gradient-to-r from-white via-emerald-200 to-teal-200 bg-clip-text text-transparent mb-3 transition-all duration-700 delay-100 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+          영준이의 POS 재고관리
         </h1>
 
         {/* 서브 타이틀 */}
-        <p className={`text-lg text-emerald-400/80 font-medium tracking-wider mb-6 transition-all duration-700 delay-200 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+        <p className={`text-lg text-emerald-400/80 font-medium tracking-wider mb-2 transition-all duration-700 delay-200 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
           INVENTORY MANAGEMENT SYSTEM
+        </p>
+        <p className={`text-xs text-slate-500 mb-6 transition-all duration-700 delay-300 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+          v9.0.0
         </p>
 
         {/* 로딩 바 */}
@@ -9485,10 +9488,10 @@ export default function PriceCalculator() {
                 <Package className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-base font-bold text-amber-400">POS 재고관리 시스템</h1>
+                <h1 className="text-base font-bold text-amber-400">영준이의 POS <span className="text-amber-500/70 text-xs font-normal">v9.0</span></h1>
               </div>
               <div className="sm:hidden">
-                <h1 className="text-xs xs:text-sm font-bold text-amber-400">POS</h1>
+                <h1 className="text-xs xs:text-sm font-bold text-amber-400">영준 POS</h1>
               </div>
               {/* 온라인 상태 표시 */}
               <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${

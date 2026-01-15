@@ -1,7 +1,7 @@
 {
-  "name": "POS 단가표",
-  "short_name": "POS",
-  "description": "POS 단가표 및 주문 관리 시스템",
+  "name": "영준이의 POS 재고관리",
+  "short_name": "영준 POS",
+  "description": "영준이의 POS 재고관리 시스템 v9.0",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e293b",
