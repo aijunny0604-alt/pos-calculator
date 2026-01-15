@@ -6,6 +6,9 @@ import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, M
 // ==================== 공통 검색 함수 ====================
 const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
 
+// 검색창 클릭 시 전체 선택
+const handleSearchFocus = (e) => e.target.select();
+
 const matchesSearchQuery = (productName, searchTerm) => {
   if (!searchTerm || !searchTerm.trim()) return true;
 
@@ -1950,6 +1953,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                   type="text"
                   value={productSearchTerm}
                   onChange={(e) => setProductSearchTerm(e.target.value)}
+                  onFocus={handleSearchFocus}
                   placeholder="제품명 검색..."
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -2612,6 +2616,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                 placeholder="이름, 상품명 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={handleSearchFocus}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
             </div>
@@ -2878,6 +2883,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                     type="text"
                     value={productSearchTermDetail}
                     onChange={(e) => setProductSearchTermDetail(e.target.value)}
+                    onFocus={handleSearchFocus}
                     placeholder="제품명 검색..."
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -3299,6 +3305,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={handleSearchFocus}
                   placeholder="업체명, 주소, 전화번호로 검색..."
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -4516,6 +4523,7 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={handleSearchFocus}
                 placeholder="제품 검색..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
@@ -5602,6 +5610,7 @@ MVB 64 Y R 2개`}
                               type="text"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
+                              onFocus={handleSearchFocus}
                               placeholder="제품명 검색..."
                               autoFocus
                               className="w-full pl-10 pr-4 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
@@ -5954,7 +5963,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                   setShowCustomerSuggestions(true);
                   setSelectedCustomerId(null);
                 }}
-                onFocus={() => setShowCustomerSuggestions(true)}
+                onFocus={(e) => { handleSearchFocus(e); setShowCustomerSuggestions(true); }}
                 placeholder="고객명 또는 업체명 검색..."
                 className={`w-full px-3 py-2 bg-slate-900/50 border rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedCustomerId ? 'border-emerald-500' : 'border-slate-600'}`}
               />
@@ -6036,7 +6045,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                 setProductSearch(e.target.value);
                 setShowSearchResults(true);
               }}
-              onFocus={() => setShowSearchResults(true)}
+              onFocus={(e) => { handleSearchFocus(e); setShowSearchResults(true); }}
               placeholder="제품 추가 검색..."
               className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
             />
@@ -6159,6 +6168,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                             type="text"
                             value={changeSearchQuery}
                             onChange={(e) => setChangeSearchQuery(e.target.value)}
+                            onFocus={handleSearchFocus}
                             placeholder="변경할 제품 검색..."
                             className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none"
                             autoFocus
@@ -6797,6 +6807,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={handleSearchFocus}
                   placeholder="제품 검색..."
                   className="w-full pl-9 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 text-sm"
                 />
@@ -6822,6 +6833,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   type="text"
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
+                  onFocus={handleSearchFocus}
                   placeholder="거래처 검색..."
                   className="w-full pl-9 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 text-sm"
                 />
@@ -8028,6 +8040,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                 placeholder="주문번호, 고객명, 연락처 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={handleSearchFocus}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -9543,6 +9556,7 @@ export default function PriceCalculator() {
                 placeholder="제품명 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={handleSearchFocus}
                 className="w-full h-full pl-9 pr-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
