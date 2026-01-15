@@ -8255,9 +8255,18 @@ function WelcomeSplash({ onComplete }) {
   }, [onComplete]);
 
   return (
-    <div className={`fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-500 ${phase >= 4 ? 'opacity-0' : 'opacity-100'}`}>
-      {/* 배경 그라데이션 */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-500 ${phase >= 4 ? 'opacity-0' : 'opacity-100'}`}
+      style={{
+        minHeight: '100dvh',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)'
+      }}
+    >
+      {/* 배경 그라데이션 - 전체 화면 커버 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" style={{ minHeight: '100dvh' }} />
 
       {/* 애니메이션 파티클 배경 */}
       <div className="absolute inset-0 overflow-hidden">

@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========== 전체 화면 높이 (모바일 safe area 대응) ========== */
+html, body, #root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #1e293b;
+}
+
 /* ========== 전역 스크롤바 스타일 ========== */
 
 /* 기본 스크롤바 - 모든 요소에 적용 */
