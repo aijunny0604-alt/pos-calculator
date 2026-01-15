@@ -6218,6 +6218,12 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '', memo: '' });
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(null);
 
+  // 선택 삭제 관련 state
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
   // 인라인 편집 시작
   const startInlineEdit = (product, field) => {
     const value = field === 'wholesale' || field === 'retail' 
@@ -6286,11 +6292,58 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     }
   };
 
+  // 선택 삭제 함수들
+  const toggleProductSelect = (productId) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const toggleCustomerSelect = (customerId) => {
+    setSelectedCustomers(prev =>
+      prev.includes(customerId) ? prev.filter(id => id !== customerId) : [...prev, customerId]
+    );
+  };
+
+  const selectAllProducts = () => {
+    const allIds = filteredProducts.map(p => p.id);
+    setSelectedProducts(prev => prev.length === allIds.length ? [] : allIds);
+  };
+
+  const selectAllCustomers = () => {
+    const allIds = filteredCustomers.map(c => c.id);
+    setSelectedCustomers(prev => prev.length === allIds.length ? [] : allIds);
+  };
+
+  const handleBulkDelete = async () => {
+    if (activeTab === 'products' && selectedProducts.length > 0) {
+      for (const id of selectedProducts) {
+        await onDeleteProduct(id);
+      }
+      setSelectedProducts([]);
+    } else if (activeTab === 'customers' && selectedCustomers.length > 0) {
+      for (const id of selectedCustomers) {
+        await onDeleteCustomer(id);
+      }
+      setSelectedCustomers([]);
+    }
+    setShowBulkDeleteConfirm(false);
+    setSelectMode(false);
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedProducts([]);
+    setSelectedCustomers([]);
+  };
+
   // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (inlineEdit) {
+        if (selectMode) {
+          exitSelectMode();
+        } else if (inlineEdit) {
           setInlineEdit(null);
         } else if (customerInlineEdit) {
           setCustomerInlineEdit(null);
@@ -6308,6 +6361,8 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
           setDeleteConfirm(null);
         } else if (deleteCustomerConfirm) {
           setDeleteCustomerConfirm(null);
+        } else if (showBulkDeleteConfirm) {
+          setShowBulkDeleteConfirm(false);
         } else {
           onBack();
         }
@@ -6491,12 +6546,36 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                     <Plus className="w-4 h-4" />
                     제품추가
                   </button>
+                  {!selectMode ? (
+                    <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                      선택삭제
+                    </button>
+                  ) : (
+                    <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm font-medium transition-colors">
+                      <X className="w-4 h-4" />
+                      취소
+                    </button>
+                  )}
                 </>
               ) : (
-                <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
-                  <Plus className="w-4 h-4" />
-                  거래처추가
-                </button>
+                <>
+                  <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
+                    <Plus className="w-4 h-4" />
+                    거래처추가
+                  </button>
+                  {!selectMode ? (
+                    <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                      선택삭제
+                    </button>
+                  ) : (
+                    <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm font-medium transition-colors">
+                      <X className="w-4 h-4" />
+                      취소
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -6598,11 +6677,43 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
           {activeTab === 'products' ? (
             <>
         {/* 제품 테이블 */}
+        {/* 선택 모드 바 */}
+        {selectMode && activeTab === 'products' && (
+          <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={selectAllProducts}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-colors"
+              >
+                {selectedProducts.length === filteredProducts.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                전체선택
+              </button>
+              <span className="text-red-400 text-sm font-medium">{selectedProducts.length}개 선택됨</span>
+            </div>
+            {selectedProducts.length > 0 && (
+              <button
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                {selectedProducts.length}개 삭제
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="bg-slate-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead className="bg-slate-700/50">
                 <tr>
+                  {selectMode && (
+                    <th className="px-3 py-3 text-center w-10">
+                      <button onClick={selectAllProducts} className="text-slate-400 hover:text-white">
+                        {selectedProducts.length === filteredProducts.length ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                      </button>
+                    </th>
+                  )}
                   <th onClick={() => handleSort('name')} className="px-4 py-3 text-left text-sm font-semibold text-slate-300 cursor-pointer hover:bg-slate-700 whitespace-nowrap min-w-[150px]">
                     제품명 {sortField === 'name' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
@@ -6627,7 +6738,15 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   const isLowStock = stock > 0 && stock <= minStock;
                   
                   return (
-                    <tr key={product.id} className={`hover:bg-slate-700/30 transition-colors ${isOutOfStock ? 'bg-red-900/10' : isLowStock ? 'bg-yellow-900/10' : ''}`}>
+                    <tr key={product.id} className={`hover:bg-slate-700/30 transition-colors ${isOutOfStock ? 'bg-red-900/10' : isLowStock ? 'bg-yellow-900/10' : ''} ${selectMode && selectedProducts.includes(product.id) ? 'bg-red-900/20' : ''}`}>
+                      {/* 체크박스 */}
+                      {selectMode && (
+                        <td className="px-3 py-3 text-center">
+                          <button onClick={() => toggleProductSelect(product.id)} className="text-slate-400 hover:text-white">
+                            {selectedProducts.includes(product.id) ? <CheckSquare className="w-5 h-5 text-red-400" /> : <Square className="w-5 h-5" />}
+                          </button>
+                        </td>
+                      )}
                       {/* 제품명 - 인라인 편집 */}
                       <td className="px-4 py-3">
                         {inlineEdit?.id === product.id && inlineEdit?.field === 'name' ? (
@@ -6766,12 +6885,44 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         ) : (
           /* 거래처 관리 탭 */
           <>
+            {/* 선택 모드 바 */}
+            {selectMode && activeTab === 'customers' && (
+              <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={selectAllCustomers}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-colors"
+                  >
+                    {selectedCustomers.length === filteredCustomers.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                    전체선택
+                  </button>
+                  <span className="text-red-400 text-sm font-medium">{selectedCustomers.length}개 선택됨</span>
+                </div>
+                {selectedCustomers.length > 0 && (
+                  <button
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {selectedCustomers.length}개 삭제
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* 거래처 목록 */}
             <div className="bg-slate-800 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[650px]">
                   <thead>
                     <tr className="bg-slate-700/50 border-b border-slate-600">
+                      {selectMode && (
+                        <th className="px-3 py-3 text-center w-10">
+                          <button onClick={selectAllCustomers} className="text-slate-400 hover:text-white">
+                            {selectedCustomers.length === filteredCustomers.length ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                          </button>
+                        </th>
+                      )}
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[120px]">업체명</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[120px]">연락처</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[180px]">주소</th>
@@ -6781,7 +6932,15 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   </thead>
                   <tbody>
                     {filteredCustomers.map((customer, index) => (
-                      <tr key={customer.id} className={`border-b border-slate-700 hover:bg-slate-700/50 transition-colors ${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}`}>
+                      <tr key={customer.id} className={`border-b border-slate-700 hover:bg-slate-700/50 transition-colors ${index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'} ${selectMode && selectedCustomers.includes(customer.id) ? 'bg-red-900/20' : ''}`}>
+                        {/* 체크박스 */}
+                        {selectMode && (
+                          <td className="px-3 py-3 text-center">
+                            <button onClick={() => toggleCustomerSelect(customer.id)} className="text-slate-400 hover:text-white">
+                              {selectedCustomers.includes(customer.id) ? <CheckSquare className="w-5 h-5 text-red-400" /> : <Square className="w-5 h-5" />}
+                            </button>
+                          </td>
+                        )}
                         {/* 업체명 - 인라인 편집 */}
                         <td className="px-4 py-3">
                           {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'name' ? (
@@ -7370,6 +7529,54 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 일괄 삭제 확인 모달 */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowBulkDeleteConfirm(false)} />
+          <div className="relative bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
+            <div className="bg-gradient-to-r from-red-600 to-red-500 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">일괄 삭제 확인</h3>
+                  <p className="text-red-100 text-sm">선택한 항목을 삭제합니다</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-red-400 font-bold text-lg">
+                      {activeTab === 'products' ? `${selectedProducts.length}개 제품` : `${selectedCustomers.length}개 거래처`}를 삭제하시겠습니까?
+                    </p>
+                    <p className="text-red-400/80 text-sm mt-1">이 작업은 되돌릴 수 없습니다.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBulkDeleteConfirm(false)}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  삭제 확인
+                </button>
+              </div>
             </div>
           </div>
         </div>
