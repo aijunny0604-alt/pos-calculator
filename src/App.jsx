@@ -8239,7 +8239,99 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   );
 }
 
+// ==================== 웰컴 스플래시 스크린 ====================
+function WelcomeSplash({ onComplete }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setPhase(1), 100),   // 로고 등장
+      setTimeout(() => setPhase(2), 800),   // 텍스트 등장
+      setTimeout(() => setPhase(3), 1500),  // 서브텍스트
+      setTimeout(() => setPhase(4), 2200),  // 페이드아웃 시작
+      setTimeout(() => onComplete(), 2800), // 완료
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [onComplete]);
+
+  return (
+    <div className={`fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-500 ${phase >= 4 ? 'opacity-0' : 'opacity-100'}`}>
+      {/* 배경 그라데이션 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+
+      {/* 애니메이션 파티클 배경 */}
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-emerald-500/30 rounded-full animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 2}s`,
+              animationDuration: `${2 + Math.random() * 3}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 빛나는 원형 글로우 */}
+      <div className={`absolute w-[600px] h-[600px] rounded-full bg-gradient-to-r from-emerald-600/20 via-teal-500/10 to-transparent blur-3xl transition-all duration-1000 ${phase >= 1 ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} />
+
+      {/* 메인 컨텐츠 */}
+      <div className="relative z-10 text-center">
+        {/* 로고 아이콘 */}
+        <div className={`mb-6 transition-all duration-700 ${phase >= 1 ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-75'}`}>
+          <div className="relative inline-block">
+            {/* 글로우 이펙트 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-3xl blur-xl opacity-50 animate-pulse" />
+            {/* 아이콘 박스 */}
+            <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-900/50">
+              <Package className="w-12 h-12 text-white drop-shadow-lg" />
+            </div>
+            {/* 반짝임 효과 */}
+            <div className={`absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full transition-all duration-500 ${phase >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}>
+              <Sparkles className="w-4 h-4 text-amber-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* 메인 타이틀 */}
+        <h1 className={`text-4xl md:text-5xl font-black bg-gradient-to-r from-white via-emerald-200 to-teal-200 bg-clip-text text-transparent mb-3 transition-all duration-700 delay-100 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+          POS 재고관리
+        </h1>
+
+        {/* 서브 타이틀 */}
+        <p className={`text-lg text-emerald-400/80 font-medium tracking-wider mb-6 transition-all duration-700 delay-200 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+          INVENTORY MANAGEMENT SYSTEM
+        </p>
+
+        {/* 로딩 바 */}
+        <div className={`w-48 h-1 mx-auto bg-slate-800 rounded-full overflow-hidden transition-all duration-500 ${phase >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+          <div
+            className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 rounded-full transition-all duration-1000 ease-out"
+            style={{ width: phase >= 3 ? '100%' : '0%' }}
+          />
+        </div>
+
+        {/* 하단 텍스트 */}
+        <p className={`mt-4 text-sm text-slate-500 transition-all duration-500 ${phase >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+          시스템을 불러오는 중...
+        </p>
+      </div>
+
+      {/* 하단 브랜딩 */}
+      <div className={`absolute bottom-8 left-0 right-0 text-center transition-all duration-500 ${phase >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <p className="text-xs text-slate-600 tracking-widest">
+          POWERED BY <span className="text-emerald-500/70">영준</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function PriceCalculator() {
+  const [showSplash, setShowSplash] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [cart, setCart] = useState([]);
@@ -9337,9 +9429,13 @@ export default function PriceCalculator() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <>
+      {/* 웰컴 스플래시 스크린 */}
+      {showSplash && <WelcomeSplash onComplete={() => setShowSplash(false)} />}
+
+      <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 transition-opacity duration-500 ${showSplash ? 'opacity-0' : 'opacity-100'}`}>
       <CustomStyles />
-      
+
       {/* AI 주문 인식 모달 - 조건부 렌더링 */}
       {showTextAnalyzeModal && (
         <TextAnalyzePage
@@ -10270,5 +10366,6 @@ export default function PriceCalculator() {
         document.body
       )}
     </div>
+    </>
   );
 }
