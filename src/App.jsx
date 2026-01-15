@@ -9025,7 +9025,36 @@ export default function PriceCalculator() {
       <div className="fixed top-[56px] xs:top-[64px] sm:top-[85px] left-2 xs:left-4 right-2 xs:right-4 md:right-[400px] lg:right-[420px] z-30">
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch">
-            <div className="flex-[3] relative">
+            {/* 모바일: 도매가/소비자가 먼저, PC: 검색창 먼저 */}
+            <div className="flex bg-slate-900/50 rounded-lg p-0.5 border border-slate-600 order-first sm:order-last">
+              <button
+                onClick={() => setPriceType('wholesale')}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-medium transition-all ${
+                  priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                도매가
+              </button>
+              <button
+                onClick={() => setPriceType('retail')}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-medium transition-all ${
+                  priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                소비자가
+              </button>
+            </div>
+
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="flex-1 min-w-[100px] px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer order-2 sm:order-2"
+            >
+              <option value="전체">전체</option>
+              {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+
+            <div className="flex-[3] relative order-last sm:order-first">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
@@ -9034,34 +9063,6 @@ export default function PriceCalculator() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full h-full pl-9 pr-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-            </div>
-            
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="flex-1 min-w-[100px] px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            >
-              <option value="전체">전체</option>
-              {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-            
-            <div className="flex bg-slate-900/50 rounded-lg p-0.5 border border-slate-600">
-              <button
-                onClick={() => setPriceType('wholesale')}
-                className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${
-                  priceType === 'wholesale' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                도매가
-              </button>
-              <button
-                onClick={() => setPriceType('retail')}
-                className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${
-                  priceType === 'retail' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                소비자가
-              </button>
             </div>
           </div>
         </div>
