@@ -10620,7 +10620,7 @@ export default function PriceCalculator() {
         />
       )}
 
-      <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 animate-fade-in-down">
+      <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 fixed top-0 left-0 right-0 md:right-[400px] lg:right-[420px] z-40 animate-fade-in-down">
         <div className="w-full px-1.5 xs:px-2 sm:px-4 py-1.5 xs:py-2 sm:py-3">
           <div className="flex items-center justify-between gap-1 xs:gap-2">
             {/* 로고 & 타이틀 */}
@@ -10770,8 +10770,8 @@ export default function PriceCalculator() {
         </div>
       </header>
 
-      {/* 검색바 - 완전 고정 */}
-      <div className="fixed top-[56px] xs:top-[64px] sm:top-[85px] left-2 xs:left-4 right-2 xs:right-4 md:right-[400px] lg:right-[420px] z-30">
+      {/* 검색바 - 헤더 아래 고정 */}
+      <div className="fixed top-[44px] xs:top-[48px] sm:top-[56px] left-2 xs:left-4 right-2 xs:right-4 md:right-[400px] lg:right-[420px] z-30">
         <div className="bg-gradient-to-r from-blue-900/95 to-blue-800/90 backdrop-blur-md rounded-xl p-3 border border-blue-600/50 shadow-lg shadow-blue-900/20">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch">
             {/* 모바일: 도매가/소비자가 먼저, PC: 검색창 먼저 */}
@@ -10818,7 +10818,7 @@ export default function PriceCalculator() {
         </div>
       </div>
 
-      <div className="w-full px-4 pt-[125px] sm:pt-[145px] pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
+      <div className="w-full px-4 pt-[165px] xs:pt-[175px] sm:pt-[180px] pb-48 md:pb-3 md:pr-[400px] lg:pr-[420px]">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 제품 목록 영역 */}
           <div className="flex-1">
