@@ -9057,6 +9057,7 @@ export default function PriceCalculator() {
           createdAt: order.created_at,
           customerName: order.customer_name,
           customerPhone: order.customer_phone,
+          customerAddress: order.customer_address || '',
           priceType: order.price_type,
           items: order.items,
           totalAmount: order.total,
