@@ -821,11 +821,11 @@ const CustomStyles = () => (
     @keyframes scaleIn {
       from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.9) translateY(20px);
       }
       to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateY(0);
       }
     }
     
@@ -989,7 +989,7 @@ const CustomStyles = () => (
     }
     
     .animate-scale-in {
-      animation: scaleIn 0.3s ease-out forwards;
+      animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
     
     .animate-scale-out {
@@ -5925,8 +5925,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+    <div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
       style={{ touchAction: 'none' }}
       onClick={onBack}
       onTouchMove={(e) => {
@@ -5936,7 +5936,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
         }
       }}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
