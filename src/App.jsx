@@ -83,7 +83,27 @@ const supabase = {
         },
         body: JSON.stringify(order)
       });
-      if (!response.ok) throw new Error('Failed to save order');
+      if (!response.ok) {
+        // customer_address 컬럼이 없을 경우 재시도
+        const errorText = await response.text();
+        if (errorText.includes('customer_address') || errorText.includes('column')) {
+          console.log('⚠️ customer_address 컬럼 없음, 재시도...');
+          const { customer_address, ...orderWithoutAddress } = order;
+          const retryResponse = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(orderWithoutAddress)
+          });
+          if (!retryResponse.ok) throw new Error('Failed to save order (retry)');
+          return await retryResponse.json();
+        }
+        throw new Error('Failed to save order');
+      }
       return await response.json();
     } catch (error) {
       console.error('Supabase saveOrder error:', error);
