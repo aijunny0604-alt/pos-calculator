@@ -8364,6 +8364,7 @@ export default function PriceCalculator() {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isCartExpandedModal, setIsCartExpandedModal] = useState(false); // 주문 목록 확대 모달
   const [orderInitialCustomer, setOrderInitialCustomer] = useState(null); // 주문서 초기 고객 정보
+  const [orderFromSavedCart, setOrderFromSavedCart] = useState(null); // 저장된 장바구니에서 주문 시 해당 장바구니 ID
   const [currentPage, setCurrentPage] = useState('main'); // main, history, admin
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -9153,7 +9154,17 @@ export default function PriceCalculator() {
         
         // 주문 완료 후 장바구니 초기화
         setCart([]);
-        
+
+        // 저장된 장바구니에서 주문한 경우, 해당 장바구니 삭제
+        if (orderFromSavedCart) {
+          const success = await supabase.deleteSavedCart(orderFromSavedCart);
+          if (success) {
+            setSavedCarts(prev => prev.filter(c => c.id !== orderFromSavedCart));
+            console.log('✅ 저장된 장바구니 → 주문이력 이전 완료');
+          }
+          setOrderFromSavedCart(null);
+        }
+
         setIsOnline(true);
         return true;
       } else {
@@ -9441,6 +9452,8 @@ export default function PriceCalculator() {
             phone: savedCart.phone || '',
             address: savedCart.address || ''
           });
+          // 주문 완료 시 삭제할 저장된 장바구니 ID 저장
+          setOrderFromSavedCart(savedCart.id || null);
           setIsSavedCartsModalOpen(false);
           setIsOrderModalOpen(true);
         }}
@@ -10356,7 +10369,7 @@ export default function PriceCalculator() {
             setIsSaveCartModalOpen(true);
           }}
           customers={customers}
-          onBack={() => { setIsOrderModalOpen(false); setOrderInitialCustomer(null); }}
+          onBack={() => { setIsOrderModalOpen(false); setOrderInitialCustomer(null); setOrderFromSavedCart(null); }}
         />
       )}
 
