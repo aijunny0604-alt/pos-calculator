@@ -6439,6 +6439,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [showResetStockModal, setShowResetStockModal] = useState(false);
   const [resetStockValue, setResetStockValue] = useState(50);
   const [isResetting, setIsResetting] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 헤더 접기/펼치기
   
   // 인라인 편집 state
   const [inlineEdit, setInlineEdit] = useState(null); // { id, field, value }
@@ -7152,6 +7153,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   )}
                 </>
               ) : null}
+              {/* 접기/펼치기 버튼 */}
+              <button
+                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white"
+                title={isHeaderCollapsed ? '펼치기' : '접기'}
+              >
+                <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isHeaderCollapsed ? 'rotate-180' : ''}`} />
+              </button>
             </div>
             {/* 모바일: 버튼들을 오른쪽에 같은 행에 표시 */}
             <div className="flex sm:hidden items-center gap-1">
@@ -7197,11 +7206,45 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   )}
                 </>
               ) : null}
+              {/* 모바일 접기/펼치기 버튼 */}
+              <button
+                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-300"
+                title={isHeaderCollapsed ? '펼치기' : '접기'}
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isHeaderCollapsed ? 'rotate-180' : ''}`} />
+              </button>
             </div>
           </div>
-          
+
+          {/* 접힌 상태: 요약 정보 */}
+          {isHeaderCollapsed && (
+            <div className="mt-2 flex items-center justify-between text-xs bg-slate-700/30 rounded-lg px-3 py-2">
+              <span className="text-slate-400">
+                {activeTab === 'products' ? (
+                  <>
+                    <span className="text-white font-semibold">{stockStats.total}개</span> ·
+                    <span className="text-emerald-400 ml-1">{stockStats.normalStock}</span> ·
+                    <span className="text-yellow-400">{stockStats.lowStock}</span> ·
+                    <span className="text-orange-400">{stockStats.incoming}</span> ·
+                    <span className="text-red-400">{stockStats.outOfStock}</span>
+                  </>
+                ) : activeTab === 'customers' ? (
+                  <span className="text-white font-semibold">거래처 {filteredCustomers.length}개</span>
+                ) : (
+                  <span className="text-white font-semibold">카테고리 {categories.length - 1}개</span>
+                )}
+              </span>
+              {searchTerm && <span className="text-amber-400">검색: {searchTerm}</span>}
+            </div>
+          )}
+        </div>
+
+        {/* 탭/필터 영역 - 접기/펼치기 */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+          <div className="px-3 sm:px-4 pb-3">
           {/* 탭 메뉴 */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-3">
             <button
               onClick={() => setActiveTab('products')}
               className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
@@ -7307,6 +7350,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             </div>
           </div>
         )}
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto">
