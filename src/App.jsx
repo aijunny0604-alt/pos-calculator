@@ -4460,7 +4460,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
 // ==================== 재고 현황 페이지 ====================
 function StockOverviewPage({ products, categories, formatPrice, onBack }) {
   const [selectedCategory, setSelectedCategory] = useState('전체');
-  const [stockFilter, setStockFilter] = useState('all'); // all, normal, low, out
+  const [stockFilter, setStockFilter] = useState('all'); // all, normal, low, incoming, out
   const [searchTerm, setSearchTerm] = useState('');
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
 
@@ -4484,7 +4484,8 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
     const minStock = p.min_stock || 5;
 
     let matchesStock = true;
-    if (stockFilter === 'out') matchesStock = stock === 0;
+    if (stockFilter === 'out') matchesStock = stock === 0 && p.stock_status !== 'incoming';
+    else if (stockFilter === 'incoming') matchesStock = p.stock_status === 'incoming';
     else if (stockFilter === 'low') matchesStock = stock > 0 && stock <= minStock;
     else if (stockFilter === 'normal') matchesStock = stock > minStock;
 
@@ -4496,7 +4497,8 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
     total: products.length,
     normal: products.filter(p => (p.stock ?? 50) > (p.min_stock || 5)).length,
     low: products.filter(p => (p.stock ?? 50) > 0 && (p.stock ?? 50) <= (p.min_stock || 5)).length,
-    out: products.filter(p => (p.stock ?? 50) === 0).length
+    incoming: products.filter(p => p.stock_status === 'incoming').length,
+    out: products.filter(p => (p.stock ?? 50) === 0 && p.stock_status !== 'incoming').length
   };
   
   return (
@@ -4534,9 +4536,10 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
           {isHeaderCollapsed && (
             <div className="mt-2 flex items-center justify-between text-xs bg-slate-700/30 rounded-lg px-3 py-2">
               <span className="text-slate-400">
-                <span className="text-white font-semibold">{stats.total}개</span> · 
-                <span className="text-emerald-400 ml-1">{stats.normal} 정상</span> · 
-                <span className="text-yellow-400">{stats.low} 부족</span> · 
+                <span className="text-white font-semibold">{stats.total}개</span> ·
+                <span className="text-emerald-400 ml-1">{stats.normal} 정상</span> ·
+                <span className="text-yellow-400">{stats.low} 부족</span> ·
+                <span className="text-orange-400">{stats.incoming} 입고대기</span> ·
                 <span className="text-red-400">{stats.out} 품절</span>
               </span>
               {searchTerm && <span className="text-cyan-400">검색: {searchTerm}</span>}
@@ -4548,22 +4551,26 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
           <div className="px-4 pb-4 pt-2 space-y-3">
             {/* 재고 통계 카드 */}
-            <div className="grid grid-cols-4 gap-2 mt-1">
-              <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
-                <p className="text-slate-400 text-xs mb-0.5">전체</p>
-                <p className="text-lg font-bold text-white">{stats.total}</p>
+            <div className="grid grid-cols-5 gap-1.5 mt-1">
+              <button onClick={() => setStockFilter('all')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'all' ? 'ring-2 ring-white bg-slate-700 border-slate-500' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}>
+                <p className="text-slate-400 text-[10px] mb-0.5">전체</p>
+                <p className="text-base font-bold text-white">{stats.total}</p>
               </button>
-              <button onClick={() => setStockFilter('normal')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30 border-emerald-500' : 'bg-emerald-600/20 border-emerald-600/30 hover:bg-emerald-600/30'}`}>
-                <p className="text-emerald-300 text-xs mb-0.5">정상</p>
-                <p className="text-lg font-bold text-emerald-400">{stats.normal}</p>
+              <button onClick={() => setStockFilter('normal')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'normal' ? 'ring-2 ring-emerald-400 bg-emerald-600/30 border-emerald-500' : 'bg-emerald-600/20 border-emerald-600/30 hover:bg-emerald-600/30'}`}>
+                <p className="text-emerald-300 text-[10px] mb-0.5">정상</p>
+                <p className="text-base font-bold text-emerald-400">{stats.normal}</p>
               </button>
-              <button onClick={() => setStockFilter('low')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30 border-yellow-500' : 'bg-yellow-600/20 border-yellow-600/30 hover:bg-yellow-600/30'}`}>
-                <p className="text-yellow-300 text-xs mb-0.5">부족</p>
-                <p className="text-lg font-bold text-yellow-400">{stats.low}</p>
+              <button onClick={() => setStockFilter('low')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'low' ? 'ring-2 ring-yellow-400 bg-yellow-600/30 border-yellow-500' : 'bg-yellow-600/20 border-yellow-600/30 hover:bg-yellow-600/30'}`}>
+                <p className="text-yellow-300 text-[10px] mb-0.5">부족</p>
+                <p className="text-base font-bold text-yellow-400">{stats.low}</p>
               </button>
-              <button onClick={() => setStockFilter('out')} className={`rounded-lg p-2.5 text-center transition-all border ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30 border-red-500' : 'bg-red-600/20 border-red-600/30 hover:bg-red-600/30'}`}>
-                <p className="text-red-300 text-xs mb-0.5">품절</p>
-                <p className="text-lg font-bold text-red-400">{stats.out}</p>
+              <button onClick={() => setStockFilter('incoming')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'incoming' ? 'ring-2 ring-orange-400 bg-orange-600/30 border-orange-500' : 'bg-orange-600/20 border-orange-600/30 hover:bg-orange-600/30'}`}>
+                <p className="text-orange-300 text-[10px] mb-0.5">입고대기</p>
+                <p className="text-base font-bold text-orange-400">{stats.incoming}</p>
+              </button>
+              <button onClick={() => setStockFilter('out')} className={`rounded-lg p-2 text-center transition-all border ${stockFilter === 'out' ? 'ring-2 ring-red-400 bg-red-600/30 border-red-500' : 'bg-red-600/20 border-red-600/30 hover:bg-red-600/30'}`}>
+                <p className="text-red-300 text-[10px] mb-0.5">품절</p>
+                <p className="text-base font-bold text-red-400">{stats.out}</p>
               </button>
             </div>
             
@@ -4626,13 +4633,15 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
             {filteredProducts.map(product => {
               const stock = product.stock ?? 50;
               const minStock = product.min_stock || 5;
-              const isOut = stock === 0;
+              const isIncoming = product.stock_status === 'incoming';
+              const isOut = stock === 0 && !isIncoming;
               const isLow = stock > 0 && stock <= minStock;
-              
+
               return (
-                <div 
-                  key={product.id} 
+                <div
+                  key={product.id}
                   className={`rounded-xl p-4 border transition-transform hover:scale-[1.02] ${
+                    isIncoming ? 'bg-orange-900/20 border-orange-500/30' :
                     isOut ? 'bg-red-900/20 border-red-500/30' :
                     isLow ? 'bg-yellow-900/20 border-yellow-500/30' :
                     'bg-emerald-900/10 border-emerald-500/20'
@@ -4642,12 +4651,15 @@ function StockOverviewPage({ products, categories, formatPrice, onBack }) {
                   <p className="text-slate-400 text-xs truncate mb-2">{product.category}</p>
                   <div className="flex justify-between items-center">
                     <p className="text-slate-500 text-xs">{formatPrice(product.wholesale)}</p>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 ${
+                      isIncoming ? 'bg-orange-600/30 text-orange-400' :
                       isOut ? 'bg-red-600/30 text-red-400' :
                       isLow ? 'bg-yellow-600/30 text-yellow-400' :
                       'bg-emerald-600/30 text-emerald-400'
                     }`}>
-                      {isOut ? '품절' : `${stock}개`}
+                      {isIncoming ? (
+                        <><span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>입고대기</>
+                      ) : isOut ? '품절' : `${stock}개`}
                     </span>
                   </div>
                 </div>
