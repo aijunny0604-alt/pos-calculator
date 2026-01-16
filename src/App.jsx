@@ -6382,7 +6382,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
 
 // ==================== 관리자 페이지 ====================
 function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeleteProduct, onUpdateStock, formatPrice, isLoading, onRefresh, customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onRefreshCustomers, onResetAllStock }) {
-  const [activeTab, setActiveTab] = useState('products'); // products, customers
+  const [activeTab, setActiveTab] = useState('products'); // products, customers, categories
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -6413,6 +6413,12 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // 카테고리 관리 state
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null); // { oldName, newName }
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
 
   // 인라인 편집 시작
   const startInlineEdit = (product, field) => {
@@ -6537,7 +6543,54 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit]);
 
   const categories = ['전체', ...new Set((products || []).map(p => p.category))];
-  
+  const categoryList = [...new Set((products || []).map(p => p.category))].sort((a, b) => a.localeCompare(b, 'ko'));
+
+  // 카테고리별 제품 수
+  const getCategoryProductCount = (category) => {
+    return (products || []).filter(p => p.category === category).length;
+  };
+
+  // 카테고리 이름 변경 (해당 카테고리의 모든 제품 업데이트)
+  const handleRenameCategory = async () => {
+    if (!editingCategory || !editingCategory.newName.trim()) return;
+    const productsToUpdate = (products || []).filter(p => p.category === editingCategory.oldName);
+    for (const product of productsToUpdate) {
+      await onUpdateProduct(product.id, { category: editingCategory.newName.trim() });
+    }
+    setEditingCategory(null);
+  };
+
+  // 카테고리 삭제 (해당 카테고리의 모든 제품도 삭제)
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    const productsToDelete = (products || []).filter(p => p.category === categoryToDelete);
+    for (const product of productsToDelete) {
+      await onDeleteProduct(product.id);
+    }
+    setCategoryToDelete(null);
+  };
+
+  // 새 카테고리 추가 (빈 제품으로 추가)
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    // 이미 존재하는 카테고리인지 확인
+    if (categoryList.includes(newCategoryName.trim())) {
+      alert('이미 존재하는 카테고리입니다.');
+      return;
+    }
+    // 새 카테고리로 임시 제품 추가
+    await onAddProduct({
+      name: `${newCategoryName.trim()} - 샘플 제품`,
+      category: newCategoryName.trim(),
+      wholesale: 0,
+      retail: 0,
+      stock: 0,
+      min_stock: 5
+    });
+    setNewCategoryName('');
+    setShowAddCategoryModal(false);
+  };
+
   // 재고 일괄 초기화
   const handleResetAllStock = async () => {
     setIsResetting(true);
@@ -6789,13 +6842,24 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             <button
               onClick={() => setActiveTab('customers')}
               className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                activeTab === 'customers' 
-                  ? 'bg-emerald-600 text-white' 
+                activeTab === 'customers'
+                  ? 'bg-emerald-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
               <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1 sm:mr-2" />
               거래처 관리 ({(customers || []).length})
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                activeTab === 'categories'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <List className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1 sm:mr-2" />
+              카테고리 ({categoryList.length})
             </button>
           </div>
         </div>
@@ -6869,7 +6933,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-4">
-          {activeTab === 'products' ? (
+          {activeTab === 'products' && (
             <>
         {/* 제품 테이블 */}
         {/* 선택 모드 바 */}
@@ -7077,7 +7141,9 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
           )}
         </div>
           </>
-        ) : (
+          )}
+
+          {activeTab === 'customers' && (
           /* 거래처 관리 탭 */
           <>
             {/* 선택 모드 바 */}
@@ -7350,6 +7416,166 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
             )}
           </>
         )}
+
+          {/* 카테고리 관리 탭 */}
+          {activeTab === 'categories' && (
+            <>
+              <div className="bg-slate-800 rounded-xl overflow-hidden">
+                {/* 헤더 */}
+                <div className="bg-slate-700/50 px-4 py-3 flex items-center justify-between">
+                  <h3 className="text-white font-semibold">카테고리 목록 ({categoryList.length}개)</h3>
+                  <button
+                    onClick={() => setShowAddCategoryModal(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 rounded-lg text-white text-sm font-medium transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    새 카테고리
+                  </button>
+                </div>
+
+                {/* 카테고리 리스트 */}
+                <div className="divide-y divide-slate-700">
+                  {categoryList.map((category) => (
+                    <div key={category} className="px-4 py-4 flex items-center justify-between hover:bg-slate-700/30 transition-colors">
+                      <div className="flex-1">
+                        {editingCategory?.oldName === category ? (
+                          <input
+                            type="text"
+                            value={editingCategory.newName}
+                            onChange={(e) => setEditingCategory({ ...editingCategory, newName: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameCategory();
+                              if (e.key === 'Escape') setEditingCategory(null);
+                            }}
+                            autoFocus
+                            className="px-3 py-2 bg-slate-900 border border-violet-500 rounded-lg text-white focus:outline-none w-64"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <span className="text-white font-medium">{category}</span>
+                            <span className="text-slate-400 text-sm">({getCategoryProductCount(category)}개 제품)</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {editingCategory?.oldName === category ? (
+                          <>
+                            <button
+                              onClick={handleRenameCategory}
+                              className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 rounded-lg text-white text-sm transition-colors"
+                            >
+                              저장
+                            </button>
+                            <button
+                              onClick={() => setEditingCategory(null)}
+                              className="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-colors"
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : categoryToDelete === category ? (
+                          <>
+                            <span className="text-red-400 text-sm mr-2">삭제하시겠습니까? ({getCategoryProductCount(category)}개 제품도 삭제됨)</span>
+                            <button
+                              onClick={handleDeleteCategory}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm transition-colors"
+                            >
+                              확인
+                            </button>
+                            <button
+                              onClick={() => setCategoryToDelete(null)}
+                              className="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm transition-colors"
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setEditingCategory({ oldName: category, newName: category })}
+                              className="p-2 hover:bg-blue-600/20 rounded-lg text-blue-400 transition-colors"
+                              title="이름 변경"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setCategoryToDelete(category)}
+                              className="p-2 hover:bg-red-600/20 rounded-lg text-red-400 transition-colors"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {categoryList.length === 0 && (
+                  <div className="p-8 text-center text-slate-400">
+                    등록된 카테고리가 없습니다
+                  </div>
+                )}
+              </div>
+
+              {/* 새 카테고리 추가 모달 */}
+              {showAddCategoryModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                  <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-slate-700 shadow-2xl animate-scale-in">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-3 bg-violet-600/20 rounded-xl">
+                        <Plus className="w-6 h-6 text-violet-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">새 카테고리 추가</h3>
+                        <p className="text-slate-400 text-sm">새로운 카테고리를 생성합니다</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-slate-300 font-medium mb-2">카테고리 이름</label>
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddCategory();
+                            if (e.key === 'Escape') { setShowAddCategoryModal(false); setNewCategoryName(''); }
+                          }}
+                          placeholder="예: 신규 브랜드"
+                          autoFocus
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <p className="text-slate-500 text-sm">
+                        * 카테고리 생성 시 샘플 제품이 함께 추가됩니다. 이후 제품을 수정하거나 삭제하세요.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3 mt-6">
+                      <button
+                        onClick={() => { setShowAddCategoryModal(false); setNewCategoryName(''); }}
+                        className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={handleAddCategory}
+                        disabled={!newCategoryName.trim()}
+                        className={`flex-1 py-3 rounded-xl text-white font-medium transition-colors ${
+                          newCategoryName.trim() ? 'bg-violet-600 hover:bg-violet-500' : 'bg-slate-600 cursor-not-allowed'
+                        }`}
+                      >
+                        추가
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
       </div>
       </div>
 
