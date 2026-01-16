@@ -7163,45 +7163,45 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               </button>
             </div>
             {/* 모바일: 버튼들을 오른쪽에 같은 행에 표시 */}
-            <div className="flex sm:hidden items-center gap-1">
-              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors" title="새로고침">
+            <div className="flex sm:hidden items-center gap-0.5 flex-shrink-0">
+              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1 hover:bg-slate-700 rounded transition-colors" title="새로고침">
                 <RefreshCw className={`w-4 h-4 text-white ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               {activeTab === 'products' ? (
                 <>
-                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1 px-2 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-xs font-medium transition-colors">
-                    <Plus className="w-3.5 h-3.5" />
+                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-0.5 px-1.5 py-1 bg-amber-600 hover:bg-amber-500 rounded text-white text-[10px] font-medium transition-colors">
+                    <Plus className="w-3 h-3" />
                     추가
                   </button>
-                  <button onClick={() => setShowCsvModal(true)} className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors" title="CSV">
-                    <Upload className="w-3.5 h-3.5" />
+                  <button onClick={() => setShowCsvModal(true)} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white transition-colors" title="CSV">
+                    <Upload className="w-3 h-3" />
                   </button>
                   {!selectMode ? (
-                    <button onClick={() => setSelectMode(true)} className="p-1.5 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 transition-colors" title="선택삭제">
-                      <Trash2 className="w-3.5 h-3.5" />
+                    <button onClick={() => setSelectMode(true)} className="p-1 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded text-red-400 transition-colors" title="선택삭제">
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   ) : (
-                    <button onClick={exitSelectMode} className="p-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white transition-colors" title="취소">
-                      <X className="w-3.5 h-3.5" />
+                    <button onClick={exitSelectMode} className="p-1 bg-slate-600 hover:bg-slate-500 rounded text-white transition-colors" title="취소">
+                      <X className="w-3 h-3" />
                     </button>
                   )}
                 </>
               ) : activeTab === 'customers' ? (
                 <>
-                  <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-xs font-medium transition-colors">
-                    <Plus className="w-3.5 h-3.5" />
+                  <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-0.5 px-1.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-white text-[10px] font-medium transition-colors">
+                    <Plus className="w-3 h-3" />
                     추가
                   </button>
-                  <button onClick={() => setShowCustomerCsvModal(true)} className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors" title="CSV">
-                    <Upload className="w-3.5 h-3.5" />
+                  <button onClick={() => setShowCustomerCsvModal(true)} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white transition-colors" title="CSV">
+                    <Upload className="w-3 h-3" />
                   </button>
                   {!selectMode ? (
-                    <button onClick={() => setSelectMode(true)} className="p-1.5 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 transition-colors" title="선택삭제">
-                      <Trash2 className="w-3.5 h-3.5" />
+                    <button onClick={() => setSelectMode(true)} className="p-1 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded text-red-400 transition-colors" title="선택삭제">
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   ) : (
-                    <button onClick={exitSelectMode} className="p-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white transition-colors" title="취소">
-                      <X className="w-3.5 h-3.5" />
+                    <button onClick={exitSelectMode} className="p-1 bg-slate-600 hover:bg-slate-500 rounded text-white transition-colors" title="취소">
+                      <X className="w-3 h-3" />
                     </button>
                   )}
                 </>
@@ -7209,7 +7209,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               {/* 모바일 접기/펼치기 버튼 */}
               <button
                 onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-                className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-300"
+                className="p-1 hover:bg-slate-700 rounded transition-colors text-slate-300"
                 title={isHeaderCollapsed ? '펼치기' : '접기'}
               >
                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isHeaderCollapsed ? 'rotate-180' : ''}`} />
