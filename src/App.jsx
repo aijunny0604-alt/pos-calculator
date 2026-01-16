@@ -9715,7 +9715,7 @@ export default function PriceCalculator() {
 
               <button
                 onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                className="relative flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                className="flex-shrink-0 flex items-center justify-center gap-0.5 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="택배 송장"
               >
                 <Truck className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
@@ -9723,7 +9723,7 @@ export default function PriceCalculator() {
                   const today = new Date().toDateString();
                   const todayOrderCount = orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
                   return todayOrderCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-orange-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
                       {todayOrderCount > 9 ? '9+' : todayOrderCount}
                     </span>
                   ) : null;
