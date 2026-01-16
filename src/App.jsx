@@ -10050,18 +10050,16 @@ export default function PriceCalculator() {
   const updateOrder = async (updatedOrder) => {
     setIsLoading(true);
     try {
-      // Supabase 형식으로 변환
+      // Supabase 형식으로 변환 (updated_at, customer_address 컬럼 없음)
       const supabaseOrder = {
         customer_name: updatedOrder.customerName || null,
         customer_phone: updatedOrder.customerPhone || null,
-        customer_address: updatedOrder.customerAddress || null,
         price_type: updatedOrder.priceType,
         items: updatedOrder.items,
         subtotal: Math.round(updatedOrder.totalAmount / 1.1),
         vat: updatedOrder.totalAmount - Math.round(updatedOrder.totalAmount / 1.1),
         total: updatedOrder.totalAmount,
-        memo: updatedOrder.memo || null,
-        updated_at: updatedOrder.updatedAt || new Date().toISOString()
+        memo: updatedOrder.memo || null
       };
 
       console.log('🔄 주문 수정 요청:', updatedOrder.orderNumber, supabaseOrder);
