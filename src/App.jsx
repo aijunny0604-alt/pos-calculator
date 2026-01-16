@@ -9437,6 +9437,14 @@ export default function PriceCalculator() {
           onUpdateOrder={updateOrder}
           products={products.length > 0 ? products : priceData}
         />
+        {/* 토스트 알림 */}
+        {toast && (
+          <div className={`fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl z-50 ${
+            toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+          } text-white font-medium animate-fade-in`}>
+            {toast.message}
+          </div>
+        )}
       </>
     );
   }
