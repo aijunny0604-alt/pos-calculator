@@ -6420,6 +6420,13 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [editingCategory, setEditingCategory] = useState(null); // { oldName, newName }
   const [categoryToDelete, setCategoryToDelete] = useState(null);
 
+  // CSV 일괄 등록 state
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [csvData, setCsvData] = useState([]); // 파싱된 제품 데이터
+  const [csvFileName, setCsvFileName] = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvImportResult, setCsvImportResult] = useState(null); // { success: n, fail: n }
+
   // 인라인 편집 시작
   const startInlineEdit = (product, field) => {
     const value = field === 'wholesale' || field === 'retail' 
@@ -6589,6 +6596,113 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     });
     setNewCategoryName('');
     setShowAddCategoryModal(false);
+  };
+
+  // CSV 파일 파싱
+  const handleCsvFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvFileName(file.name);
+    setCsvImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n').filter(line => line.trim());
+
+      // 첫 줄은 헤더로 가정
+      const header = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+      // 열 인덱스 찾기 (다양한 헤더명 지원)
+      const findColumn = (names) => {
+        return header.findIndex(h => names.some(n => h.toLowerCase().includes(n.toLowerCase())));
+      };
+
+      const nameIdx = findColumn(['제품명', '상품명', 'name', '이름']);
+      const categoryIdx = findColumn(['카테고리', 'category', '분류']);
+      const wholesaleIdx = findColumn(['도매', 'wholesale', '도매가', '매입가']);
+      const retailIdx = findColumn(['소매', 'retail', '소매가', '판매가', '소비자가']);
+      const stockIdx = findColumn(['재고', 'stock', '수량']);
+
+      if (nameIdx === -1) {
+        alert('CSV 파일에 "제품명" 열이 없습니다.');
+        return;
+      }
+
+      // 데이터 파싱
+      const products = [];
+      for (let i = 1; i < lines.length; i++) {
+        // CSV 파싱 (따옴표 안의 쉼표 처리)
+        const row = [];
+        let current = '';
+        let inQuotes = false;
+        for (const char of lines[i]) {
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            row.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        row.push(current.trim());
+
+        const name = row[nameIdx]?.replace(/"/g, '').trim();
+        if (!name) continue;
+
+        // 가격 파싱 (₩, 쉼표, 공백 제거)
+        const parsePrice = (val) => {
+          if (!val) return 0;
+          return parseInt(val.replace(/[₩,\s"]/g, '')) || 0;
+        };
+
+        products.push({
+          name,
+          category: categoryIdx >= 0 ? row[categoryIdx]?.replace(/"/g, '').trim() || '미분류' : '미분류',
+          wholesale: wholesaleIdx >= 0 ? parsePrice(row[wholesaleIdx]) : 0,
+          retail: retailIdx >= 0 ? parsePrice(row[retailIdx]) : 0,
+          stock: stockIdx >= 0 ? parseInt(row[stockIdx]?.replace(/"/g, '')) || 30 : 30
+        });
+      }
+
+      setCsvData(products);
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  // CSV 일괄 등록 실행
+  const handleCsvImport = async () => {
+    if (csvData.length === 0) return;
+
+    setCsvImporting(true);
+    let success = 0;
+    let fail = 0;
+
+    for (const product of csvData) {
+      const result = await onAddProduct({
+        name: product.name,
+        category: product.category,
+        wholesale: product.wholesale,
+        retail: product.retail || null,
+        stock: product.stock,
+        min_stock: 5
+      });
+      if (result) success++;
+      else fail++;
+    }
+
+    setCsvImporting(false);
+    setCsvImportResult({ success, fail });
+  };
+
+  // CSV 모달 닫기
+  const closeCsvModal = () => {
+    setShowCsvModal(false);
+    setCsvData([]);
+    setCsvFileName('');
+    setCsvImportResult(null);
   };
 
   // 재고 일괄 초기화
@@ -6791,6 +6905,10 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-sm font-medium transition-colors">
                     <Plus className="w-4 h-4" />
                     제품추가
+                  </button>
+                  <button onClick={() => setShowCsvModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors">
+                    <Upload className="w-4 h-4" />
+                    <span className="hidden sm:inline">CSV</span>
                   </button>
                   {!selectMode ? (
                     <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
@@ -7578,6 +7696,134 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
           )}
       </div>
       </div>
+
+      {/* CSV 일괄 등록 모달 */}
+      {showCsvModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-800 rounded-2xl max-w-4xl w-full p-6 border border-slate-700 shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-600/20 rounded-xl">
+                  <Upload className="w-6 h-6 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">CSV 일괄 등록</h3>
+                  <p className="text-slate-400 text-sm">CSV 파일로 제품을 한번에 등록합니다</p>
+                </div>
+              </div>
+              <button onClick={closeCsvModal} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            {/* 파일 선택 */}
+            <div className="mb-6">
+              <label className="block text-slate-300 font-medium mb-2">CSV 파일 선택</label>
+              <div className="flex gap-3">
+                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-slate-700/70 transition-colors">
+                  <Upload className="w-5 h-5 text-slate-400" />
+                  <span className="text-slate-300">{csvFileName || '파일을 선택하세요'}</span>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvFileSelect}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <p className="text-slate-500 text-sm mt-2">
+                * CSV 파일에는 "제품명" 열이 필수입니다. 카테고리, 도매가, 소매가, 재고 열은 선택사항입니다.
+              </p>
+            </div>
+
+            {/* 미리보기 */}
+            {csvData.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-white font-medium">미리보기 ({csvData.length}개 제품)</h4>
+                  {csvImportResult && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400 text-sm">✓ {csvImportResult.success}개 성공</span>
+                      {csvImportResult.fail > 0 && <span className="text-red-400 text-sm">✗ {csvImportResult.fail}개 실패</span>}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-slate-900 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-700/50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-slate-300">#</th>
+                        <th className="px-3 py-2 text-left text-slate-300">제품명</th>
+                        <th className="px-3 py-2 text-left text-slate-300">카테고리</th>
+                        <th className="px-3 py-2 text-right text-slate-300">도매가</th>
+                        <th className="px-3 py-2 text-right text-slate-300">소매가</th>
+                        <th className="px-3 py-2 text-right text-slate-300">재고</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                      {csvData.slice(0, 50).map((product, idx) => (
+                        <tr key={idx} className="hover:bg-slate-800/50">
+                          <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
+                          <td className="px-3 py-2 text-white truncate max-w-xs">{product.name}</td>
+                          <td className="px-3 py-2 text-slate-400">{product.category}</td>
+                          <td className="px-3 py-2 text-right text-slate-300">{formatPrice(product.wholesale)}</td>
+                          <td className="px-3 py-2 text-right text-slate-300">{product.retail ? formatPrice(product.retail) : '-'}</td>
+                          <td className="px-3 py-2 text-right text-slate-300">{product.stock}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {csvData.length > 50 && (
+                    <div className="px-3 py-2 text-center text-slate-500 text-sm bg-slate-800">
+                      ... 외 {csvData.length - 50}개 더
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 버튼 */}
+            <div className="flex gap-3">
+              <button
+                onClick={closeCsvModal}
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+              >
+                닫기
+              </button>
+              {csvData.length > 0 && !csvImportResult && (
+                <button
+                  onClick={handleCsvImport}
+                  disabled={csvImporting}
+                  className={`flex-1 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-colors ${
+                    csvImporting ? 'bg-slate-600 cursor-wait' : 'bg-blue-600 hover:bg-blue-500'
+                  }`}
+                >
+                  {csvImporting ? (
+                    <>
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      등록 중...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      {csvData.length}개 제품 등록
+                    </>
+                  )}
+                </button>
+              )}
+              {csvImportResult && (
+                <button
+                  onClick={closeCsvModal}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors"
+                >
+                  완료
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 제품 추가 모달 */}
       {showAddModal && (
