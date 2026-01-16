@@ -9406,20 +9406,23 @@ export default function PriceCalculator() {
           formatPrice={formatPrice}
           onSaveToCart={async (order) => {
             // 주문 이력을 저장된 장바구니로 저장
+            const now = new Date();
             const cartData = {
               name: order.customerName || '',
               phone: order.customerPhone || '',
               address: '',
               items: order.items,
               price_type: order.priceType,
-              total_amount: order.totalAmount,
-              created_at: new Date().toISOString(),
+              total: order.totalAmount,
+              date: now.toLocaleDateString('ko-KR'),
+              time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+              created_at: now.toISOString(),
               memo: `주문이력에서 복사 (${order.orderNumber})`
             };
             const result = await supabase.addSavedCart(cartData);
             if (result && result.length > 0) {
               setSavedCarts(prev => [result[0], ...prev]);
-              showToast('✅ 저장된 장바구니로 복사되었습니다');
+              showToast('🛒 저장된 장바구니로 복사되었습니다');
             } else {
               showToast('❌ 저장 실패', 'error');
             }
