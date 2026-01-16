@@ -7886,21 +7886,34 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               </div>
             </div>
 
-            {/* 파일 선택 */}
+            {/* 파일 선택 (드래그 앤 드롭 지원) */}
             <div className="mb-6">
               <label className="block text-slate-300 font-medium mb-2">CSV 파일 선택</label>
-              <div className="flex gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-slate-700/70 transition-colors">
-                  <Upload className="w-5 h-5 text-slate-400" />
-                  <span className="text-slate-300">{csvFileName || '파일을 선택하세요 (.csv)'}</span>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvFileSelect}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <label
+                className="flex flex-col items-center justify-center gap-2 px-4 py-6 bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-slate-700/70 transition-colors"
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-blue-500', 'bg-slate-600/50'); }}
+                onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('border-blue-500', 'bg-slate-600/50'); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-blue-500', 'bg-slate-600/50');
+                  const file = e.dataTransfer.files[0];
+                  if (file && file.name.endsWith('.csv')) {
+                    handleCsvFileSelect({ target: { files: [file] } });
+                  } else {
+                    alert('CSV 파일만 업로드 가능합니다.');
+                  }
+                }}
+              >
+                <Upload className="w-8 h-8 text-slate-400" />
+                <span className="text-slate-300 text-center">{csvFileName || '파일을 선택하거나 여기로 드래그하세요'}</span>
+                <span className="text-slate-500 text-xs">.csv 파일</span>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCsvFileSelect}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             {/* 미리보기 */}
@@ -8032,21 +8045,34 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               </div>
             </div>
 
-            {/* 파일 선택 */}
+            {/* 파일 선택 (드래그 앤 드롭 지원) */}
             <div className="mb-6">
               <label className="block text-slate-300 font-medium mb-2">CSV 파일 선택</label>
-              <div className="flex gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl cursor-pointer hover:border-emerald-500 hover:bg-slate-700/70 transition-colors">
-                  <Upload className="w-5 h-5 text-slate-400" />
-                  <span className="text-slate-300">{customerCsvFileName || '파일을 선택하세요 (.csv)'}</span>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCustomerCsvFileSelect}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <label
+                className="flex flex-col items-center justify-center gap-2 px-4 py-6 bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl cursor-pointer hover:border-emerald-500 hover:bg-slate-700/70 transition-colors"
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-emerald-500', 'bg-slate-600/50'); }}
+                onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('border-emerald-500', 'bg-slate-600/50'); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-emerald-500', 'bg-slate-600/50');
+                  const file = e.dataTransfer.files[0];
+                  if (file && file.name.endsWith('.csv')) {
+                    handleCustomerCsvFileSelect({ target: { files: [file] } });
+                  } else {
+                    alert('CSV 파일만 업로드 가능합니다.');
+                  }
+                }}
+              >
+                <Upload className="w-8 h-8 text-slate-400" />
+                <span className="text-slate-300 text-center">{customerCsvFileName || '파일을 선택하거나 여기로 드래그하세요'}</span>
+                <span className="text-slate-500 text-xs">.csv 파일</span>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCustomerCsvFileSelect}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             {/* 미리보기 */}
