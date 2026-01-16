@@ -10064,8 +10064,11 @@ export default function PriceCalculator() {
         updated_at: updatedOrder.updatedAt || new Date().toISOString()
       };
 
+      console.log('🔄 주문 수정 요청:', updatedOrder.orderNumber, supabaseOrder);
       const result = await supabase.updateOrder(updatedOrder.orderNumber, supabaseOrder);
-      if (result) {
+      console.log('📦 주문 수정 결과:', result);
+
+      if (result !== null) {
         // 주문 목록 업데이트
         setOrders(prev => prev.map(order =>
           order.orderNumber === updatedOrder.orderNumber ? updatedOrder : order
