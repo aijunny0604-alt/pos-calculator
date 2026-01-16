@@ -111,9 +111,9 @@ const supabase = {
     }
   },
 
-  async updateOrder(id, order) {
+  async updateOrder(orderNumber, order) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
         method: 'PATCH',
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -123,17 +123,39 @@ const supabase = {
         },
         body: JSON.stringify(order)
       });
-      if (!response.ok) throw new Error('Failed to update order');
-      return await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Update order error:', errorText);
+        // customer_address 컬럼이 없을 경우 재시도
+        if (errorText.includes('customer_address') || errorText.includes('column')) {
+          console.log('⚠️ customer_address 컬럼 없음, 재시도...');
+          const { customer_address, ...orderWithoutAddress } = order;
+          const retryResponse = await fetch(`${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(orderWithoutAddress)
+          });
+          if (!retryResponse.ok) throw new Error('Failed to update order (retry)');
+          return await retryResponse.json();
+        }
+        throw new Error('Failed to update order');
+      }
+      const result = await response.json();
+      return result.length > 0 ? result : true; // 빈 배열이어도 성공으로 처리
     } catch (error) {
       console.error('Supabase updateOrder error:', error);
       return null;
     }
   },
 
-  async deleteOrder(id) {
+  async deleteOrder(orderNumber) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
         method: 'DELETE',
         headers: {
           'apikey': SUPABASE_ANON_KEY,
