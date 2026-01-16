@@ -9676,14 +9676,26 @@ export default function PriceCalculator() {
                 })()}
               </button>
 
-              {/* 알림 설정 버튼 */}
-              <button
-                onClick={() => setShowNotificationSettings(true)}
-                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="알림 설정"
-              >
-                <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
-              </button>
+              {/* 택배 송장 - 장바구니 옆 */}
+              {(() => {
+                const today = new Date().toDateString();
+                const todayOrderCount = orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
+                const hasOrders = todayOrderCount > 0;
+                return (
+                  <button
+                    onClick={() => { loadOrders(); setShowShippingModal(true); }}
+                    className={`flex-shrink-0 flex items-center justify-center gap-0.5 p-1.5 xs:p-2 sm:px-3 sm:py-2 ${hasOrders ? 'bg-orange-600/30 hover:bg-orange-600/50 border-orange-500/50' : 'bg-slate-700/50 hover:bg-slate-600/50 border-slate-500/50'} border rounded-lg transition-all hover-lift btn-ripple`}
+                    title="택배 송장"
+                  >
+                    <Truck className={`w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 ${hasOrders ? 'text-orange-400' : 'text-slate-300'}`} />
+                    {hasOrders && (
+                      <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-orange-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                        {todayOrderCount > 9 ? '9+' : todayOrderCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
 
               {/* 구분선 */}
               <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
@@ -9713,21 +9725,13 @@ export default function PriceCalculator() {
                 <Package className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
               </button>
 
+              {/* 알림 설정 버튼 - 맨 오른쪽 */}
               <button
-                onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                className="flex-shrink-0 flex items-center justify-center gap-0.5 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-slate-700/50 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg transition-all hover-lift btn-ripple"
-                title="택배 송장"
+                onClick={() => setShowNotificationSettings(true)}
+                className="flex-shrink-0 flex items-center justify-center p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 rounded-lg transition-all hover-lift btn-ripple"
+                title="알림 설정"
               >
-                <Truck className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
-                {(() => {
-                  const today = new Date().toDateString();
-                  const todayOrderCount = orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
-                  return todayOrderCount > 0 ? (
-                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-orange-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                      {todayOrderCount > 9 ? '9+' : todayOrderCount}
-                    </span>
-                  ) : null;
-                })()}
+                <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-400" />
               </button>
             </div>
           </div>
