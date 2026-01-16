@@ -9959,7 +9959,7 @@ export default function PriceCalculator() {
                     <button onClick={() => setCart([])} className="py-2.5 px-4 bg-emerald-800/50 hover:bg-emerald-700/50 text-emerald-200 rounded-xl text-sm font-medium btn-ripple hover-lift transition-all">
                       초기화
                     </button>
-                    <button onClick={() => setIsOrderModalOpen(true)} className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 btn-ripple hover-lift transition-all shadow-lg shadow-emerald-900/50">
+                    <button onClick={() => { setOrderInitialCustomer(null); setOrderFromSavedCart(null); setIsOrderModalOpen(true); }} className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 btn-ripple hover-lift transition-all shadow-lg shadow-emerald-900/50">
                       <Calculator className="w-5 h-5" />
                       주문 확인
                     </button>
@@ -9977,14 +9977,16 @@ export default function PriceCalculator() {
             <p className="text-emerald-300/70 text-xs">공급가 {formatPrice(calcExVat(totalAmount))} + VAT</p>
             <p className="text-white text-xl font-bold">{formatPrice(totalAmount)}</p>
           </div>
-          <button 
+          <button
             onClick={() => {
               if (cart.length > 0) {
+                setOrderInitialCustomer(null);
+                setOrderFromSavedCart(null);
                 setIsOrderModalOpen(true);
               } else {
                 showToast('장바구니가 비어있습니다', 'error');
               }
-            }} 
+            }}
             className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 btn-ripple hover-lift transition-all shadow-lg shadow-emerald-900/50"
           >
             <Calculator className="w-5 h-5" />
@@ -10123,6 +10125,8 @@ export default function PriceCalculator() {
                   <button
                     onClick={() => {
                       setIsCartExpandedModal(false);
+                      setOrderInitialCustomer(null);
+                      setOrderFromSavedCart(null);
                       setIsOrderModalOpen(true);
                     }}
                     className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/50"
