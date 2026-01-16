@@ -5967,11 +5967,27 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     printWindow.document.close();
   };
 
+  // 모달 닫기 핸들러 (ghost click 방지)
+  const handleClose = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 약간의 지연을 두어 터치 이벤트가 완전히 끝난 후 닫기
+    setTimeout(() => {
+      onBack();
+    }, 10);
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
       style={{ touchAction: 'none' }}
-      onClick={onBack}
+      onClick={handleClose}
+      onTouchEnd={(e) => {
+        // backdrop 직접 터치시에만 닫기
+        if (e.target === e.currentTarget) {
+          handleClose(e);
+        }
+      }}
       onTouchMove={(e) => {
         // 스크롤 영역 내부가 아니면 이벤트 방지
         if (!e.target.closest('.modal-scroll-area')) {
@@ -5979,7 +5995,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
         }
       }}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -5997,7 +6013,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                 <p className="text-xl font-bold text-white">{formatPrice(currentTotal)}</p>
                 <p className="text-slate-400 text-xs">{totalQuantity}개</p>
               </div>
-              <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <button onClick={handleClose} onTouchEnd={handleClose} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
                 <X className="w-5 h-5 text-slate-300" />
               </button>
             </div>
