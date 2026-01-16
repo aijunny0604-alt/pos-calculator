@@ -10831,9 +10831,15 @@ export default function PriceCalculator() {
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-emerald-900/95 to-teal-900/90 backdrop-blur border-t-2 border-emerald-500/50 p-3 z-30 animate-fade-in-up" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between">
-          <div>
+          <div
+            onClick={() => cart.length > 0 && setIsCartExpandedModal(true)}
+            className={`${cart.length > 0 ? 'cursor-pointer active:scale-95' : ''} transition-transform`}
+          >
             <p className="text-emerald-300/70 text-xs">공급가 {formatPrice(calcExVat(totalAmount))} + VAT</p>
-            <p className="text-white text-xl font-bold">{formatPrice(totalAmount)}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-white text-xl font-bold">{formatPrice(totalAmount)}</p>
+              {cart.length > 0 && <ChevronUp className="w-4 h-4 text-emerald-400 animate-bounce" />}
+            </div>
           </div>
           <button
             onClick={() => {
