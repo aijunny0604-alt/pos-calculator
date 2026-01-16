@@ -6934,8 +6934,21 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     setEditingProduct(null);
   };
 
-  const handleQuickStock = async (productId, newStock) => {
-    await onUpdateStock(productId, { stock: parseInt(newStock) || 0 });
+  const handleQuickStock = async (productId, newStock, stockStatus = null) => {
+    const updateData = { stock: parseInt(newStock) || 0 };
+    // stock_status가 전달되면 함께 업데이트
+    if (stockStatus) {
+      updateData.stock_status = stockStatus;
+    } else if (parseInt(newStock) > 0) {
+      // 재고가 0보다 크면 자동으로 normal로 변경
+      updateData.stock_status = 'normal';
+    }
+    await onUpdateStock(productId, updateData);
+  };
+
+  // 재고 상태만 변경하는 함수 (품절 ↔ 입고대기)
+  const handleStockStatusChange = async (productId, newStatus) => {
+    await onUpdateStock(productId, { stock_status: newStatus });
   };
 
   const handleSort = (field) => {
@@ -6948,11 +6961,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   };
 
   const stockStats = useMemo(() => {
-    if (!products || !Array.isArray(products)) return { outOfStock: 0, lowStock: 0, normalStock: 0, total: 0 };
-    const outOfStock = products.filter(p => (p.stock ?? 50) === 0).length;
+    if (!products || !Array.isArray(products)) return { outOfStock: 0, incoming: 0, lowStock: 0, normalStock: 0, total: 0 };
+    // 입고대기: stock_status가 'incoming'인 제품 (재고 0이면서 입고 예정)
+    const incoming = products.filter(p => p.stock_status === 'incoming').length;
+    // 품절: 재고 0이고 입고대기가 아닌 제품
+    const outOfStock = products.filter(p => (p.stock ?? 50) === 0 && p.stock_status !== 'incoming').length;
     const lowStock = products.filter(p => (p.stock ?? 50) > 0 && (p.stock ?? 50) <= (p.min_stock || 5)).length;
     const normalStock = products.filter(p => (p.stock ?? 50) > (p.min_stock || 5)).length;
-    return { outOfStock, lowStock, normalStock, total: products.length };
+    return { outOfStock, incoming, lowStock, normalStock, total: products.length };
   }, [products]);
 
   const filteredProducts = useMemo(() => {
@@ -6965,7 +6981,11 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         const stock = p.stock ?? 50;
         const minStock = p.min_stock || 5;
         if (stockFilter === 'out') {
-          matchesStock = stock === 0;
+          // 품절: 재고 0이고 입고대기가 아닌 제품
+          matchesStock = stock === 0 && p.stock_status !== 'incoming';
+        } else if (stockFilter === 'incoming') {
+          // 입고대기: stock_status가 'incoming'인 제품
+          matchesStock = p.stock_status === 'incoming';
         } else if (stockFilter === 'low') {
           matchesStock = stock > 0 && stock <= minStock;
         } else if (stockFilter === 'normal') {
@@ -7039,34 +7059,35 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                 <h1 className="text-base sm:text-xl font-bold text-white">관리자</h1>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors" title="새로고침">
-                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
+            {/* 데스크톱: 모든 버튼 한 줄에 표시 */}
+            <div className="hidden sm:flex items-center gap-2">
+              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-2 hover:bg-slate-700 rounded-lg transition-colors" title="새로고침">
+                <RefreshCw className={`w-5 h-5 text-white ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               {activeTab === 'products' ? (
                 <>
-                  <button 
-                    onClick={() => setShowResetStockModal(true)} 
-                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors"
+                  <button
+                    onClick={() => setShowResetStockModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     재고 초기화
                   </button>
-                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-sm font-medium transition-colors">
+                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-sm font-medium transition-colors">
                     <Plus className="w-4 h-4" />
                     제품추가
                   </button>
-                  <button onClick={() => setShowCsvModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors">
+                  <button onClick={() => setShowCsvModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors">
                     <Upload className="w-4 h-4" />
-                    <span className="hidden sm:inline">CSV</span>
+                    CSV
                   </button>
                   {!selectMode ? (
-                    <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
+                    <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-4 py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
                       <Trash2 className="w-4 h-4" />
                       선택삭제
                     </button>
                   ) : (
-                    <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm font-medium transition-colors">
+                    <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm font-medium transition-colors">
                       <X className="w-4 h-4" />
                       취소
                     </button>
@@ -7074,21 +7095,21 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                 </>
               ) : activeTab === 'customers' ? (
                 <>
-                  <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
+                  <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
                     <Plus className="w-4 h-4" />
                     거래처추가
                   </button>
-                  <button onClick={() => setShowCustomerCsvModal(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors">
+                  <button onClick={() => setShowCustomerCsvModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors">
                     <Upload className="w-4 h-4" />
-                    <span className="hidden sm:inline">CSV</span>
+                    CSV
                   </button>
                   {!selectMode ? (
-                    <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
+                    <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-4 py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-sm font-medium transition-colors">
                       <Trash2 className="w-4 h-4" />
                       선택삭제
                     </button>
                   ) : (
-                    <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm font-medium transition-colors">
+                    <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-sm font-medium transition-colors">
                       <X className="w-4 h-4" />
                       취소
                     </button>
@@ -7096,6 +7117,60 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                 </>
               ) : null}
             </div>
+            {/* 모바일: 새로고침 버튼만 상단에 */}
+            <div className="flex sm:hidden items-center">
+              <button onClick={activeTab === 'products' ? onRefresh : onRefreshCustomers} disabled={isLoading} className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors" title="새로고침">
+                <RefreshCw className={`w-4 h-4 text-white ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+          {/* 모바일 전용: 버튼들을 별도 행에 배치 */}
+          <div className="flex sm:hidden items-center justify-end gap-1.5 mb-2">
+            {activeTab === 'products' ? (
+              <>
+                <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-xs font-medium transition-colors">
+                  <Plus className="w-3.5 h-3.5" />
+                  추가
+                </button>
+                <button onClick={() => setShowCsvModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-xs font-medium transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  CSV
+                </button>
+                {!selectMode ? (
+                  <button onClick={() => setSelectMode(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-xs font-medium transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    삭제
+                  </button>
+                ) : (
+                  <button onClick={exitSelectMode} className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-xs font-medium transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                    취소
+                  </button>
+                )}
+              </>
+            ) : activeTab === 'customers' ? (
+              <>
+                <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-xs font-medium transition-colors">
+                  <Plus className="w-3.5 h-3.5" />
+                  추가
+                </button>
+                <button onClick={() => setShowCustomerCsvModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-xs font-medium transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  CSV
+                </button>
+                {!selectMode ? (
+                  <button onClick={() => setSelectMode(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 rounded-lg text-red-400 text-xs font-medium transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    삭제
+                  </button>
+                ) : (
+                  <button onClick={exitSelectMode} className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-xs font-medium transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                    취소
+                  </button>
+                )}
+              </>
+            ) : null}
           </div>
           
           {/* 탭 메뉴 */}
@@ -7140,22 +7215,26 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         {activeTab === 'products' && (
           <div className="bg-slate-900/50 border-t border-slate-700/50 px-3 sm:px-4 py-3">
             {/* 재고 현황 카드 */}
-            <div className="grid grid-cols-4 gap-2 mb-3 max-w-7xl mx-auto">
-              <div onClick={() => setStockFilter('all')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'all' ? 'ring-2 ring-blue-500' : 'hover:bg-slate-750'}`}>
-                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">전체 제품</p>
-                <p className="text-lg sm:text-xl font-bold text-white">{stockStats.total}</p>
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2 mb-3 max-w-7xl mx-auto">
+              <div onClick={() => setStockFilter('all')} className={`bg-slate-800 rounded-lg p-1.5 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'all' ? 'ring-2 ring-blue-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[9px] sm:text-xs mb-0.5">전체</p>
+                <p className="text-base sm:text-xl font-bold text-white">{stockStats.total}</p>
               </div>
-              <div onClick={() => setStockFilter('normal')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'normal' ? 'ring-2 ring-emerald-500' : 'hover:bg-slate-750'}`}>
-                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">정상 재고</p>
-                <p className="text-lg sm:text-xl font-bold text-emerald-400">{stockStats.normalStock}</p>
+              <div onClick={() => setStockFilter('normal')} className={`bg-slate-800 rounded-lg p-1.5 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'normal' ? 'ring-2 ring-emerald-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[9px] sm:text-xs mb-0.5">정상</p>
+                <p className="text-base sm:text-xl font-bold text-emerald-400">{stockStats.normalStock}</p>
               </div>
-              <div onClick={() => setStockFilter('low')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'low' ? 'ring-2 ring-yellow-500' : 'hover:bg-slate-750'}`}>
-                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">재고 부족</p>
-                <p className="text-lg sm:text-xl font-bold text-yellow-400">{stockStats.lowStock}</p>
+              <div onClick={() => setStockFilter('low')} className={`bg-slate-800 rounded-lg p-1.5 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'low' ? 'ring-2 ring-yellow-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[9px] sm:text-xs mb-0.5">부족</p>
+                <p className="text-base sm:text-xl font-bold text-yellow-400">{stockStats.lowStock}</p>
               </div>
-              <div onClick={() => setStockFilter('out')} className={`bg-slate-800 rounded-lg p-2 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'out' ? 'ring-2 ring-red-500' : 'hover:bg-slate-750'}`}>
-                <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5">품절</p>
-                <p className="text-lg sm:text-xl font-bold text-red-400">{stockStats.outOfStock}</p>
+              <div onClick={() => setStockFilter('incoming')} className={`bg-slate-800 rounded-lg p-1.5 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'incoming' ? 'ring-2 ring-orange-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[9px] sm:text-xs mb-0.5">입고대기</p>
+                <p className="text-base sm:text-xl font-bold text-orange-400">{stockStats.incoming}</p>
+              </div>
+              <div onClick={() => setStockFilter('out')} className={`bg-slate-800 rounded-lg p-1.5 sm:p-3 cursor-pointer transition-all select-none ${stockFilter === 'out' ? 'ring-2 ring-red-500' : 'hover:bg-slate-750'}`}>
+                <p className="text-slate-400 text-[9px] sm:text-xs mb-0.5">품절</p>
+                <p className="text-base sm:text-xl font-bold text-red-400">{stockStats.outOfStock}</p>
               </div>
             </div>
             
@@ -7265,11 +7344,12 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                 {filteredProducts.map(product => {
                   const stock = product.stock ?? 50;
                   const minStock = product.min_stock || 5;
-                  const isOutOfStock = stock === 0;
+                  const isIncoming = product.stock_status === 'incoming';
+                  const isOutOfStock = stock === 0 && !isIncoming;
                   const isLowStock = stock > 0 && stock <= minStock;
-                  
+
                   return (
-                    <tr key={product.id} className={`hover:bg-slate-700/30 transition-colors ${isOutOfStock ? 'bg-red-900/10' : isLowStock ? 'bg-yellow-900/10' : ''} ${selectMode && selectedProducts.includes(product.id) ? 'bg-red-900/20' : ''}`}>
+                    <tr key={product.id} className={`hover:bg-slate-700/30 transition-colors ${isIncoming ? 'bg-orange-900/10' : isOutOfStock ? 'bg-red-900/10' : isLowStock ? 'bg-yellow-900/10' : ''} ${selectMode && selectedProducts.includes(product.id) ? 'bg-red-900/20' : ''}`}>
                       {/* 체크박스 */}
                       {selectMode && (
                         <td className="px-3 py-3 text-center">
@@ -7367,15 +7447,22 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                         <button
                           onClick={() => setShowStockModal(product)}
                           className={`group relative min-w-[80px] px-4 py-1.5 text-sm font-semibold transition-all ${
-                            isOutOfStock 
-                              ? 'bg-gradient-to-r from-red-600/30 to-red-500/20 border border-red-500/50 text-red-400 hover:from-red-600/50 hover:to-red-500/40' 
-                              : isLowStock 
+                            isIncoming
+                              ? 'bg-gradient-to-r from-orange-600/30 to-amber-500/20 border border-orange-500/50 text-orange-400 hover:from-orange-600/50 hover:to-amber-500/40'
+                              : isOutOfStock
+                              ? 'bg-gradient-to-r from-red-600/30 to-red-500/20 border border-red-500/50 text-red-400 hover:from-red-600/50 hover:to-red-500/40'
+                              : isLowStock
                               ? 'bg-gradient-to-r from-yellow-600/30 to-amber-500/20 border border-yellow-500/50 text-yellow-400 hover:from-yellow-600/50 hover:to-amber-500/40'
                               : 'bg-gradient-to-r from-emerald-600/30 to-teal-500/20 border border-emerald-500/50 text-emerald-400 hover:from-emerald-600/50 hover:to-teal-500/40'
                           } rounded-lg`}
                         >
                           <span className="relative z-10 flex items-center justify-center gap-1.5">
-                            {isOutOfStock ? (
+                            {isIncoming ? (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+                                입고대기
+                              </>
+                            ) : isOutOfStock ? (
                               <>
                                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
                                 품절
@@ -8400,7 +8487,21 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-slate-800 rounded-2xl max-w-sm w-full p-6 animate-scale-in">
             <h3 className="text-xl font-bold text-white mb-2">재고 수정</h3>
-            <p className="text-slate-400 mb-4">{showStockModal.name}</p>
+            <p className="text-slate-400 mb-1">{showStockModal.name}</p>
+            {/* 현재 상태 표시 */}
+            <div className="mb-4">
+              {showStockModal.stock_status === 'incoming' ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-600/20 border border-orange-500/50 rounded-lg text-orange-400 text-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+                  입고대기 중
+                </span>
+              ) : (showStockModal.stock ?? 0) === 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-600/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+                  품절
+                </span>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2 mb-3">
               <button onClick={() => { const input = document.getElementById('stock-input'); input.value = Math.max(0, parseInt(input.value || 0) - 10); }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">-10</button>
               <button onClick={() => { const input = document.getElementById('stock-input'); input.value = Math.max(0, parseInt(input.value || 0) - 1); }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">-1</button>
@@ -8408,13 +8509,39 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
               <button onClick={() => { const input = document.getElementById('stock-input'); input.value = parseInt(input.value || 0) + 1; }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">+1</button>
               <button onClick={() => { const input = document.getElementById('stock-input'); input.value = parseInt(input.value || 0) + 10; }} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">+10</button>
             </div>
-            {/* 품절 버튼 */}
-            <button 
-              onClick={() => { document.getElementById('stock-input').value = 0; }} 
-              className="w-full mb-4 py-2 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 rounded-lg text-red-400 font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              <span className="text-lg">🚫</span> 품절 처리 (재고 0)
-            </button>
+            {/* 상태 변경 버튼들 */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={() => {
+                  document.getElementById('stock-input').value = 0;
+                  handleQuickStock(showStockModal.id, 0, 'out');
+                  setShowStockModal(null);
+                }}
+                className={`py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                  showStockModal.stock_status !== 'incoming' && (showStockModal.stock ?? 0) === 0
+                    ? 'bg-red-600 text-white'
+                    : 'bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 text-red-400'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                품절
+              </button>
+              <button
+                onClick={() => {
+                  document.getElementById('stock-input').value = 0;
+                  handleQuickStock(showStockModal.id, 0, 'incoming');
+                  setShowStockModal(null);
+                }}
+                className={`py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                  showStockModal.stock_status === 'incoming'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 text-orange-400'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                입고대기
+              </button>
+            </div>
             <div className="flex gap-3">
               <button onClick={() => setShowStockModal(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">취소</button>
               <button onClick={() => { const newStock = document.getElementById('stock-input').value; handleQuickStock(showStockModal.id, newStock); setShowStockModal(null); }} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition-colors">저장</button>
@@ -9674,10 +9801,12 @@ export default function PriceCalculator() {
       const data = await supabase.getProducts();
       if (data) {
         // 재고 기본값 설정 (null/undefined만 50, 0은 품절로 유지)
+        // stock_status: 'normal' (정상), 'out' (품절), 'incoming' (입고대기)
         const productsWithStock = data.map(p => ({
           ...p,
           stock: p.stock !== null && p.stock !== undefined ? p.stock : 50,
-          min_stock: p.min_stock !== null && p.min_stock !== undefined ? p.min_stock : 5
+          min_stock: p.min_stock !== null && p.min_stock !== undefined ? p.min_stock : 5,
+          stock_status: p.stock_status || 'normal' // 기본값은 normal
         }));
         setProducts(productsWithStock);
         setIsOnline(true);
