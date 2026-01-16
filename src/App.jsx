@@ -7757,7 +7757,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 }
 
 // 주문 내역 페이지
-function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice }) {
+function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice, onSaveToCart }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
@@ -8127,6 +8127,13 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                     >
                       <Eye className="w-4 h-4" />
                       상세보기
+                    </button>
+                    <button
+                      onClick={() => onSaveToCart && onSaveToCart(order)}
+                      className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all btn-ripple"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      장바구니
                     </button>
                     {deleteConfirm === order.orderNumber ? (
                       <div className="flex gap-2">
@@ -9397,6 +9404,26 @@ export default function PriceCalculator() {
           onRefresh={loadOrders}
           isLoading={isLoading}
           formatPrice={formatPrice}
+          onSaveToCart={async (order) => {
+            // 주문 이력을 저장된 장바구니로 저장
+            const cartData = {
+              name: order.customerName || '',
+              phone: order.customerPhone || '',
+              address: '',
+              items: order.items,
+              priceType: order.priceType,
+              totalAmount: order.totalAmount,
+              savedAt: new Date().toISOString(),
+              memo: `주문이력에서 복사 (${order.orderNumber})`
+            };
+            const result = await supabase.saveSavedCart(cartData);
+            if (result) {
+              setSavedCarts(prev => [result, ...prev]);
+              showToast('✅ 저장된 장바구니로 복사되었습니다');
+            } else {
+              showToast('❌ 저장 실패', 'error');
+            }
+          }}
         />
         <OrderDetailModal
           isOpen={isDetailModalOpen}
