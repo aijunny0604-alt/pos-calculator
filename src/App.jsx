@@ -3878,8 +3878,18 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           const cell = emptyRow.getCell(idx + 1);
           cell.value = '';
           cell.border = thinBorder;
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
         emptyRow.height = 60;
+        rowNum++;
+
+        // 주소 입력용 빈 행 추가 (셀 병합)
+        worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
+        const addrRow = worksheet.getRow(rowNum);
+        addrRow.getCell(1).value = '';
+        addrRow.getCell(1).border = thinBorder;
+        addrRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        addrRow.height = 50;
         rowNum++;
       } else {
         // 해당 보내는 곳의 주문 데이터
@@ -3970,7 +3980,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           prevRows += 1; // 빈 줄
           prevRows += 2; // 보내는곳 헤더 + 컬럼 헤더
           if (prevOrders.length === 0) {
-            prevRows += 1; // 빈 데이터 행
+            prevRows += 2; // 빈 데이터 행 + 주소 입력 행
           } else {
             prevOrders.forEach(order => {
               const customer = order.customerName ? findCustomer(order.customerName) : null;
@@ -3986,7 +3996,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       // 현재 섹션 끝 행 계산
       endRow = startRow + 1; // 보내는곳 헤더 + 컬럼 헤더
       if (orders.length === 0) {
-        endRow += 1; // 빈 데이터 행
+        endRow += 2; // 빈 데이터 행 + 주소 입력 행
       } else {
         orders.forEach(order => {
           const customer = order.customerName ? findCustomer(order.customerName) : null;
