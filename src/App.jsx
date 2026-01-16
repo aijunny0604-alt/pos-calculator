@@ -4045,15 +4045,11 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     link.download = fileName;
     link.click();
 
-    // 다운로드 후 바로 열어볼지 확인
+    // 다운로드 완료 알림
     setTimeout(() => {
-      if (window.confirm(`✅ "${fileName}" 다운로드 완료!\n\n엑셀 파일을 바로 열어보시겠습니까?`)) {
-        // 새 탭에서 파일 열기 (브라우저가 다운로드 폴더에서 열도록 유도)
-        window.open(blobUrl, '_blank');
-      }
-      // URL 해제
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    }, 500);
+      alert(`✅ "${fileName}" 다운로드 완료!\n\n다운로드 폴더에서 파일을 열어주세요.`);
+      URL.revokeObjectURL(blobUrl);
+    }, 300);
   };
   
   const printShippingLabels = () => {
