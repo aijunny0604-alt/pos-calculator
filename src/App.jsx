@@ -7084,16 +7084,16 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
       <CustomStyles />
 
       <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 flex-shrink-0 select-none">
-        <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
+        <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
           {/* 상단 행: 뒤로가기, 타이틀, 버튼들 */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button onClick={onBack} className="p-1.5 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors">
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button onClick={onBack} className="p-1 sm:p-2 hover:bg-slate-700 rounded-lg transition-colors">
                 <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </button>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
-                <h1 className="text-base sm:text-xl font-bold text-white">관리자</h1>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Settings className="w-4 h-4 sm:w-6 sm:h-6 text-amber-400" />
+                <h1 className="text-sm sm:text-xl font-bold text-white">관리자</h1>
               </div>
             </div>
             {/* 데스크톱: 모든 버튼 한 줄에 표시 */}
