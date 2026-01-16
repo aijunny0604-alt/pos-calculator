@@ -4026,10 +4026,24 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const fileName = `택배송장_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const blobUrl = URL.createObjectURL(blob);
+
+    // 다운로드 실행
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `택배송장_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.href = blobUrl;
+    link.download = fileName;
     link.click();
+
+    // 다운로드 후 바로 열어볼지 확인
+    setTimeout(() => {
+      if (window.confirm(`✅ "${fileName}" 다운로드 완료!\n\n엑셀 파일을 바로 열어보시겠습니까?`)) {
+        // 새 탭에서 파일 열기 (브라우저가 다운로드 폴더에서 열도록 유도)
+        window.open(blobUrl, '_blank');
+      }
+      // URL 해제
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    }, 500);
   };
   
   const printShippingLabels = () => {
@@ -4317,51 +4331,51 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                       <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <div>
-                            <label className="block text-slate-500 text-xs mb-1">📦 보내는 곳</label>
-                            <select 
-                              value={setting.sender || senderList[0]} 
-                              onChange={(e) => updateOrderSetting(order.orderNumber, 'sender', e.target.value)} 
-                              className="w-full px-2 py-1.5 bg-orange-600/20 border border-orange-500/50 rounded text-orange-300 text-sm font-medium focus:outline-none focus:border-orange-400"
+                            <label className="block text-slate-500 text-xs mb-1 text-center">📦 보내는 곳</label>
+                            <select
+                              value={setting.sender || senderList[0]}
+                              onChange={(e) => updateOrderSetting(order.orderNumber, 'sender', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-orange-600/20 border border-orange-500/50 rounded text-orange-300 text-sm font-medium focus:outline-none focus:border-orange-400 text-center"
                             >
                               {senderList.map(sender => <option key={sender} value={sender}>{sender}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="block text-slate-500 text-xs mb-1">배송 방식</label>
-                            <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500">
+                            <label className="block text-slate-500 text-xs mb-1 text-center">배송 방식</label>
+                            <select value={setting.paymentType} onChange={(e) => updateOrderSetting(order.orderNumber, 'paymentType', e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500 text-center">
                               <option value="착불">착불</option>
                               <option value="선불">선불</option>
                             </select>
                           </div>
                           <div>
-                            <label className="block text-slate-500 text-xs mb-1">포장</label>
-                            <input 
+                            <label className="block text-slate-500 text-xs mb-1 text-center">포장</label>
+                            <input
                               type="text"
                               list={`packaging-options-${order.orderNumber}`}
-                              value={setting.packaging} 
-                              onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)} 
+                              value={setting.packaging}
+                              onChange={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)}
                               onInput={(e) => updateOrderSetting(order.orderNumber, 'packaging', e.target.value)}
                               placeholder="박스1"
-                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500"
+                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500 text-center"
                             />
                             <datalist id={`packaging-options-${order.orderNumber}`}>
                               {packagingOptions.map(opt => <option key={opt} value={opt} />)}
                             </datalist>
                           </div>
                           <div>
-                            <label className="block text-slate-500 text-xs mb-1">택배비</label>
-                            <input 
-                              type="text" 
-                              value={setting.shippingCost} 
+                            <label className="block text-slate-500 text-xs mb-1 text-center">택배비</label>
+                            <input
+                              type="text"
+                              value={setting.shippingCost}
                               onChange={(e) => {
                                 const value = e.target.value;
                                 // 숫자와 쉼표만 허용
                                 if (value === '' || /^[\d,]+$/.test(value)) {
                                   updateOrderSetting(order.orderNumber, 'shippingCost', value);
                                 }
-                              }} 
+                              }}
                               placeholder="7300"
-                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500" 
+                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-orange-500 text-center"
                             />
                           </div>
                         </div>
