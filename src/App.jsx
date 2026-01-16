@@ -9419,10 +9419,11 @@ export default function PriceCalculator() {
               created_at: now.toISOString(),
               memo: `주문이력에서 복사 (${order.orderNumber})`
             };
+            showToast('🛒 장바구니에 저장 중...');
             const result = await supabase.addSavedCart(cartData);
             if (result && result.length > 0) {
               setSavedCarts(prev => [result[0], ...prev]);
-              showToast('🛒 저장된 장바구니로 복사되었습니다');
+              showToast('✅ 저장된 장바구니로 복사 완료!');
             } else {
               showToast('❌ 저장 실패', 'error');
             }
