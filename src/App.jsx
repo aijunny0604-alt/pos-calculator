@@ -5676,7 +5676,7 @@ MVB 64 Y R 2개`}
 }
 
 // ==================== 주문 확인 페이지 ====================
-function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, products, initialCustomer, onSaveCart, customers = [], onBack }) {
+function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, onReplaceItem, products, initialCustomer, onSaveCart, customers = [], onBack }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customerName, setCustomerName] = useState(initialCustomer?.name || '');
@@ -6186,19 +6186,23 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                             {changeSearchResults.map(product => {
                               const productPrice = priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
                               return (
-                                <div 
+                                <div
                                   key={product.id}
                                   onClick={() => {
-                                    // 기존 제품 삭제 후 새 제품 추가 (수량 유지)
-                                    const currentQty = item.quantity;
-                                    onRemoveItem(item.id);
-                                    onAddItem(product);
-                                    // 수량 조절
-                                    setTimeout(() => {
-                                      if (currentQty > 1) {
-                                        onUpdateQuantity(product.id, currentQty);
-                                      }
-                                    }, 50);
+                                    // 제품 교체 (수량 유지)
+                                    if (onReplaceItem) {
+                                      onReplaceItem(item.id, product, item.quantity);
+                                    } else {
+                                      // fallback: 기존 방식
+                                      const currentQty = item.quantity;
+                                      onRemoveItem(item.id);
+                                      onAddItem(product);
+                                      setTimeout(() => {
+                                        if (currentQty > 1) {
+                                          onUpdateQuantity(product.id, currentQty);
+                                        }
+                                      }, 50);
+                                    }
                                     setChangingItemId(null);
                                     setChangeSearchQuery('');
                                   }}
@@ -9340,6 +9344,16 @@ export default function PriceCalculator() {
 
   const removeFromCart = (productId) => setCart(cart.filter(item => item.id !== productId));
 
+  // 장바구니 아이템 교체 (제품 변경)
+  const replaceCartItem = (oldProductId, newProduct, quantity) => {
+    const price = priceType === 'wholesale' ? newProduct.wholesale : (newProduct.retail || newProduct.wholesale);
+    setCart(prev => prev.map(item =>
+      item.id === oldProductId
+        ? { ...newProduct, quantity, price }
+        : item
+    ));
+  };
+
   const updateQuantity = (productId, newQuantity) => {
     if (newQuantity < 1) return removeFromCart(productId);
     
@@ -10402,6 +10416,7 @@ export default function PriceCalculator() {
           onUpdateQuantity={updateQuantity}
           onRemoveItem={removeFromCart}
           onAddItem={addToCart}
+          onReplaceItem={replaceCartItem}
           products={priceData}
           initialCustomer={orderInitialCustomer}
           onSaveCart={(data) => {
