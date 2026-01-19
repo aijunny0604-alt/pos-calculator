@@ -9127,88 +9127,108 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
             <p className="text-slate-400">{orders.length === 0 ? '저장된 주문 내역이 없습니다' : '검색 결과가 없습니다'}</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredOrders.map((order, index) => (
-              <div key={order.orderNumber} className={`bg-slate-800/50 backdrop-blur rounded-xl border select-none ${selectedOrders.includes(order.orderNumber) ? 'border-emerald-500' : 'border-slate-700'} overflow-hidden card-glow hover-lift animate-fade-in-up`} style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}>
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    {/* 체크박스 */}
-                    <input 
-                      type="checkbox" 
-                      checked={selectedOrders.includes(order.orderNumber)}
-                      onChange={() => handleSelect(order.orderNumber)}
-                      className="mt-1 w-5 h-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                    />
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white font-semibold">{order.orderNumber}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          order.priceType === 'wholesale' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
-                        }`}>
-                          {order.priceType === 'wholesale' ? '도매' : '소비자'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDateTime(order.createdAt)}
-                        </span>
-                        {order.customerName && <span>{order.customerName}</span>}
-                      </div>
-                      <div className="mt-2 text-sm text-slate-400">
-                        {order.items.length}종 / {order.items.reduce((sum, item) => sum + item.quantity, 0)}개
-                      </div>
+              <div
+                key={order.orderNumber}
+                className={`bg-slate-800 rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none ${
+                  selectedOrders.includes(order.orderNumber)
+                    ? 'ring-2 ring-emerald-500 bg-emerald-900/20 border-emerald-500/50'
+                    : 'border-slate-700 hover:border-emerald-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/20'
+                } animate-fade-in-up`}
+                style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}
+              >
+                {/* 상단: 체크박스 + 주문번호 + 가격타입 + 금액 */}
+                <div className="flex items-start gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrders.includes(order.orderNumber)}
+                    onChange={() => handleSelect(order.orderNumber)}
+                    className="mt-1 w-5 h-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500 cursor-pointer flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-semibold truncate">{order.orderNumber}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                        order.priceType === 'wholesale' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {order.priceType === 'wholesale' ? '도매' : '소비자'}
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-emerald-400">{formatPrice(order.totalAmount)}</p>
-                      <p className="text-xs text-slate-500">공급가 {formatPrice(calcExVat(order.totalAmount))}</p>
+                    <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                      <Calendar className="w-3 h-3" />
+                      {formatDateTime(order.createdAt)}
                     </div>
                   </div>
-                  
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => onViewOrder(order)}
-                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all btn-ripple"
-                    >
-                      <Eye className="w-4 h-4" />
-                      상세보기
-                    </button>
-                    <button
-                      onClick={() => onSaveToCart && onSaveToCart(order)}
-                      className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all btn-ripple"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      장바구니
-                    </button>
-                    {deleteConfirm === order.orderNumber ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            onDeleteOrder(order.orderNumber);
-                            setDeleteConfirm(null);
-                          }}
-                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors btn-ripple"
-                        >
-                          확인
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium transition-colors"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    ) : (
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-emerald-400 font-bold text-sm">{formatPrice(order.totalAmount)}</p>
+                    <p className="text-[10px] text-slate-500">공급가 {formatPrice(calcExVat(order.totalAmount))}</p>
+                  </div>
+                </div>
+
+                {/* 중단: 상품 정보 컨테이너 */}
+                <div className="bg-slate-900/50 rounded-lg p-2 mb-3">
+                  <div className="text-xs text-slate-300 mb-1">
+                    {order.items.slice(0, 3).map((item, i) => (
+                      <span key={i}>
+                        {item.name}({item.quantity}){i < Math.min(order.items.length - 1, 2) ? ', ' : ''}
+                      </span>
+                    ))}
+                    {order.items.length > 3 && <span className="text-slate-500"> 외 {order.items.length - 3}건</span>}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {order.items.length}종 / {order.items.reduce((sum, item) => sum + item.quantity, 0)}개
+                  </div>
+                  {order.customerName && (
+                    <div className="text-xs text-cyan-400 border-t border-slate-700 pt-2 mt-2">
+                      👤 {order.customerName}
+                    </div>
+                  )}
+                </div>
+
+                {/* 하단: 액션 버튼 */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onViewOrder(order)}
+                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all btn-ripple"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    상세보기
+                  </button>
+                  <button
+                    onClick={() => onSaveToCart && onSaveToCart(order)}
+                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all btn-ripple"
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    장바구니
+                  </button>
+                  {deleteConfirm === order.orderNumber ? (
+                    <div className="flex gap-1">
                       <button
-                        onClick={() => setDeleteConfirm(order.orderNumber)}
-                        className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                        onClick={() => {
+                          onDeleteOrder(order.orderNumber);
+                          setDeleteConfirm(null);
+                        }}
+                        className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors btn-ripple"
                       >
-                        <Trash2 className="w-4 h-4" />
-                        삭제
+                        확인
                       </button>
-                    )}
-                  </div>
+                      <button
+                        onClick={() => setDeleteConfirm(null)}
+                        className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-xs font-medium transition-colors"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setDeleteConfirm(order.orderNumber)}
+                      className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      삭제
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
