@@ -9315,17 +9315,23 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
 // ==================== 웰컴 스플래시 스크린 ====================
 function WelcomeSplash({ onComplete }) {
   const [phase, setPhase] = useState(0);
+  const hasStarted = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
     const timers = [
       setTimeout(() => setPhase(1), 100),   // 로고 등장
       setTimeout(() => setPhase(2), 800),   // 텍스트 등장
       setTimeout(() => setPhase(3), 1500),  // 서브텍스트
       setTimeout(() => setPhase(4), 2200),  // 페이드아웃 시작
-      setTimeout(() => onComplete(), 2800), // 완료
+      setTimeout(() => onCompleteRef.current(), 2800), // 완료
     ];
     return () => timers.forEach(clearTimeout);
-  }, [onComplete]);
+  }, []);
 
   return (
     <div
