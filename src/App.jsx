@@ -2236,6 +2236,8 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
     }
 
     switch(status) {
+      case 'reservation':
+        return { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/50', icon: '📦', label: '입고예약' };
       case 'scheduled':
         return { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/50', icon: '🟡', label: '예약' };
       case 'ready':
@@ -2247,6 +2249,16 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
       default:
         return { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/50', icon: '🟢', label: '대기' };
     }
+  };
+
+  // 입고예약 상태 체크 (입고대기/품절 상품이 포함된 장바구니)
+  const isReservationCart = (cart) => {
+    if (cart.status === 'reservation') return true;
+    // 장바구니 내 아이템 중 입고대기 상품이 있는지 체크
+    if (cart.items?.some(item => item.stock_status === 'incoming' || (item.stock === 0 && item.stock_status !== 'normal'))) {
+      return true;
+    }
+    return false;
   };
 
   // 배송 예정일 표시 helper
@@ -2267,14 +2279,17 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
 
   // 날짜 필터링 함수
   const filterByDate = (cart) => {
+    // 입고예약 장바구니는 날짜 필터 무시 (항상 표시)
+    if (isReservationCart(cart)) return true;
+
     if (dateFilter === 'all') return true;
     if (!cart.date && !cart.created_at) return false;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     let cartDate;
-    
+
     // created_at (ISO 형식) 우선 사용
     if (cart.created_at) {
       cartDate = new Date(cart.created_at);
@@ -2288,9 +2303,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
         return false;
       }
     }
-    
+
     cartDate.setHours(0, 0, 0, 0);
-    
+
     if (dateFilter === 'today') {
       return cartDate.getTime() === today.getTime();
     }
@@ -2332,6 +2347,8 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
   // 배송 예정일 필터링 함수
   const filterByDelivery = (cart) => {
     if (deliveryFilter === 'all') return true;
+    // 입고예약 필터: 입고예약 상태인 장바구니만 표시
+    if (deliveryFilter === 'reservation') return isReservationCart(cart);
     if (!cart.delivery_date) return deliveryFilter === 'no_date';
 
     const today = new Date();
@@ -2373,17 +2390,23 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
   // 필터링된 장바구니 목록
   const filteredCarts = savedCarts.filter(cart => filterByDate(cart) && filterBySearch(cart) && filterByDelivery(cart));
 
-  // 필터링된 목록의 원본 인덱스 매핑 및 정렬 (배송일 기준)
+  // 필터링된 목록의 원본 인덱스 매핑 및 정렬 (입고예약 상단 고정 + 배송일 기준)
   const filteredCartsWithIndex = savedCarts
     .map((cart, index) => ({ cart, originalIndex: index }))
     .filter(({ cart }) => filterByDate(cart) && filterBySearch(cart) && filterByDelivery(cart))
     .sort((a, b) => {
-      // 배송일이 있는 것 우선
+      // 1. 입고예약 장바구니 최상단 고정
+      const aIsReservation = isReservationCart(a.cart);
+      const bIsReservation = isReservationCart(b.cart);
+      if (aIsReservation && !bIsReservation) return -1;
+      if (!aIsReservation && bIsReservation) return 1;
+
+      // 2. 배송일이 있는 것 우선
       if (!a.cart.delivery_date && b.cart.delivery_date) return 1;
       if (a.cart.delivery_date && !b.cart.delivery_date) return -1;
       if (!a.cart.delivery_date && !b.cart.delivery_date) return 0;
 
-      // 배송일 오름차순 (가까운 날짜 먼저)
+      // 3. 배송일 오름차순 (가까운 날짜 먼저)
       const dateA = new Date(a.cart.delivery_date);
       const dateB = new Date(b.cart.delivery_date);
       return dateA - dateB;
@@ -2614,6 +2637,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
               <div className="flex flex-wrap gap-2">
                 {[
                   { key: 'all', label: '전체', icon: '📦' },
+                  { key: 'reservation', label: '입고예약', icon: '📦' },
                   { key: 'overdue', label: '지연', icon: '🔴' },
                   { key: 'today', label: '오늘', icon: '⚡' },
                   { key: 'tomorrow', label: '내일', icon: '🟡' },
@@ -2625,7 +2649,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                     onClick={() => { setDeliveryFilter(key); setSelectedItems([]); }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       deliveryFilter === key
-                        ? 'bg-orange-600 text-white'
+                        ? key === 'reservation' ? 'bg-orange-500 text-white' : 'bg-orange-600 text-white'
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
@@ -2676,17 +2700,45 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                 return `${item.name}(${item.quantity})`;
               }).join(', ');
               
+              // 예약/입고예약 상태 체크
+              const isReservation = cart.status === 'reservation' || isReservationCart(cart);
+              const isScheduled = cart.status === 'scheduled';
+
               return (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   onClick={(e) => handleCardClick(cart, index, e)}
-                  className={`bg-slate-800 rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none ${
-                    selectMode && selectedItems.includes(index) 
-                      ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50' 
-                      : 'border-slate-700 hover:border-violet-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'
+                  className={`rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none relative overflow-hidden ${
+                    selectMode && selectedItems.includes(index)
+                      ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50'
+                      : isReservation
+                        ? 'bg-gradient-to-br from-orange-900/40 via-slate-800 to-slate-800 border-orange-500/50 hover:border-orange-400 hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.02]'
+                        : isScheduled
+                          ? 'bg-gradient-to-br from-yellow-900/30 via-slate-800 to-slate-800 border-yellow-500/40 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20 hover:scale-[1.02]'
+                          : 'bg-slate-800 border-slate-700 hover:border-violet-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'
                   }`}
                 >
+                  {/* 입고예약 상태일 때 상단 악센트 바 */}
+                  {isReservation && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-orange-400 to-orange-500 animate-pulse"></div>
+                  )}
+                  {/* 예약 상태일 때 상단 악센트 바 */}
+                  {isScheduled && !isReservation && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500"></div>
+                  )}
                   <div className="flex items-start gap-3">
+                    {/* 입고예약 아이콘 (선택 모드 아닐 때) */}
+                    {!selectMode && isReservation && (
+                      <div className="mt-1 w-8 h-8 rounded-lg bg-orange-500/20 border border-orange-500/50 flex items-center justify-center flex-shrink-0 animate-pulse">
+                        <Package className="w-4 h-4 text-orange-400" />
+                      </div>
+                    )}
+                    {/* 예약 아이콘 (선택 모드 아닐 때) */}
+                    {!selectMode && isScheduled && !isReservation && (
+                      <div className="mt-1 w-8 h-8 rounded-lg bg-yellow-500/20 border border-yellow-500/50 flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 text-yellow-400" />
+                      </div>
+                    )}
                     {/* 체크박스 (선택 모드일 때만) */}
                     {selectMode && (
                       <button
@@ -2700,12 +2752,12 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                         {selectedItems.includes(index) && <Check className="w-3 h-3 text-white" />}
                       </button>
                     )}
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-white font-semibold truncate">{cart.name}</h3>
+                            <h3 className={`font-semibold truncate ${isReservation ? 'text-orange-300' : 'text-white'}`}>{cart.name}</h3>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               cart.priceType === 'wholesale' || cart.price_type === 'wholesale'
                                 ? 'bg-blue-600/30 text-blue-400'
@@ -3034,6 +3086,34 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                 })}
               </div>
             </div>
+
+            {/* 상태 변경 (편집 모드) */}
+            {isEditingDetail && (
+              <div className="border-t border-slate-700 p-4 sm:p-6 flex-shrink-0 bg-slate-800/50">
+                <p className="text-slate-400 text-xs mb-2">주문 상태</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'pending', label: '대기', icon: '🟢', bg: 'bg-green-600', bgOff: 'bg-green-600/20 border-green-500/50 text-green-400' },
+                    { key: 'reservation', label: '입고예약', icon: '📦', bg: 'bg-orange-500', bgOff: 'bg-orange-500/20 border-orange-500/50 text-orange-400' },
+                    { key: 'scheduled', label: '예약', icon: '🟡', bg: 'bg-yellow-500', bgOff: 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400' },
+                    { key: 'ready', label: '준비', icon: '🔵', bg: 'bg-blue-500', bgOff: 'bg-blue-500/20 border-blue-500/50 text-blue-400' },
+                    { key: 'hold', label: '보류', icon: '⚪', bg: 'bg-gray-500', bgOff: 'bg-gray-500/20 border-gray-500/50 text-gray-400' },
+                  ].map(({ key, label, icon, bg, bgOff }) => (
+                    <button
+                      key={key}
+                      onClick={() => setEditedDetailCart({ ...editedDetailCart, status: key })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                        (editedDetailCart?.status || currentCart.status || 'pending') === key
+                          ? `${bg} text-white border-transparent`
+                          : `${bgOff} hover:opacity-80`
+                      }`}
+                    >
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 금액 요약 + 버튼 */}
             <div className="border-t border-slate-700 p-4 sm:p-6 flex-shrink-0 bg-slate-800">
@@ -6467,6 +6547,12 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
+  // 일괄 작업 관련 state
+  const [showBulkActionModal, setShowBulkActionModal] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState(null); // 'stock', 'outOfStock', 'incoming', 'delete'
+  const [bulkStockValue, setBulkStockValue] = useState(50);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
   // 카테고리 관리 state
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -7088,6 +7174,80 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     setSelectMode(false);
   };
 
+  // 일괄 재고 수정
+  const handleBulkStockUpdate = async () => {
+    if (selectedProducts.length === 0) return;
+    setIsBulkProcessing(true);
+    try {
+      for (const id of selectedProducts) {
+        await onUpdateStock(id, { stock: bulkStockValue, stock_status: 'normal' });
+      }
+      setSelectedProducts([]);
+      setShowBulkActionModal(false);
+      setBulkActionType(null);
+      setSelectMode(false);
+    } catch (error) {
+      console.error('일괄 재고 수정 실패:', error);
+    }
+    setIsBulkProcessing(false);
+  };
+
+  // 일괄 품절 처리
+  const handleBulkOutOfStock = async () => {
+    if (selectedProducts.length === 0) return;
+    setIsBulkProcessing(true);
+    try {
+      for (const id of selectedProducts) {
+        await onUpdateStock(id, { stock: 0, stock_status: 'out' });
+      }
+      setSelectedProducts([]);
+      setShowBulkActionModal(false);
+      setBulkActionType(null);
+      setSelectMode(false);
+    } catch (error) {
+      console.error('일괄 품절 처리 실패:', error);
+    }
+    setIsBulkProcessing(false);
+  };
+
+  // 일괄 입고대기 처리
+  const handleBulkIncoming = async () => {
+    if (selectedProducts.length === 0) return;
+    setIsBulkProcessing(true);
+    try {
+      for (const id of selectedProducts) {
+        await onUpdateStock(id, { stock: 0, stock_status: 'incoming' });
+      }
+      setSelectedProducts([]);
+      setShowBulkActionModal(false);
+      setBulkActionType(null);
+      setSelectMode(false);
+    } catch (error) {
+      console.error('일괄 입고대기 처리 실패:', error);
+    }
+    setIsBulkProcessing(false);
+  };
+
+  // 일괄 작업 실행
+  const executeBulkAction = () => {
+    switch (bulkActionType) {
+      case 'stock':
+        handleBulkStockUpdate();
+        break;
+      case 'outOfStock':
+        handleBulkOutOfStock();
+        break;
+      case 'incoming':
+        handleBulkIncoming();
+        break;
+      case 'delete':
+        handleBulkDelete();
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       <CustomStyles />
@@ -7369,26 +7529,55 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         {/* 제품 테이블 */}
         {/* 선택 모드 바 */}
         {selectMode && activeTab === 'products' && (
-          <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={selectAllProducts}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-colors"
-              >
-                {selectedProducts.length === filteredProducts.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                전체선택
-              </button>
-              <span className="text-red-400 text-sm font-medium">{selectedProducts.length}개 선택됨</span>
+          <div className="bg-slate-800/80 border border-slate-600 rounded-xl p-3 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={selectAllProducts}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-colors"
+                >
+                  {selectedProducts.length === filteredProducts.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                  전체선택
+                </button>
+                <span className="text-blue-400 text-sm font-medium">{selectedProducts.length}개 선택됨</span>
+              </div>
+              {selectedProducts.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* 재고 수정 */}
+                  <button
+                    onClick={() => { setBulkActionType('stock'); setShowBulkActionModal(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    재고수정
+                  </button>
+                  {/* 품절 처리 */}
+                  <button
+                    onClick={() => { setBulkActionType('outOfStock'); setShowBulkActionModal(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                    품절
+                  </button>
+                  {/* 입고대기 처리 */}
+                  <button
+                    onClick={() => { setBulkActionType('incoming'); setShowBulkActionModal(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600/80 hover:bg-orange-600 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                    입고대기
+                  </button>
+                  {/* 삭제 */}
+                  <button
+                    onClick={() => { setBulkActionType('delete'); setShowBulkActionModal(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    삭제
+                  </button>
+                </div>
+              )}
             </div>
-            {selectedProducts.length > 0 && (
-              <button
-                onClick={() => setShowBulkDeleteConfirm(true)}
-                className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                {selectedProducts.length}개 삭제
-              </button>
-            )}
           </div>
         )}
 
@@ -8751,6 +8940,146 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
         </div>
       )}
 
+      {/* 일괄 작업 모달 */}
+      {showBulkActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setShowBulkActionModal(false); setBulkActionType(null); }} />
+          <div className="relative bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden border border-slate-700 shadow-2xl animate-scale-in">
+            {/* 헤더 */}
+            <div className={`px-6 py-4 ${
+              bulkActionType === 'stock' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500' :
+              bulkActionType === 'outOfStock' ? 'bg-gradient-to-r from-red-600 to-red-500' :
+              bulkActionType === 'incoming' ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
+              'bg-gradient-to-r from-slate-600 to-slate-500'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  {bulkActionType === 'stock' && <Package className="w-6 h-6 text-white" />}
+                  {bulkActionType === 'outOfStock' && <span className="w-4 h-4 rounded-full bg-white"></span>}
+                  {bulkActionType === 'incoming' && <span className="w-4 h-4 rounded-full bg-white animate-pulse"></span>}
+                  {bulkActionType === 'delete' && <Trash2 className="w-6 h-6 text-white" />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    {bulkActionType === 'stock' && '일괄 재고 수정'}
+                    {bulkActionType === 'outOfStock' && '일괄 품절 처리'}
+                    {bulkActionType === 'incoming' && '일괄 입고대기 처리'}
+                    {bulkActionType === 'delete' && '일괄 삭제'}
+                  </h3>
+                  <p className="text-white/80 text-sm">{selectedProducts.length}개 제품 선택됨</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* 재고 수정 입력 */}
+              {bulkActionType === 'stock' && (
+                <div className="mb-6">
+                  <label className="block text-slate-400 text-sm mb-2">변경할 재고 수량</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setBulkStockValue(Math.max(0, bulkStockValue - 10))} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">-10</button>
+                    <button onClick={() => setBulkStockValue(Math.max(0, bulkStockValue - 1))} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">-1</button>
+                    <input
+                      type="number"
+                      value={bulkStockValue}
+                      onChange={(e) => setBulkStockValue(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-center text-lg font-bold focus:outline-none focus:border-emerald-500"
+                    />
+                    <button onClick={() => setBulkStockValue(bulkStockValue + 1)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">+1</button>
+                    <button onClick={() => setBulkStockValue(bulkStockValue + 10)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors">+10</button>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    {[0, 10, 20, 50, 100].map(val => (
+                      <button
+                        key={val}
+                        onClick={() => setBulkStockValue(val)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          bulkStockValue === val ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {val}개
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 품절/입고대기/삭제 안내 */}
+              {bulkActionType !== 'stock' && (
+                <div className={`rounded-xl p-4 mb-6 ${
+                  bulkActionType === 'outOfStock' ? 'bg-red-500/10 border border-red-500/30' :
+                  bulkActionType === 'incoming' ? 'bg-orange-500/10 border border-orange-500/30' :
+                  'bg-slate-700/50 border border-slate-600'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className={`w-6 h-6 mt-0.5 flex-shrink-0 ${
+                      bulkActionType === 'outOfStock' ? 'text-red-400' :
+                      bulkActionType === 'incoming' ? 'text-orange-400' :
+                      'text-slate-400'
+                    }`} />
+                    <div>
+                      <p className={`font-bold text-lg ${
+                        bulkActionType === 'outOfStock' ? 'text-red-400' :
+                        bulkActionType === 'incoming' ? 'text-orange-400' :
+                        'text-slate-300'
+                      }`}>
+                        {bulkActionType === 'outOfStock' && `${selectedProducts.length}개 제품을 품절 처리합니다`}
+                        {bulkActionType === 'incoming' && `${selectedProducts.length}개 제품을 입고대기로 변경합니다`}
+                        {bulkActionType === 'delete' && `${selectedProducts.length}개 제품을 삭제합니다`}
+                      </p>
+                      <p className={`text-sm mt-1 ${
+                        bulkActionType === 'outOfStock' ? 'text-red-400/80' :
+                        bulkActionType === 'incoming' ? 'text-orange-400/80' :
+                        'text-slate-400'
+                      }`}>
+                        {bulkActionType === 'outOfStock' && '재고가 0으로 설정되고 품절 상태가 됩니다.'}
+                        {bulkActionType === 'incoming' && '재고가 0으로 설정되고 입고대기 상태가 됩니다.'}
+                        {bulkActionType === 'delete' && '이 작업은 되돌릴 수 없습니다.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 버튼 */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowBulkActionModal(false); setBulkActionType(null); }}
+                  disabled={isBulkProcessing}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors disabled:opacity-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={executeBulkAction}
+                  disabled={isBulkProcessing}
+                  className={`flex-1 py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${
+                    bulkActionType === 'stock' ? 'bg-emerald-600 hover:bg-emerald-500' :
+                    bulkActionType === 'outOfStock' ? 'bg-red-600 hover:bg-red-500' :
+                    bulkActionType === 'incoming' ? 'bg-orange-600 hover:bg-orange-500' :
+                    'bg-slate-600 hover:bg-slate-500'
+                  }`}
+                >
+                  {isBulkProcessing ? (
+                    <>
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      처리 중...
+                    </>
+                  ) : (
+                    <>
+                      {bulkActionType === 'stock' && <><Package className="w-5 h-5" />재고 수정</>}
+                      {bulkActionType === 'outOfStock' && <><span className="w-3 h-3 rounded-full bg-white"></span>품절 처리</>}
+                      {bulkActionType === 'incoming' && <><span className="w-3 h-3 rounded-full bg-white"></span>입고대기 처리</>}
+                      {bulkActionType === 'delete' && <><Trash2 className="w-5 h-5" />삭제 확인</>}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 일괄 삭제 확인 모달 */}
       {showBulkDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ touchAction: 'none' }}>
@@ -9703,9 +10032,14 @@ export default function PriceCalculator() {
       const phone = isLegacyFormat ? '' : (cartData.phone || '');
       const address = isLegacyFormat ? '' : (cartData.address || '');
       const deliveryDate = isLegacyFormat ? null : cartData.deliveryDate;
-      const status = isLegacyFormat ? 'scheduled' : cartData.status;
       const priority = isLegacyFormat ? 'normal' : cartData.priority;
       const memo = isLegacyFormat ? '' : cartData.memo;
+
+      // 입고대기/품절 상품이 포함되어 있으면 자동으로 입고예약 상태로 설정
+      const hasReservationItems = cart.some(item =>
+        item.stock_status === 'incoming' || (item.stock === 0 && item.stock_status !== 'normal')
+      );
+      const status = hasReservationItems ? 'reservation' : (isLegacyFormat ? 'scheduled' : cartData.status);
 
       const newCart = {
         name,
@@ -9730,8 +10064,22 @@ export default function PriceCalculator() {
 
       console.log('장바구니 저장 시도:', newCart);
 
-      // 신규 업체 자동 등록 체크
-      if (name && name.trim() && Array.isArray(customers)) {
+      // 날짜 형식 이름인지 체크 (자동 거래처 등록 제외용)
+      const isDateFormatName = (str) => {
+        if (!str) return true;
+        const trimmed = str.trim();
+        // "1월 20일", "12월 5일 오후 03:25", "2026. 1. 20" 등의 패턴
+        const datePatterns = [
+          /^\d{1,2}월\s*\d{1,2}일/,  // "1월 20일"
+          /^\d{4}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2}/,  // "2026. 1. 20" or "2026-01-20"
+          /^오전|^오후/,  // "오전", "오후"로 시작
+          /^\d{1,2}:\d{2}/,  // "03:25"로 시작
+        ];
+        return datePatterns.some(pattern => pattern.test(trimmed));
+      };
+
+      // 신규 업체 자동 등록 체크 (날짜 형식 이름은 제외)
+      if (name && name.trim() && Array.isArray(customers) && !isDateFormatName(name)) {
         try {
           const existingCustomer = customers.find(c =>
             c?.name?.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '')
@@ -10147,8 +10495,21 @@ export default function PriceCalculator() {
       
       const result = await supabase.saveOrder(supabaseOrder);
       if (result) {
-        // 신규 업체 자동 등록 체크
-        if (orderData.customerName && Array.isArray(customers)) {
+        // 날짜 형식 이름인지 체크 (자동 거래처 등록 제외용)
+        const isDateFormatName = (str) => {
+          if (!str) return true;
+          const trimmed = str.trim();
+          const datePatterns = [
+            /^\d{1,2}월\s*\d{1,2}일/,
+            /^\d{4}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2}/,
+            /^오전|^오후/,
+            /^\d{1,2}:\d{2}/,
+          ];
+          return datePatterns.some(pattern => pattern.test(trimmed));
+        };
+
+        // 신규 업체 자동 등록 체크 (날짜 형식 이름은 제외)
+        if (orderData.customerName && Array.isArray(customers) && !isDateFormatName(orderData.customerName)) {
           // 기존 거래처인지 확인
           const existingCustomer = customers.find(c =>
             c?.name?.toLowerCase().replace(/\s/g, '') === orderData.customerName.toLowerCase().replace(/\s/g, '')
@@ -10402,13 +10763,22 @@ export default function PriceCalculator() {
     const baseStock = product.stock !== undefined ? product.stock : 50;
     const existingItem = cart.find(item => item.id === product.id);
     const currentQty = existingItem ? existingItem.quantity : 0;
-    
-    // 재고 체크
-    if (currentQty >= baseStock) {
+    const isIncoming = product.stock_status === 'incoming';
+    const isOutOfStock = baseStock === 0 && !isIncoming;
+
+    // 재고 체크 (입고대기/품절 상품은 예약 주문으로 허용, 경고만 표시)
+    if (currentQty >= baseStock && baseStock > 0) {
       showToast('⚠️ 재고가 부족합니다', 'error');
       return;
     }
-    
+
+    // 입고대기/품절 상품 추가 시 알림
+    if (isIncoming && currentQty === 0) {
+      showToast('📦 입고대기 상품입니다 (예약 주문)', 'warning');
+    } else if (isOutOfStock && currentQty === 0) {
+      showToast('⚠️ 품절 상품입니다 (예약 주문)', 'warning');
+    }
+
     if (existingItem) {
       setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
     } else {
@@ -10430,19 +10800,21 @@ export default function PriceCalculator() {
 
   const updateQuantity = (productId, newQuantity) => {
     if (newQuantity < 1) return removeFromCart(productId);
-    
+
     // 재고 체크
-    const product = products.length > 0 
+    const product = products.length > 0
       ? products.find(p => p.id === productId)
       : priceData.find(p => p.id === productId);
     const baseStock = product?.stock !== undefined ? product.stock : 50;
-    
-    if (newQuantity > baseStock) {
+    const isIncoming = product?.stock_status === 'incoming';
+    const isOutOfStock = baseStock === 0 && !isIncoming;
+
+    // 입고대기/품절 상품은 수량 제한 없이 허용 (예약 주문)
+    if (newQuantity > baseStock && baseStock > 0 && !isIncoming) {
       showToast('⚠️ 재고가 부족합니다', 'error');
       return;
     }
-    
-    setCart(cart.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
+
     setCart(cart.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
   };
 
@@ -10881,29 +11253,33 @@ export default function PriceCalculator() {
                       const exVatPrice = Math.round(displayPrice / 1.1);
                       const baseStock = product.stock !== undefined ? product.stock : 50;
                       const availableStock = baseStock - cartQuantity; // 장바구니 수량 차감
-                      const isOutOfStock = availableStock <= 0;
+                      const isIncoming = product.stock_status === 'incoming'; // 입고대기 상태
+                      const isOutOfStock = availableStock <= 0 && !isIncoming; // 입고대기는 품절이 아님
                       const isLowStock = availableStock > 0 && availableStock <= (product.min_stock || 5);
-                      
+
                       return (
-                        <div 
-                          key={product.id} 
-                          onClick={() => !isOutOfStock && !cartItem && addToCart(product)}
+                        <div
+                          key={product.id}
+                          onClick={() => !cartItem && addToCart(product)}
                           className={`px-2 py-2 rounded-lg cursor-pointer transition-all duration-200 hover-lift select-none ${
-                            cartItem 
-                              ? 'bg-blue-600/30 border border-blue-500/50' 
-                              : isOutOfStock
-                                ? 'bg-red-900/20 border border-red-500/30 opacity-60 cursor-not-allowed'
-                                : 'bg-slate-700/30 hover:bg-slate-700/60 border border-transparent hover:border-slate-600'
+                            cartItem
+                              ? 'bg-blue-600/30 border border-blue-500/50'
+                              : isIncoming
+                                ? 'bg-orange-900/20 border border-orange-500/30 hover:bg-orange-900/40'
+                                : isOutOfStock
+                                  ? 'bg-red-900/20 border border-red-500/30 hover:bg-red-900/40'
+                                  : 'bg-slate-700/30 hover:bg-slate-700/60 border border-transparent hover:border-slate-600'
                           }`}
                         >
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-white text-xs font-medium truncate flex-1 pr-1">{product.name}</p>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 flex items-center gap-1 ${
+                              isIncoming ? 'bg-orange-600/30 text-orange-400' :
                               isOutOfStock ? 'bg-red-600/30 text-red-400' :
                               isLowStock ? 'bg-yellow-600/30 text-yellow-400' :
                               'bg-emerald-600/30 text-emerald-400'
                             }`}>
-                              {isOutOfStock ? '품절' : `${availableStock}개`}
+                              {isIncoming ? <><span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>입고대기</> : isOutOfStock ? '품절' : `${availableStock}개`}
                             </span>
                           </div>
                           
