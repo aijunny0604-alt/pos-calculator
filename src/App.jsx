@@ -3617,13 +3617,19 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
-  // 모달 열릴 때 배경 스크롤 방지
+  // 모달 열릴 때 배경 스크롤 방지 + 거래처 데이터 새로고침
   useEffect(() => {
     const scrollY = window.scrollY;
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
     document.body.style.overflow = 'hidden';
+
+    // 거래처 데이터 새로고침 (최신 주소/전화번호 반영)
+    if (refreshCustomers) {
+      refreshCustomers();
+    }
+
     return () => {
       document.body.style.position = '';
       document.body.style.top = '';
@@ -3631,7 +3637,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       document.body.style.overflow = '';
       window.scrollTo(0, scrollY);
     };
-  }, []);
+  }, [refreshCustomers]);
   
   const safeOrders = orders || [];
   const today = new Date();
