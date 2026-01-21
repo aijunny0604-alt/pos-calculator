@@ -3451,10 +3451,33 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
               )}
             </div>
             
-            {/* 주문 이력 */}
+            {/* 총 주문 금액 - 상단 강조 표시 */}
+            {getCustomerOrders(selectedCustomer.name).length > 0 && (
+              <div className="bg-gradient-to-r from-emerald-600/20 via-emerald-500/10 to-emerald-600/20 rounded-xl p-4 mb-4 border border-emerald-500/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg">
+                      <Receipt className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-xs">총 주문 금액</p>
+                      <p className="text-emerald-400 font-bold text-2xl">
+                        {formatPrice(getCustomerOrders(selectedCustomer.name).reduce((sum, o) => sum + (o.totalAmount || 0), 0))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-slate-400 text-xs">주문 건수</p>
+                    <p className="text-white font-bold text-xl">{getCustomerOrders(selectedCustomer.name).length}건</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 주문 이력 헤더 */}
             <div className="flex items-center justify-between mb-3">
-              <p className="text-slate-400 text-sm">
-                주문 이력: <span className="text-white font-semibold">{getCustomerOrders(selectedCustomer.name).length}건</span>
+              <p className="text-slate-400 text-sm font-medium">
+                주문 이력
               </p>
               {getCustomerOrders(selectedCustomer.name).length > 0 && (
                 <button
@@ -3481,14 +3504,14 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                 </button>
               )}
             </div>
-            
+
             {getCustomerOrders(selectedCustomer.name).length === 0 ? (
               <div className="text-center py-12">
                 <Receipt className="w-16 h-16 text-slate-600 mx-auto mb-3" />
                 <p className="text-slate-400">주문 이력이 없습니다</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {getCustomerOrders(selectedCustomer.name).map(order => {
                   const copyOrderText = () => {
                     const lines = [
@@ -3499,33 +3522,50 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                     ].filter(Boolean).join('\n');
                     navigator.clipboard.writeText(lines);
                   };
-                  
+
                   return (
-                    <div key={order.orderNumber} className="bg-slate-800 rounded-xl p-4 border border-slate-700 group">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-slate-400 text-sm">{formatDate(order.createdAt)}</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={copyOrderText}
-                            className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                            title="주문 복사"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          <span className="text-emerald-400 font-bold">{formatPrice(order.totalAmount)}</span>
+                    <div
+                      key={order.orderNumber}
+                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all group hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/10"
+                    >
+                      {/* 카드 상단: 날짜 + 금액 */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <span className="text-slate-300 text-sm font-medium">{formatDate(order.createdAt)}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-emerald-400 font-bold text-lg">{formatPrice(order.totalAmount)}</p>
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        {(order.items || []).map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm">
-                            <span className="text-slate-300">{item.name} x{item.quantity}</span>
-                            <span className="text-slate-400">{formatPrice(item.price * item.quantity)}</span>
-                          </div>
-                        ))}
+
+                      {/* 카드 중단: 상품 목록 */}
+                      <div className="bg-slate-900/50 rounded-lg p-2 mb-3">
+                        <div className="space-y-1">
+                          {(order.items || []).slice(0, 3).map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span className="text-slate-300 truncate flex-1 mr-2">{item.name} x{item.quantity}</span>
+                              <span className="text-slate-400 flex-shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                            </div>
+                          ))}
+                          {(order.items || []).length > 3 && (
+                            <p className="text-slate-500 text-xs">외 {order.items.length - 3}개 상품</p>
+                          )}
+                        </div>
+                        {order.memo && (
+                          <p className="text-cyan-400 text-xs mt-2 pt-2 border-t border-slate-700 truncate">
+                            💬 {order.memo}
+                          </p>
+                        )}
                       </div>
-                      {order.memo && (
-                        <p className="text-slate-500 text-xs mt-2 pt-2 border-t border-slate-600">메모: {order.memo}</p>
-                      )}
+
+                      {/* 카드 하단: 복사 버튼 */}
+                      <button
+                        onClick={copyOrderText}
+                        className="w-full py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        주문 복사
+                      </button>
                     </div>
                   );
                 })}
