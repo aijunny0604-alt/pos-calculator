@@ -3306,12 +3306,15 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
+  const [detailOrder, setDetailOrder] = useState(null); // 상세보기 모달용 주문
 
   // ESC 키로 뒤로가기
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (selectedCustomer) {
+        if (detailOrder) {
+          setDetailOrder(null);
+        } else if (selectedCustomer) {
           setSelectedCustomer(null);
         } else {
           onBack();
@@ -3320,7 +3323,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, selectedCustomer]);
+  }, [onBack, selectedCustomer, detailOrder]);
   
   // 검색 필터링 (띄어쓰기 무시)
   const filteredCustomers = (customers || []).filter(c => {
@@ -3452,27 +3455,42 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
             </div>
             
             {/* 총 주문 금액 - 상단 강조 표시 */}
-            {getCustomerOrders(selectedCustomer.name).length > 0 && (
-              <div className="bg-gradient-to-r from-emerald-600/20 via-emerald-500/10 to-emerald-600/20 rounded-xl p-4 mb-4 border border-emerald-500/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-500/20 rounded-lg">
-                      <Receipt className="w-6 h-6 text-emerald-400" />
+            {getCustomerOrders(selectedCustomer.name).length > 0 && (() => {
+              const totalAmount = getCustomerOrders(selectedCustomer.name).reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+              const supplyAmount = calcExVat(totalAmount);
+              const vatAmount = totalAmount - supplyAmount;
+              return (
+                <div className="bg-gradient-to-r from-emerald-600/20 via-emerald-500/10 to-emerald-600/20 rounded-xl p-4 mb-4 border border-emerald-500/30">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-500/20 rounded-lg">
+                        <Receipt className="w-6 h-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-xs">총 주문 금액</p>
+                        <p className="text-emerald-400 font-bold text-2xl">
+                          {formatPrice(totalAmount)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-slate-400 text-xs">총 주문 금액</p>
-                      <p className="text-emerald-400 font-bold text-2xl">
-                        {formatPrice(getCustomerOrders(selectedCustomer.name).reduce((sum, o) => sum + (o.totalAmount || 0), 0))}
-                      </p>
+                    <div className="flex gap-4">
+                      <div className="text-right">
+                        <p className="text-slate-400 text-xs">공급가액</p>
+                        <p className="text-blue-400 font-bold text-lg">{formatPrice(supplyAmount)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-xs">부가세</p>
+                        <p className="text-purple-400 font-bold text-lg">{formatPrice(vatAmount)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-xs">주문 건수</p>
+                        <p className="text-white font-bold text-lg">{getCustomerOrders(selectedCustomer.name).length}건</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-slate-400 text-xs">주문 건수</p>
-                    <p className="text-white font-bold text-xl">{getCustomerOrders(selectedCustomer.name).length}건</p>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 주문 이력 헤더 */}
             <div className="flex items-center justify-between mb-3">
@@ -3526,7 +3544,8 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                   return (
                     <div
                       key={order.orderNumber}
-                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all group hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/10"
+                      onClick={() => setDetailOrder(order)}
+                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all group hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer select-none"
                     >
                       {/* 카드 상단: 날짜 + 금액 */}
                       <div className="flex items-start justify-between mb-3">
@@ -3560,7 +3579,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
 
                       {/* 카드 하단: 복사 버튼 */}
                       <button
-                        onClick={copyOrderText}
+                        onClick={(e) => { e.stopPropagation(); copyOrderText(); }}
                         className="w-full py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -3632,6 +3651,99 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
         )}
         </div>
       </div>
+
+      {/* 주문 상세보기 모달 */}
+      {detailOrder && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setDetailOrder(null)}>
+          <div className="bg-slate-800 rounded-2xl w-full max-w-lg border border-emerald-500/30 shadow-2xl shadow-emerald-500/20 overflow-hidden animate-scale-in max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* 모달 헤더 */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Receipt className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">주문 상세</h2>
+                    <p className="text-emerald-200 text-sm">{formatDate(detailOrder.createdAt)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetailOrder(null)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* 금액 요약 */}
+              <div className="bg-slate-900/50 rounded-xl p-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-slate-400 text-xs mb-1">총 금액</p>
+                    <p className="text-emerald-400 font-bold text-lg">{formatPrice(detailOrder.totalAmount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs mb-1">공급가액</p>
+                    <p className="text-blue-400 font-bold text-lg">{formatPrice(calcExVat(detailOrder.totalAmount))}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs mb-1">부가세</p>
+                    <p className="text-purple-400 font-bold text-lg">{formatPrice(detailOrder.totalAmount - calcExVat(detailOrder.totalAmount))}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 상품 목록 */}
+              <div className="mb-4">
+                <p className="text-slate-400 text-xs mb-2 font-medium">상품 목록 ({(detailOrder.items || []).length}종)</p>
+                <div className="bg-slate-900/30 rounded-xl border border-slate-700 divide-y divide-slate-700">
+                  {(detailOrder.items || []).map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3">
+                      <div className="flex-1">
+                        <p className="text-white text-sm font-medium">{item.name}</p>
+                        <p className="text-slate-400 text-xs">수량: {item.quantity}개 × {formatPrice(item.price)}</p>
+                      </div>
+                      <p className="text-emerald-400 font-semibold">{formatPrice(item.price * item.quantity)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 메모 */}
+              {detailOrder.memo && (
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3">
+                  <p className="text-cyan-400 text-xs font-medium mb-1">💬 메모</p>
+                  <p className="text-slate-300 text-sm">{detailOrder.memo}</p>
+                </div>
+              )}
+            </div>
+
+            {/* 모달 하단 버튼 */}
+            <div className="p-4 border-t border-slate-700 flex-shrink-0">
+              <button
+                onClick={() => {
+                  const lines = [
+                    formatDate(detailOrder.createdAt),
+                    ...(detailOrder.items || []).map(item => `${item.name} x${item.quantity}  ${formatPrice(item.price * item.quantity)}`),
+                    `총 금액: ${formatPrice(detailOrder.totalAmount)}`,
+                    `공급가액: ${formatPrice(calcExVat(detailOrder.totalAmount))}`,
+                    detailOrder.memo ? `메모: ${detailOrder.memo}` : ''
+                  ].filter(Boolean).join('\n');
+                  navigator.clipboard.writeText(lines);
+                }}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                주문 복사
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
