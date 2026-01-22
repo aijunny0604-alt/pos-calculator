@@ -3234,7 +3234,6 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
             </div>
           </div>
         </div>
-        </div>
         );
       })()}
 
