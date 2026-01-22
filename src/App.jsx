@@ -12402,7 +12402,7 @@ export default function PriceCalculator() {
       {!showSplash && !isOrderModalOpen && !showTextAnalyzeModal && (
         <button
           onClick={() => setShowQuickCalculator(true)}
-          className="fixed bottom-24 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+          className="fixed bottom-6 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
           title="계산기"
         >
           <Calculator className="w-6 h-6" />
