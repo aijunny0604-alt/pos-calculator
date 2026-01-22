@@ -11340,7 +11340,7 @@ export default function PriceCalculator() {
         products={products}
         formatPrice={formatPrice}
         onBack={() => setIsSavedCartsModalOpen(false)}
-        onRefresh={loadSavedCarts}
+        onRefresh={loadSavedCartsFromDB}
         isLoading={isLoading}
       />
     );
