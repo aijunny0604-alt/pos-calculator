@@ -2182,7 +2182,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                           <span className="text-white font-medium tabular-nums">{item.quantity}개</span>
                         )}
                       </div>
-                      <div className="col-span-2 text-right text-emerald-400 font-bold tabular-nums">{formatPrice(item.price * item.quantity)}</div>
+                      <div className="col-span-2 text-right text-emerald-400 font-bold tabular-nums whitespace-nowrap">{formatPrice(item.price * item.quantity)}</div>
                       {isEditing && (
                         <div className="col-span-1 flex justify-center">
                           <button
@@ -8117,7 +8117,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => setShowStockModal(product)}
-                          className={`group relative min-w-[80px] px-4 py-1.5 text-sm font-semibold transition-all ${
+                          className={`group relative min-w-[75px] px-3 py-1.5 text-sm font-semibold transition-all whitespace-nowrap ${
                             isIncoming
                               ? 'bg-gradient-to-r from-orange-600/30 to-amber-500/20 border border-orange-500/50 text-orange-400 hover:from-orange-600/50 hover:to-amber-500/40'
                               : isOutOfStock
@@ -8127,21 +8127,21 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                               : 'bg-gradient-to-r from-emerald-600/30 to-teal-500/20 border border-emerald-500/50 text-emerald-400 hover:from-emerald-600/50 hover:to-teal-500/40'
                           } rounded-lg`}
                         >
-                          <span className="relative z-10 flex items-center justify-center gap-1.5">
+                          <span className="relative z-10 flex items-center justify-center gap-1">
                             {isIncoming ? (
                               <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
-                                입고대기
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse flex-shrink-0"></span>
+                                <span className="text-xs">입고대기</span>
                               </>
                             ) : isOutOfStock ? (
                               <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
-                                품절
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse flex-shrink-0"></span>
+                                <span className="text-xs">품절</span>
                               </>
                             ) : (
                               <>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-yellow-400' : 'bg-emerald-400'}`}></span>
-                                {stock}개
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLowStock ? 'bg-yellow-400' : 'bg-emerald-400'}`}></span>
+                                <span className="text-xs">{stock}개</span>
                               </>
                             )}
                           </span>
