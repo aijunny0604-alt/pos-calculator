@@ -3316,7 +3316,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
       {/* 계산기 플로팅 버튼 */}
       <button
         onClick={() => setShowQuickCalculator(true)}
-        className="fixed bottom-6 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+        className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
         title="계산기"
       >
         <Calculator className="w-6 h-6" />
@@ -9830,7 +9830,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
       {/* 계산기 플로팅 버튼 */}
       <button
         onClick={() => setShowQuickCalculator(true)}
-        className="fixed bottom-6 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+        className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
         title="계산기"
       >
         <Calculator className="w-6 h-6" />
@@ -12402,7 +12402,7 @@ export default function PriceCalculator() {
       {!showSplash && !isOrderModalOpen && !showTextAnalyzeModal && (
         <button
           onClick={() => setShowQuickCalculator(true)}
-          className="fixed bottom-6 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+          className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
           title="계산기"
         >
           <Calculator className="w-6 h-6" />
