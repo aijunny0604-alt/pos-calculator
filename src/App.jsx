@@ -2892,6 +2892,17 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
       {detailCart && (() => {
         const currentCart = isEditingDetail ? (editedDetailCart || detailCart) : detailCart;
 
+        // 현재 총액 계산 (편집 중일 때도 정확한 값 계산)
+        const currentTotal = currentCart.items.reduce((sum, item) => {
+          let price = 0;
+          if (currentCart.priceType === 'wholesale' || currentCart.price_type === 'wholesale') {
+            price = item.wholesale || item.price || item.unitPrice || 0;
+          } else {
+            price = item.retail || item.wholesale || item.price || item.unitPrice || 0;
+          }
+          return sum + (price * item.quantity);
+        }, 0) || currentCart.total || 0;
+
         // 제품 검색 필터링
         const filteredProductsDetail = products.length > 0 ? products.filter(product => {
           if (!productSearchTermDetail) return false;
@@ -3150,20 +3161,20 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
             <div className="border-t border-slate-700 p-4 sm:p-6 flex-shrink-0 bg-slate-800">
               <div
                 className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-4 sm:p-5 mb-4 sm:mb-5 hover:from-slate-900/90 hover:to-slate-900/60 transition-all duration-200 cursor-pointer"
-                onClick={() => { setCalculatorInitialValue(currentCart.total); setShowQuickCalculator(true); }}
+                onClick={() => { setCalculatorInitialValue(currentTotal); setShowQuickCalculator(true); }}
                 title="계산기 열기"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-500 text-sm sm:text-base">공급가액</span>
-                  <span className="text-slate-300 text-base sm:text-lg">{formatPrice(Math.round(currentCart.total / 1.1))}</span>
+                  <span className="text-slate-300 text-base sm:text-lg">{formatPrice(Math.round(currentTotal / 1.1))}</span>
                 </div>
                 <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700">
                   <span className="text-slate-500 text-sm sm:text-base">부가세</span>
-                  <span className="text-slate-300 text-base sm:text-lg">{formatPrice(currentCart.total - Math.round(currentCart.total / 1.1))}</span>
+                  <span className="text-slate-300 text-base sm:text-lg">{formatPrice(currentTotal - Math.round(currentTotal / 1.1))}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-lg sm:text-xl">총 금액</span>
-                  <span className="text-2xl sm:text-4xl font-bold text-emerald-400">{formatPrice(currentCart.total)} 💡</span>
+                  <span className="text-2xl sm:text-4xl font-bold text-emerald-400">{formatPrice(currentTotal)} 💡</span>
                 </div>
               </div>
 
