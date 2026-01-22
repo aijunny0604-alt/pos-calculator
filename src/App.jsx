@@ -2220,6 +2220,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
   const [deliveryFilter, setDeliveryFilter] = useState('all'); // 배송 예정일 필터
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
+  const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 계산기
 
   // 편집 모드 초기화 useEffect
   useEffect(() => {
@@ -3310,6 +3311,20 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
             </div>
           </div>
         </div>
+      )}
+
+      {/* 계산기 플로팅 버튼 */}
+      <button
+        onClick={() => setShowQuickCalculator(true)}
+        className="fixed bottom-6 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+        title="계산기"
+      >
+        <Calculator className="w-6 h-6" />
+      </button>
+
+      {/* 계산기 모달 */}
+      {showQuickCalculator && (
+        <QuickCalculator onClose={() => setShowQuickCalculator(false)} />
       )}
     </div>
   );
@@ -9314,6 +9329,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showFilterDeleteConfirm, setShowFilterDeleteConfirm] = useState(false); // 필터 기준 전체 삭제
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
+  const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 계산기
 
   // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
   useEffect(() => {
@@ -9809,6 +9825,20 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
             </div>
           </div>
         </div>
+      )}
+
+      {/* 계산기 플로팅 버튼 */}
+      <button
+        onClick={() => setShowQuickCalculator(true)}
+        className="fixed bottom-6 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+        title="계산기"
+      >
+        <Calculator className="w-6 h-6" />
+      </button>
+
+      {/* 계산기 모달 */}
+      {showQuickCalculator && (
+        <QuickCalculator onClose={() => setShowQuickCalculator(false)} />
       )}
     </div>
   );
