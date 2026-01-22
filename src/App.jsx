@@ -3234,17 +3234,17 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
             </div>
           </div>
         </div>
-
-          {/* 계산기 모달 - 상세보기 내 */}
-          {showQuickCalculator && (
-            <QuickCalculator
-              onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
-              initialValue={calculatorInitialValue}
-            />
-          )}
         </div>
         );
       })()}
+
+      {/* 계산기 모달 - 상세보기용 */}
+      {showQuickCalculator && (
+        <QuickCalculator
+          onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
+          initialValue={calculatorInitialValue}
+        />
+      )}
 
       {/* 전체 삭제 확인 모달 */}
       {showDeleteAllConfirm && (
