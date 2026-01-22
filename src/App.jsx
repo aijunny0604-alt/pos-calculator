@@ -2204,7 +2204,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
 // ==================== 저장된 장바구니 모달 ====================
 // ==================== 저장된 장바구니 페이지 ====================
-function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], formatPrice, onBack }) {
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], formatPrice, onBack, onRefresh, isLoading }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -2535,7 +2535,19 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                   </button>
                 </>
               )}
-              
+
+              {/* 새로고침 버튼 */}
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  disabled={isLoading}
+                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-50"
+                  title="새로고침"
+                >
+                  <RefreshCw className={`w-4 h-4 text-white ${isLoading ? 'animate-spin' : ''}`} />
+                </button>
+              )}
+
               {/* 접기/펼치기 버튼 */}
               <button
                 onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
@@ -11328,6 +11340,8 @@ export default function PriceCalculator() {
         products={products}
         formatPrice={formatPrice}
         onBack={() => setIsSavedCartsModalOpen(false)}
+        onRefresh={loadSavedCarts}
+        isLoading={isLoading}
       />
     );
   }
