@@ -10275,6 +10275,7 @@ export default function PriceCalculator() {
 
   // 저장된 장바구니 불러오기 (Supabase)
   const loadSavedCartsFromDB = async () => {
+    setIsLoading(true);
     try {
       console.log('장바구니 불러오기 시도...');
       const data = await supabase.getSavedCarts();
@@ -10294,6 +10295,8 @@ export default function PriceCalculator() {
       }
     } catch (e) {
       console.error('저장된 장바구니 불러오기 실패:', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
