@@ -6930,10 +6930,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (showQuickCalculator) {
-          setShowQuickCalculator(false);
-          setCalculatorInitialValue(null);
-        } else if (selectMode) {
+        if (selectMode) {
           exitSelectMode();
         } else if (inlineEdit) {
           setInlineEdit(null);
@@ -6962,7 +6959,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit, showQuickCalculator, selectMode, showBulkDeleteConfirm]);
+  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit, selectMode, showBulkDeleteConfirm]);
 
   const categories = ['전체', ...new Set((products || []).map(p => p.category))];
   const categoryList = [...new Set((products || []).map(p => p.category))].sort((a, b) => a.localeCompare(b, 'ko'));
