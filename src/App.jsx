@@ -9922,6 +9922,213 @@ function WelcomeSplash({ onComplete }) {
   );
 }
 
+// ==================== 비상용 계산기 컴포넌트 ====================
+function QuickCalculator({ onClose }) {
+  const [display, setDisplay] = useState('0');
+  const [previousValue, setPreviousValue] = useState(null);
+  const [operation, setOperation] = useState(null);
+  const [waitingForOperand, setWaitingForOperand] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  // 숫자 입력
+  const inputDigit = (digit) => {
+    if (waitingForOperand) {
+      setDisplay(digit);
+      setWaitingForOperand(false);
+    } else {
+      setDisplay(display === '0' ? digit : display + digit);
+    }
+  };
+
+  // 소수점
+  const inputDot = () => {
+    if (waitingForOperand) {
+      setDisplay('0.');
+      setWaitingForOperand(false);
+      return;
+    }
+    if (!display.includes('.')) {
+      setDisplay(display + '.');
+    }
+  };
+
+  // 연산자
+  const performOperation = (nextOperation) => {
+    const inputValue = parseFloat(display);
+
+    if (previousValue === null) {
+      setPreviousValue(inputValue);
+    } else if (operation) {
+      const currentValue = previousValue || 0;
+      let newValue;
+
+      switch (operation) {
+        case '+': newValue = currentValue + inputValue; break;
+        case '-': newValue = currentValue - inputValue; break;
+        case '×': newValue = currentValue * inputValue; break;
+        case '÷': newValue = inputValue !== 0 ? currentValue / inputValue : 'Error'; break;
+        default: newValue = inputValue;
+      }
+
+      if (nextOperation === '=') {
+        setHistory(prev => [...prev.slice(-4), `${currentValue} ${operation} ${inputValue} = ${newValue}`]);
+      }
+
+      setDisplay(String(newValue));
+      setPreviousValue(nextOperation === '=' ? null : newValue);
+    }
+
+    setWaitingForOperand(true);
+    setOperation(nextOperation === '=' ? null : nextOperation);
+  };
+
+  // 클리어
+  const clear = () => {
+    setDisplay('0');
+    setPreviousValue(null);
+    setOperation(null);
+    setWaitingForOperand(false);
+  };
+
+  // 전체 클리어
+  const allClear = () => {
+    clear();
+    setHistory([]);
+  };
+
+  // 부호 변경
+  const toggleSign = () => {
+    setDisplay(String(parseFloat(display) * -1));
+  };
+
+  // 퍼센트
+  const percentage = () => {
+    setDisplay(String(parseFloat(display) / 100));
+  };
+
+  // 백스페이스
+  const backspace = () => {
+    if (display.length === 1 || (display.length === 2 && display[0] === '-')) {
+      setDisplay('0');
+    } else {
+      setDisplay(display.slice(0, -1));
+    }
+  };
+
+  // 숫자 포맷팅
+  const formatNumber = (num) => {
+    const number = parseFloat(num);
+    if (isNaN(number)) return num;
+    if (num.includes('.') && num.endsWith('.')) return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return number.toLocaleString('ko-KR', { maximumFractionDigits: 10 });
+  };
+
+  // 버튼 스타일
+  const btnClass = "w-full aspect-square rounded-xl text-xl font-bold transition-all active:scale-95 flex items-center justify-center";
+  const numBtn = `${btnClass} bg-slate-700 hover:bg-slate-600 text-white`;
+  const opBtn = `${btnClass} bg-amber-500 hover:bg-amber-400 text-white`;
+  const funcBtn = `${btnClass} bg-slate-600 hover:bg-slate-500 text-white`;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-3xl w-full max-w-sm border border-slate-700 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* 헤더 */}
+        <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-white" />
+            <span className="text-white font-bold">비상용 계산기</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* 히스토리 */}
+        {history.length > 0 && (
+          <div className="px-4 py-2 bg-slate-800/50 max-h-20 overflow-y-auto">
+            {history.map((h, i) => (
+              <p key={i} className="text-slate-500 text-xs text-right">{h}</p>
+            ))}
+          </div>
+        )}
+
+        {/* 디스플레이 */}
+        <div className="px-4 py-6 bg-slate-800">
+          <div className="text-right">
+            {previousValue !== null && operation && (
+              <p className="text-slate-500 text-sm mb-1">{formatNumber(String(previousValue))} {operation}</p>
+            )}
+            <p className="text-white text-4xl font-bold truncate">{formatNumber(display)}</p>
+          </div>
+        </div>
+
+        {/* 버튼 패드 */}
+        <div className="p-3 bg-slate-900 grid grid-cols-4 gap-2">
+          <button onClick={allClear} className={funcBtn}>AC</button>
+          <button onClick={toggleSign} className={funcBtn}>±</button>
+          <button onClick={percentage} className={funcBtn}>%</button>
+          <button onClick={() => performOperation('÷')} className={`${opBtn} ${operation === '÷' ? 'ring-2 ring-white' : ''}`}>÷</button>
+
+          <button onClick={() => inputDigit('7')} className={numBtn}>7</button>
+          <button onClick={() => inputDigit('8')} className={numBtn}>8</button>
+          <button onClick={() => inputDigit('9')} className={numBtn}>9</button>
+          <button onClick={() => performOperation('×')} className={`${opBtn} ${operation === '×' ? 'ring-2 ring-white' : ''}`}>×</button>
+
+          <button onClick={() => inputDigit('4')} className={numBtn}>4</button>
+          <button onClick={() => inputDigit('5')} className={numBtn}>5</button>
+          <button onClick={() => inputDigit('6')} className={numBtn}>6</button>
+          <button onClick={() => performOperation('-')} className={`${opBtn} ${operation === '-' ? 'ring-2 ring-white' : ''}`}>−</button>
+
+          <button onClick={() => inputDigit('1')} className={numBtn}>1</button>
+          <button onClick={() => inputDigit('2')} className={numBtn}>2</button>
+          <button onClick={() => inputDigit('3')} className={numBtn}>3</button>
+          <button onClick={() => performOperation('+')} className={`${opBtn} ${operation === '+' ? 'ring-2 ring-white' : ''}`}>+</button>
+
+          <button onClick={() => inputDigit('0')} className={`${numBtn} col-span-1`}>0</button>
+          <button onClick={backspace} className={funcBtn}>⌫</button>
+          <button onClick={inputDot} className={numBtn}>.</button>
+          <button onClick={() => performOperation('=')} className={`${btnClass} bg-emerald-500 hover:bg-emerald-400 text-white`}>=</button>
+        </div>
+
+        {/* 빠른 계산 */}
+        <div className="px-3 pb-3 bg-slate-900">
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => setDisplay(String(Math.round(parseFloat(display) * 1.1)))}
+              className="py-2 bg-blue-600/30 hover:bg-blue-600/50 rounded-lg text-blue-400 text-xs font-medium transition-colors"
+            >
+              +10% 부가세
+            </button>
+            <button
+              onClick={() => setDisplay(String(Math.round(parseFloat(display) / 1.1)))}
+              className="py-2 bg-purple-600/30 hover:bg-purple-600/50 rounded-lg text-purple-400 text-xs font-medium transition-colors"
+            >
+              공급가액
+            </button>
+            <button
+              onClick={() => {
+                const val = parseFloat(display);
+                const supply = Math.round(val / 1.1);
+                const vat = val - supply;
+                setHistory(prev => [...prev.slice(-4), `${formatNumber(String(val))} → 공급가: ${formatNumber(String(supply))}, 부가세: ${formatNumber(String(vat))}`]);
+              }}
+              className="py-2 bg-emerald-600/30 hover:bg-emerald-600/50 rounded-lg text-emerald-400 text-xs font-medium transition-colors"
+            >
+              세금계산
+            </button>
+            <button
+              onClick={() => navigator.clipboard.writeText(display.replace(/,/g, ''))}
+              className="py-2 bg-slate-600/50 hover:bg-slate-600 rounded-lg text-slate-300 text-xs font-medium transition-colors"
+            >
+              복사
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PriceCalculator() {
   const [showSplash, setShowSplash] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -9961,6 +10168,7 @@ export default function PriceCalculator() {
   const [showCustomerListModal, setShowCustomerListModal] = useState(false);
   const [showTextAnalyzeModal, setShowTextAnalyzeModal] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 비상용 계산기
 
   // 알림 설정 (localStorage에서 로드)
   const [notificationSettings, setNotificationSettings] = useState(() => {
@@ -12088,6 +12296,22 @@ export default function PriceCalculator() {
           refreshCustomers={loadCustomers}
         />,
         document.body
+      )}
+
+      {/* 비상용 계산기 플로팅 버튼 */}
+      {!showSplash && !isOrderModalOpen && !showTextAnalyzeModal && (
+        <button
+          onClick={() => setShowQuickCalculator(true)}
+          className="fixed bottom-24 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+          title="계산기"
+        >
+          <Calculator className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* 비상용 계산기 모달 */}
+      {showQuickCalculator && (
+        <QuickCalculator onClose={() => setShowQuickCalculator(false)} />
       )}
     </div>
     </>
