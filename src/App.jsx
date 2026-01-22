@@ -47,6 +47,48 @@ const matchesSearchQuery = (productName, searchTerm) => {
   return false;
 };
 
+// ==================== 수량별 할인 계산 함수 ====================
+// 제품의 할인 구간에 따라 할인 금액/비율을 계산
+const calculateDiscount = (product, quantity, unitPrice) => {
+  if (!product.discount_tiers || product.discount_tiers.length === 0 || quantity <= 0) {
+    return { discountAmount: 0, discountedPrice: unitPrice, appliedTier: null };
+  }
+
+  // 수량이 큰 순으로 정렬된 할인 구간에서 해당하는 첫 번째 구간 찾기
+  const sortedTiers = [...product.discount_tiers].sort((a, b) => b.minQty - a.minQty);
+  const appliedTier = sortedTiers.find(tier => quantity >= tier.minQty);
+
+  if (!appliedTier) {
+    return { discountAmount: 0, discountedPrice: unitPrice, appliedTier: null };
+  }
+
+  let discountAmount = 0;
+  if (appliedTier.type === 'percent') {
+    // 퍼센트 할인: 단가에서 %만큼 할인
+    discountAmount = Math.round(unitPrice * (appliedTier.value / 100));
+  } else {
+    // 고정 금액 할인: 단가에서 해당 금액 할인
+    discountAmount = appliedTier.value;
+  }
+
+  const discountedPrice = Math.max(0, unitPrice - discountAmount);
+
+  return { discountAmount, discountedPrice, appliedTier };
+};
+
+// 장바구니 아이템의 총 할인 정보 계산
+const calculateItemDiscount = (item, products) => {
+  const product = products.find(p => p.id === item.id);
+  if (!product) {
+    return { discountAmount: 0, discountedPrice: item.price, appliedTier: null, totalDiscount: 0 };
+  }
+
+  const { discountAmount, discountedPrice, appliedTier } = calculateDiscount(product, item.quantity, item.price);
+  const totalDiscount = discountAmount * item.quantity;
+
+  return { discountAmount, discountedPrice, appliedTier, totalDiscount };
+};
+
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_YB9UnUwuMql8hUGHgC0bsg_DhrAxpji';
@@ -6064,7 +6106,7 @@ MVB 64 Y R 2개`}
 }
 
 // ==================== 주문 확인 페이지 ====================
-function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, onReplaceItem, products, initialCustomer, onSaveCart, customers = [], onBack }) {
+function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isSaving, onUpdateQuantity, onRemoveItem, onAddItem, onReplaceItem, products, initialCustomer, onSaveCart, customers = [], onBack, cartWithDiscount = [], totalDiscount = 0 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customerName, setCustomerName] = useState(initialCustomer?.name || '');
@@ -6155,12 +6197,14 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
 
   const today = new Date();
   const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
-  
-  // 실시간 총액 계산
-  const currentTotal = cart.reduce((sum, item) => {
-    const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-    return sum + (price * item.quantity);
-  }, 0);
+
+  // 실시간 총액 계산 (할인 적용)
+  const currentTotal = cartWithDiscount.length > 0
+    ? cartWithDiscount.reduce((sum, item) => sum + item.finalTotal, 0)
+    : cart.reduce((sum, item) => {
+        const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+        return sum + (price * item.quantity);
+      }, 0);
   const exVat = calcExVat(currentTotal);
   const vat = currentTotal - exVat;
 
@@ -6176,23 +6220,41 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     text += `───────────────────────────────────\n`;
     text += `상품 목록\n`;
     text += `───────────────────────────────────\n\n`;
-    
-    cart.forEach((item, index) => {
-      const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
+
+    // cartWithDiscount 사용하여 할인 정보 포함
+    const itemsToShow = cartWithDiscount.length > 0 ? cartWithDiscount : cart.map(item => ({
+      ...item,
+      unitPrice: priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale),
+      finalTotal: (priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale)) * item.quantity,
+      appliedTier: null
+    }));
+
+    itemsToShow.forEach((item, index) => {
       text += `${index + 1}. ${item.name}\n`;
-      text += `   ${formatPrice(price)} × ${item.quantity}개 = ${formatPrice(price * item.quantity)}\n\n`;
+      if (item.appliedTier && item.totalDiscount > 0) {
+        const discountDesc = item.appliedTier.type === 'percent'
+          ? `${item.appliedTier.value}% 할인`
+          : `${formatPrice(item.appliedTier.value)} 할인`;
+        text += `   ${formatPrice(item.unitPrice)} × ${item.quantity}개\n`;
+        text += `   [${discountDesc}] → ${formatPrice(item.finalTotal)}\n\n`;
+      } else {
+        text += `   ${formatPrice(item.unitPrice)} × ${item.quantity}개 = ${formatPrice(item.finalTotal)}\n\n`;
+      }
     });
-    
+
     text += `───────────────────────────────────\n`;
     text += `총 수량: ${totalQuantity}개\n`;
     text += `───────────────────────────────────\n`;
+    if (totalDiscount > 0) {
+      text += `할인 금액: -${formatPrice(totalDiscount)}\n`;
+    }
     text += `공급가액: ${formatPrice(exVat)}\n`;
     text += `부가세: ${formatPrice(vat)}\n`;
     text += `총 금액: ${formatPrice(currentTotal)}\n`;
     text += `───────────────────────────────────\n`;
-    
+
     if (memo) text += `\n메모: ${memo}\n`;
-    
+
     return text;
   };
 
@@ -6512,11 +6574,19 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                 <p className="text-slate-400">주문 상품이 없습니다</p>
               </div>
             ) : (
-              cart.map((item) => {
-                const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-                const itemTotal = price * item.quantity;
+              (cartWithDiscount.length > 0 ? cartWithDiscount : cart.map(item => ({
+                ...item,
+                unitPrice: priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale),
+                finalTotal: (priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale)) * item.quantity,
+                originalTotal: (priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale)) * item.quantity,
+                appliedTier: null,
+                totalDiscount: 0
+              }))).map((item) => {
+                const price = item.unitPrice || (priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale));
+                const itemTotal = item.finalTotal || price * item.quantity;
+                const hasDiscount = item.appliedTier && item.totalDiscount > 0;
                 const isChanging = changingItemId === item.id;
-                
+
                 // 변경 시 검색 결과 (특수문자 무시, 단어 순서 무관)
                 const changeSearchResults = isChanging && changeSearchQuery.trim()
                   ? products.filter(p => {
@@ -6525,16 +6595,33 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                       return matchesSearchQuery(p.name, changeSearchQuery) || matchesSearchQuery(p.category || '', changeSearchQuery);
                     }).slice(0, 8)
                   : [];
-                
+
                 return (
-                  <div key={item.id} className="bg-slate-800/80 rounded-xl p-4 border border-slate-700 hover:border-slate-600 transition-colors">
+                  <div key={item.id} className={`rounded-xl p-4 border hover:border-slate-600 transition-colors ${hasDiscount ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-800/80 border-slate-700'}`}>
                     {/* 상단: 상품명 + 변경/삭제 버튼 */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate">{item.name}</p>
-                        <p className="text-blue-400 text-sm mt-0.5">
-                          {formatPrice(price)} <span className="text-slate-500 text-xs">(VAT제외 {formatPrice(Math.round(price / 1.1))})</span>
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium truncate">{item.name}</p>
+                          {hasDiscount && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-600/30 text-amber-400 font-medium flex-shrink-0">
+                              {item.appliedTier.type === 'percent' ? `${item.appliedTier.value}%↓` : `${formatPrice(item.appliedTier.value)}↓`}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm mt-0.5">
+                          {hasDiscount ? (
+                            <span className="flex items-center gap-2">
+                              <span className="text-slate-500 line-through">{formatPrice(price)}</span>
+                              <span className="text-amber-400 font-medium">{formatPrice(item.discountedPrice)}</span>
+                              <span className="text-slate-500 text-xs">(VAT제외 {formatPrice(Math.round(item.discountedPrice / 1.1))})</span>
+                            </span>
+                          ) : (
+                            <span className="text-blue-400">
+                              {formatPrice(price)} <span className="text-slate-500 text-xs">(VAT제외 {formatPrice(Math.round(price / 1.1))})</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button 
@@ -6661,7 +6748,10 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                       </div>
                       <div className="text-right">
                         <p className="text-slate-400 text-xs">소계</p>
-                        <p className="text-emerald-400 font-bold text-lg">{formatPrice(itemTotal)}</p>
+                        {hasDiscount && (
+                          <p className="text-slate-500 text-xs line-through">{formatPrice(item.originalTotal)}</p>
+                        )}
+                        <p className={`font-bold text-lg ${hasDiscount ? 'text-amber-400' : 'text-emerald-400'}`}>{formatPrice(itemTotal)}</p>
                       </div>
                     </div>
                   </div>
@@ -6685,6 +6775,12 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
 
         {/* 금액 요약 */}
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          {totalDiscount > 0 && (
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-amber-400 text-sm font-medium">할인 금액</span>
+              <span className="text-amber-400 font-medium">-{formatPrice(totalDiscount)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-sm">공급가액</span>
             <span className="text-white">{formatPrice(exVat)}</span>
@@ -6785,7 +6881,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [newProduct, setNewProduct] = useState({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' });
+  const [newProduct, setNewProduct] = useState({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5', discount_tiers: [] });
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
@@ -7299,35 +7395,57 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.wholesale || !newProduct.category) return;
-    
+
+    // 유효한 할인 구간만 필터링 (수량과 값이 모두 입력된 것만)
+    const validTiers = (newProduct.discount_tiers || [])
+      .filter(tier => tier.minQty && tier.value)
+      .map(tier => ({
+        minQty: parseInt(tier.minQty),
+        type: tier.type,
+        value: parseFloat(tier.value)
+      }))
+      .sort((a, b) => b.minQty - a.minQty); // 수량 큰 순으로 정렬
+
     const product = {
       name: newProduct.name,
       wholesale: parseInt(newProduct.wholesale),
       retail: newProduct.retail ? parseInt(newProduct.retail) : null,
       category: newProduct.category,
       stock: newProduct.stock ? parseInt(newProduct.stock) : 0,
-      min_stock: newProduct.min_stock ? parseInt(newProduct.min_stock) : 5
+      min_stock: newProduct.min_stock ? parseInt(newProduct.min_stock) : 5,
+      discount_tiers: validTiers.length > 0 ? validTiers : null
     };
-    
+
     const success = await onAddProduct(product);
     if (success) {
-      setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' });
+      setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5', discount_tiers: [] });
       setShowAddModal(false);
     }
   };
 
   const handleUpdateProduct = async () => {
     if (!editingProduct) return;
-    
+
+    // 유효한 할인 구간만 필터링 (수량과 값이 모두 입력된 것만)
+    const validTiers = (editingProduct.discount_tiers || [])
+      .filter(tier => tier.minQty && tier.value)
+      .map(tier => ({
+        minQty: parseInt(tier.minQty),
+        type: tier.type,
+        value: parseFloat(tier.value)
+      }))
+      .sort((a, b) => b.minQty - a.minQty); // 수량 큰 순으로 정렬
+
     const product = {
       name: editingProduct.name,
       wholesale: parseInt(editingProduct.wholesale),
       retail: editingProduct.retail ? parseInt(editingProduct.retail) : null,
       category: editingProduct.category,
       stock: editingProduct.stock !== undefined ? parseInt(editingProduct.stock) : 0,
-      min_stock: editingProduct.min_stock !== undefined ? parseInt(editingProduct.min_stock) : 5
+      min_stock: editingProduct.min_stock !== undefined ? parseInt(editingProduct.min_stock) : 5,
+      discount_tiers: validTiers.length > 0 ? validTiers : null
     };
-    
+
     await onUpdateProduct(editingProduct.id, product);
     setEditingProduct(null);
   };
@@ -8906,20 +9024,100 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                 </div>
               </div>
               
+              {/* 수량별 할인 설정 */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-slate-300 font-medium">
+                    수량별 할인 <span className="text-slate-500 text-sm">(선택)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setNewProduct({
+                      ...newProduct,
+                      discount_tiers: [...(newProduct.discount_tiers || []), { minQty: '', type: 'percent', value: '' }]
+                    })}
+                    className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 rounded-lg text-emerald-400 text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    할인 구간 추가
+                  </button>
+                </div>
+
+                {(newProduct.discount_tiers || []).length > 0 && (
+                  <div className="space-y-3 bg-slate-700/30 rounded-xl p-4 border border-slate-600/50">
+                    {(newProduct.discount_tiers || []).map((tier, idx) => (
+                      <div key={idx} className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={tier.minQty}
+                            onChange={(e) => {
+                              const newTiers = [...newProduct.discount_tiers];
+                              newTiers[idx].minQty = e.target.value;
+                              setNewProduct({ ...newProduct, discount_tiers: newTiers });
+                            }}
+                            placeholder="수량"
+                            className="w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="text-slate-400 text-sm">개 이상</span>
+                        </div>
+                        <select
+                          value={tier.type}
+                          onChange={(e) => {
+                            const newTiers = [...newProduct.discount_tiers];
+                            newTiers[idx].type = e.target.value;
+                            setNewProduct({ ...newProduct, discount_tiers: newTiers });
+                          }}
+                          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="percent">% 할인</option>
+                          <option value="fixed">원 할인</option>
+                        </select>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={tier.value}
+                            onChange={(e) => {
+                              const newTiers = [...newProduct.discount_tiers];
+                              newTiers[idx].value = e.target.value;
+                              setNewProduct({ ...newProduct, discount_tiers: newTiers });
+                            }}
+                            placeholder={tier.type === 'percent' ? '5' : '1000'}
+                            className="w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="text-slate-400 text-sm">{tier.type === 'percent' ? '%' : '원'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newTiers = newProduct.discount_tiers.filter((_, i) => i !== idx);
+                            setNewProduct({ ...newProduct, discount_tiers: newTiers });
+                          }}
+                          className="p-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <p className="text-slate-500 text-xs mt-2">* 수량이 많은 구간이 우선 적용됩니다</p>
+                  </div>
+                )}
+              </div>
+
               {/* 도움말 */}
               <div className="bg-slate-700/50 rounded-xl p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <p className="text-slate-400 text-sm">
-                  <span className="text-red-400">*</span> 표시는 필수 입력 항목입니다. 
+                  <span className="text-red-400">*</span> 표시는 필수 입력 항목입니다.
                   재고를 입력하지 않으면 기본값 50개로 설정됩니다.
                 </p>
               </div>
             </div>
-            
+
             {/* 버튼 */}
             <div className="flex gap-4 mt-8">
-              <button 
-                onClick={() => { setShowAddModal(false); setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5' }); }} 
+              <button
+                onClick={() => { setShowAddModal(false); setNewProduct({ name: '', wholesale: '', retail: '', category: '', stock: '', min_stock: '5', discount_tiers: [] }); }} 
                 className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold text-lg transition-colors"
               >
                 취소
@@ -9007,6 +9205,82 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                     <span className="px-3 py-1 bg-emerald-600/20 text-emerald-400 rounded-full text-sm font-medium">정상 ({editingProduct.stock}개)</span>
                   )}
                 </div>
+              </div>
+
+              {/* 수량별 할인 설정 */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-slate-300 text-sm font-medium">
+                    수량별 할인 <span className="text-slate-500 text-xs">(선택)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct({
+                      ...editingProduct,
+                      discount_tiers: [...(editingProduct.discount_tiers || []), { minQty: '', type: 'percent', value: '' }]
+                    })}
+                    className="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 rounded-lg text-emerald-400 text-xs font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    추가
+                  </button>
+                </div>
+
+                {(editingProduct.discount_tiers || []).length > 0 && (
+                  <div className="space-y-2 bg-slate-700/30 rounded-xl p-3 border border-slate-600/50">
+                    {(editingProduct.discount_tiers || []).map((tier, idx) => (
+                      <div key={idx} className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={tier.minQty}
+                            onChange={(e) => {
+                              const newTiers = [...editingProduct.discount_tiers];
+                              newTiers[idx].minQty = e.target.value;
+                              setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
+                            }}
+                            placeholder="수량"
+                            className="w-16 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="text-slate-400 text-xs">개+</span>
+                        </div>
+                        <select
+                          value={tier.type}
+                          onChange={(e) => {
+                            const newTiers = [...editingProduct.discount_tiers];
+                            newTiers[idx].type = e.target.value;
+                            setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
+                          }}
+                          className="px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="percent">%</option>
+                          <option value="fixed">원</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={tier.value}
+                          onChange={(e) => {
+                            const newTiers = [...editingProduct.discount_tiers];
+                            newTiers[idx].value = e.target.value;
+                            setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
+                          }}
+                          placeholder={tier.type === 'percent' ? '5' : '1000'}
+                          className="w-20 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newTiers = editingProduct.discount_tiers.filter((_, i) => i !== idx);
+                            setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
+                          }}
+                          className="p-1.5 bg-red-600/20 hover:bg-red-600/30 rounded-lg text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -11379,12 +11653,33 @@ export default function PriceCalculator() {
     setCart(cart.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
   };
 
-  const totalAmount = useMemo(() => {
-    return cart.reduce((sum, item) => {
+  // 할인 적용된 장바구니 정보 계산
+  const cartWithDiscount = useMemo(() => {
+    const productList = products.length > 0 ? products : priceData;
+    return cart.map(item => {
       const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-      return sum + (price * item.quantity);
-    }, 0);
-  }, [cart, priceType]);
+      const product = productList.find(p => p.id === item.id);
+      const discountInfo = calculateDiscount(product || {}, item.quantity, price);
+      return {
+        ...item,
+        unitPrice: price,
+        originalTotal: price * item.quantity,
+        discountedPrice: discountInfo.discountedPrice,
+        discountAmount: discountInfo.discountAmount,
+        totalDiscount: discountInfo.discountAmount * item.quantity,
+        finalTotal: discountInfo.discountedPrice * item.quantity,
+        appliedTier: discountInfo.appliedTier
+      };
+    });
+  }, [cart, priceType, products]);
+
+  const totalAmount = useMemo(() => {
+    return cartWithDiscount.reduce((sum, item) => sum + item.finalTotal, 0);
+  }, [cartWithDiscount]);
+
+  const totalDiscount = useMemo(() => {
+    return cartWithDiscount.reduce((sum, item) => sum + item.totalDiscount, 0);
+  }, [cartWithDiscount]);
 
   const toggleCategory = (category) => {
     setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
@@ -11925,34 +12220,39 @@ export default function PriceCalculator() {
                   </div>
                 ) : (
                   <div className="p-2 grid grid-cols-2 gap-1.5">
-                    {cart.map(item => {
-                      const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-                      const itemTotal = price * item.quantity;
+                    {cartWithDiscount.map(item => {
                       const baseStock = item.stock !== undefined ? item.stock : 50;
                       const remainingStock = baseStock - item.quantity;
+                      const hasDiscount = item.appliedTier && item.totalDiscount > 0;
                       return (
-                        <div key={item.id} className="bg-emerald-950/40 rounded-lg p-2 hover:bg-emerald-900/50 transition-colors group relative">
+                        <div key={item.id} className={`rounded-lg p-2 hover:bg-emerald-900/50 transition-colors group relative ${hasDiscount ? 'bg-amber-950/40 ring-1 ring-amber-500/30' : 'bg-emerald-950/40'}`}>
                           {/* 삭제 버튼 */}
-                          <button 
-                            onClick={() => removeFromCart(item.id)} 
+                          <button
+                            onClick={() => removeFromCart(item.id)}
                             className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-all"
                           >
                             <X className="w-3 h-3" />
                           </button>
-                          
-                          {/* 상품명 + 남은재고 */}
+
+                          {/* 상품명 + 남은재고/할인배지 */}
                           <div className="flex items-center justify-between pr-5 mb-2">
                             <p className="text-white text-xs font-medium truncate flex-1">{item.name}</p>
-                            <span className={`text-[9px] px-1 py-0.5 rounded ${remainingStock <= 0 ? 'bg-red-600/30 text-red-400' : remainingStock <= 5 ? 'bg-yellow-600/30 text-yellow-400' : 'bg-slate-600/30 text-slate-400'}`}>
-                              {remainingStock <= 0 ? '마지막' : `잔여${remainingStock}`}
-                            </span>
+                            {hasDiscount ? (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-amber-600/30 text-amber-400 font-medium">
+                                {item.appliedTier.type === 'percent' ? `${item.appliedTier.value}%↓` : `${formatPrice(item.appliedTier.value)}↓`}
+                              </span>
+                            ) : (
+                              <span className={`text-[9px] px-1 py-0.5 rounded ${remainingStock <= 0 ? 'bg-red-600/30 text-red-400' : remainingStock <= 5 ? 'bg-yellow-600/30 text-yellow-400' : 'bg-slate-600/30 text-slate-400'}`}>
+                                {remainingStock <= 0 ? '마지막' : `잔여${remainingStock}`}
+                              </span>
+                            )}
                           </div>
-                          
+
                           {/* 수량 + 금액 */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1 bg-emerald-800/50 rounded-lg px-1">
-                              <button 
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)} 
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                 className="w-6 h-6 flex items-center justify-center hover:bg-emerald-700 rounded text-emerald-300 transition-colors"
                               >
                                 <Minus className="w-3 h-3" />
@@ -11967,14 +12267,19 @@ export default function PriceCalculator() {
                                 onFocus={(e) => e.target.select()}
                                 className="w-10 h-6 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none focus:bg-emerald-700/50 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
-                              <button 
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)} 
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 className="w-6 h-6 flex items-center justify-center hover:bg-emerald-700 rounded text-emerald-300 transition-colors"
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
                             </div>
-                            <p className="text-emerald-400 text-xs font-semibold">{formatPrice(itemTotal)}</p>
+                            <div className="text-right">
+                              {hasDiscount && (
+                                <p className="text-slate-500 text-[9px] line-through">{formatPrice(item.originalTotal)}</p>
+                              )}
+                              <p className={`text-xs font-semibold ${hasDiscount ? 'text-amber-400' : 'text-emerald-400'}`}>{formatPrice(item.finalTotal)}</p>
+                            </div>
                           </div>
                         </div>
                       );
@@ -11989,6 +12294,9 @@ export default function PriceCalculator() {
                     <div className="text-emerald-300/70 text-xs">
                       <p>공급가 {formatPrice(calcExVat(totalAmount))}</p>
                       <p>VAT {formatPrice(totalAmount - calcExVat(totalAmount))}</p>
+                      {totalDiscount > 0 && (
+                        <p className="text-amber-400 font-medium">할인 -{formatPrice(totalDiscount)}</p>
+                      )}
                     </div>
                     <div
                       className="text-right cursor-pointer hover:bg-emerald-800/30 rounded-lg p-1 -m-1 transition-colors"
@@ -12091,13 +12399,12 @@ export default function PriceCalculator() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {cart.map(item => {
-                    const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-                    const itemTotal = price * item.quantity;
+                  {cartWithDiscount.map(item => {
                     const baseStock = item.stock !== undefined ? item.stock : 50;
                     const remainingStock = baseStock - item.quantity;
+                    const hasDiscount = item.appliedTier && item.totalDiscount > 0;
                     return (
-                      <div key={item.id} className="bg-emerald-950/60 rounded-xl p-4 hover:bg-emerald-900/50 transition-colors group relative border border-emerald-800/50">
+                      <div key={item.id} className={`rounded-xl p-4 hover:bg-emerald-900/50 transition-colors group relative border ${hasDiscount ? 'bg-amber-950/40 border-amber-500/30' : 'bg-emerald-950/60 border-emerald-800/50'}`}>
                         {/* 삭제 버튼 */}
                         <button
                           onClick={() => removeFromCart(item.id)}
@@ -12106,16 +12413,32 @@ export default function PriceCalculator() {
                           <X className="w-4 h-4" />
                         </button>
 
-                        {/* 상품명 + 남은재고 */}
+                        {/* 상품명 + 할인/재고 */}
                         <div className="mb-3">
                           <p className="text-white text-sm font-medium line-clamp-2 pr-6 min-h-[40px]">{item.name}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded mt-1 inline-block ${remainingStock <= 0 ? 'bg-red-600/30 text-red-400' : remainingStock <= 5 ? 'bg-yellow-600/30 text-yellow-400' : 'bg-slate-600/30 text-slate-400'}`}>
-                            {remainingStock <= 0 ? '마지막 재고' : `잔여 ${remainingStock}개`}
-                          </span>
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {hasDiscount && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-amber-600/30 text-amber-400 font-medium">
+                                {item.appliedTier.type === 'percent' ? `${item.appliedTier.value}% 할인` : `${formatPrice(item.appliedTier.value)} 할인`}
+                              </span>
+                            )}
+                            <span className={`text-xs px-2 py-0.5 rounded ${remainingStock <= 0 ? 'bg-red-600/30 text-red-400' : remainingStock <= 5 ? 'bg-yellow-600/30 text-yellow-400' : 'bg-slate-600/30 text-slate-400'}`}>
+                              {remainingStock <= 0 ? '마지막' : `잔여${remainingStock}`}
+                            </span>
+                          </div>
                         </div>
 
                         {/* 단가 */}
-                        <p className="text-emerald-400/70 text-xs mb-2">단가: {formatPrice(price)}</p>
+                        <div className="text-xs mb-2">
+                          {hasDiscount ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-500 line-through">{formatPrice(item.unitPrice)}</span>
+                              <span className="text-amber-400 font-medium">{formatPrice(item.discountedPrice)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-emerald-400/70">단가: {formatPrice(item.unitPrice)}</span>
+                          )}
+                        </div>
 
                         {/* 수량 조절 */}
                         <div className="flex items-center justify-center gap-1 bg-emerald-800/50 rounded-lg px-2 py-1 mb-3">
@@ -12144,7 +12467,12 @@ export default function PriceCalculator() {
                         </div>
 
                         {/* 소계 */}
-                        <p className="text-emerald-400 text-base font-bold text-center">{formatPrice(itemTotal)}</p>
+                        <div className="text-center">
+                          {hasDiscount && (
+                            <p className="text-slate-500 text-xs line-through">{formatPrice(item.originalTotal)}</p>
+                          )}
+                          <p className={`text-base font-bold ${hasDiscount ? 'text-amber-400' : 'text-emerald-400'}`}>{formatPrice(item.finalTotal)}</p>
+                        </div>
                       </div>
                     );
                   })}
@@ -12159,6 +12487,9 @@ export default function PriceCalculator() {
                   <div className="text-emerald-300/70 text-sm">
                     <p>공급가 {formatPrice(calcExVat(totalAmount))}</p>
                     <p>VAT {formatPrice(totalAmount - calcExVat(totalAmount))}</p>
+                    {totalDiscount > 0 && (
+                      <p className="text-amber-400 font-medium">할인 -{formatPrice(totalDiscount)}</p>
+                    )}
                   </div>
                   <div
                     className="text-right cursor-pointer hover:bg-emerald-800/30 rounded-lg p-2 -m-2 transition-colors"
@@ -12469,6 +12800,8 @@ export default function PriceCalculator() {
           }}
           customers={customers}
           onBack={() => { setIsOrderModalOpen(false); setOrderInitialCustomer(null); setOrderFromSavedCart(null); }}
+          cartWithDiscount={cartWithDiscount}
+          totalDiscount={totalDiscount}
         />
       )}
 
