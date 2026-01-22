@@ -10018,11 +10018,19 @@ function WelcomeSplash({ onComplete }) {
 
 // ==================== 비상용 계산기 컴포넌트 ====================
 function QuickCalculator({ onClose, initialValue = null }) {
-  const [display, setDisplay] = useState(initialValue ? String(initialValue) : '0');
+  const [display, setDisplay] = useState(initialValue !== null && initialValue !== undefined ? String(initialValue) : '0');
   const [previousValue, setPreviousValue] = useState(null);
   const [operation, setOperation] = useState(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
-  const [history, setHistory] = useState(initialValue ? [`초기값: ${initialValue.toLocaleString()}원`] : []);
+  const [history, setHistory] = useState(initialValue !== null && initialValue !== undefined ? [`초기값: ${initialValue.toLocaleString()}원`] : []);
+
+  // initialValue가 변경될 때 display 업데이트
+  useEffect(() => {
+    if (initialValue !== null && initialValue !== undefined) {
+      setDisplay(String(initialValue));
+      setHistory([`초기값: ${initialValue.toLocaleString()}원`]);
+    }
+  }, [initialValue]);
 
   // 키보드 이벤트 핸들러
   useEffect(() => {
