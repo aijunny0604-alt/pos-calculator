@@ -9972,6 +9972,52 @@ function QuickCalculator({ onClose }) {
   const [waitingForOperand, setWaitingForOperand] = useState(false);
   const [history, setHistory] = useState([]);
 
+  // 키보드 이벤트 핸들러
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // ESC: 닫기
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      // Enter: 계산
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        performOperationRef.current('=');
+        return;
+      }
+      // 숫자 키
+      if (/^[0-9]$/.test(e.key)) {
+        inputDigitRef.current(e.key);
+        return;
+      }
+      // 소수점
+      if (e.key === '.') {
+        inputDotRef.current();
+        return;
+      }
+      // 연산자
+      if (e.key === '+') performOperationRef.current('+');
+      if (e.key === '-') performOperationRef.current('-');
+      if (e.key === '*') performOperationRef.current('×');
+      if (e.key === '/') { e.preventDefault(); performOperationRef.current('÷'); }
+      // 백스페이스
+      if (e.key === 'Backspace') backspaceRef.current();
+      // C: 클리어
+      if (e.key === 'c' || e.key === 'C') clearRef.current();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  // 함수 참조 (useEffect에서 사용)
+  const inputDigitRef = useRef();
+  const inputDotRef = useRef();
+  const performOperationRef = useRef();
+  const backspaceRef = useRef();
+  const clearRef = useRef();
+
   // 숫자 입력
   const inputDigit = (digit) => {
     if (waitingForOperand) {
@@ -10056,6 +10102,13 @@ function QuickCalculator({ onClose }) {
       setDisplay(display.slice(0, -1));
     }
   };
+
+  // 함수 ref 업데이트
+  inputDigitRef.current = inputDigit;
+  inputDotRef.current = inputDot;
+  performOperationRef.current = performOperation;
+  backspaceRef.current = backspace;
+  clearRef.current = clear;
 
   // 숫자 포맷팅
   const formatNumber = (num) => {
