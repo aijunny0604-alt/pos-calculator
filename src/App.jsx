@@ -3378,6 +3378,17 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
           </div>
         </div>
       )}
+
+      {/* 계산기 플로팅 버튼 - 상세 모달이 열려있지 않을 때만 표시 */}
+      {!detailCart && (
+        <button
+          onClick={() => { setCalculatorInitialValue(null); setShowQuickCalculator(true); }}
+          className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
+          title="계산기"
+        >
+          <Calculator className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 }
