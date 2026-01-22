@@ -49,14 +49,28 @@ const matchesSearchQuery = (productName, searchTerm) => {
 
 // ==================== 수량별 할인 계산 함수 ====================
 // 제품의 할인 구간에 따라 할인 금액/비율을 계산
+// 지원 방식: 1) X개 이상 (minQty만 설정), 2) X개~Y개 범위 (minQty, maxQty 설정)
 const calculateDiscount = (product, quantity, unitPrice) => {
   if (!product.discount_tiers || product.discount_tiers.length === 0 || quantity <= 0) {
     return { discountAmount: 0, discountedPrice: unitPrice, appliedTier: null };
   }
 
-  // 수량이 큰 순으로 정렬된 할인 구간에서 해당하는 첫 번째 구간 찾기
-  const sortedTiers = [...product.discount_tiers].sort((a, b) => b.minQty - a.minQty);
-  const appliedTier = sortedTiers.find(tier => quantity >= tier.minQty);
+  // 범위 기반 할인 먼저 체크 (maxQty가 있는 것)
+  const rangeTiers = product.discount_tiers.filter(tier => tier.maxQty && tier.maxQty > 0);
+  const unlimitedTiers = product.discount_tiers.filter(tier => !tier.maxQty || tier.maxQty === 0);
+
+  let appliedTier = null;
+
+  // 1. 범위 기반 할인 체크 (minQty ~ maxQty)
+  if (rangeTiers.length > 0) {
+    appliedTier = rangeTiers.find(tier => quantity >= tier.minQty && quantity <= tier.maxQty);
+  }
+
+  // 2. 범위에 해당 안되면 무제한 할인 체크 (X개 이상)
+  if (!appliedTier && unlimitedTiers.length > 0) {
+    const sortedUnlimited = [...unlimitedTiers].sort((a, b) => b.minQty - a.minQty);
+    appliedTier = sortedUnlimited.find(tier => quantity >= tier.minQty);
+  }
 
   if (!appliedTier) {
     return { discountAmount: 0, discountedPrice: unitPrice, appliedTier: null };
@@ -7403,6 +7417,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
       .filter(tier => tier.minQty && tier.value)
       .map(tier => ({
         minQty: parseInt(tier.minQty),
+        maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
         type: tier.type,
         value: parseFloat(tier.value)
       }))
@@ -7433,6 +7448,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
       .filter(tier => tier.minQty && tier.value)
       .map(tier => ({
         minQty: parseInt(tier.minQty),
+        maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
         type: tier.type,
         value: parseFloat(tier.value)
       }))
@@ -9036,7 +9052,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                     type="button"
                     onClick={() => setNewProduct({
                       ...newProduct,
-                      discount_tiers: [...(newProduct.discount_tiers || []), { minQty: '', type: 'percent', value: '' }]
+                      discount_tiers: [...(newProduct.discount_tiers || []), { minQty: '', maxQty: '', type: 'percent', value: '' }]
                     })}
                     className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 rounded-lg text-emerald-400 text-sm font-medium transition-colors flex items-center gap-1"
                   >
@@ -9049,7 +9065,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                   <div className="space-y-3 bg-slate-700/30 rounded-xl p-4 border border-slate-600/50">
                     {(newProduct.discount_tiers || []).map((tier, idx) => (
                       <div key={idx} className="flex items-center gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             value={tier.minQty}
@@ -9058,10 +9074,22 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                               newTiers[idx].minQty = e.target.value;
                               setNewProduct({ ...newProduct, discount_tiers: newTiers });
                             }}
-                            placeholder="수량"
-                            className="w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                            placeholder="최소"
+                            className="w-16 px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                           />
-                          <span className="text-slate-400 text-sm">개 이상</span>
+                          <span className="text-slate-400 text-sm">~</span>
+                          <input
+                            type="number"
+                            value={tier.maxQty || ''}
+                            onChange={(e) => {
+                              const newTiers = [...newProduct.discount_tiers];
+                              newTiers[idx].maxQty = e.target.value;
+                              setNewProduct({ ...newProduct, discount_tiers: newTiers });
+                            }}
+                            placeholder="무제한"
+                            className="w-16 px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="text-slate-400 text-sm">개</span>
                         </div>
                         <select
                           value={tier.type}
@@ -9070,12 +9098,12 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                             newTiers[idx].type = e.target.value;
                             setNewProduct({ ...newProduct, discount_tiers: newTiers });
                           }}
-                          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+                          className="px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
                         >
-                          <option value="percent">% 할인</option>
-                          <option value="fixed">원 할인</option>
+                          <option value="percent">%</option>
+                          <option value="fixed">원</option>
                         </select>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             value={tier.value}
@@ -9085,7 +9113,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                               setNewProduct({ ...newProduct, discount_tiers: newTiers });
                             }}
                             placeholder={tier.type === 'percent' ? '5' : '1000'}
-                            className="w-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                            className="w-20 px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                           />
                           <span className="text-slate-400 text-sm">{tier.type === 'percent' ? '%' : '원'}</span>
                         </div>
@@ -9101,7 +9129,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                         </button>
                       </div>
                     ))}
-                    <p className="text-slate-500 text-xs mt-2">* 수량이 많은 구간이 우선 적용됩니다</p>
+                    <p className="text-slate-500 text-xs mt-2">* 최대 수량 비워두면 "이상" 조건 (예: 10~ = 10개 이상)</p>
                   </div>
                 )}
               </div>
@@ -9219,7 +9247,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                     type="button"
                     onClick={() => setEditingProduct({
                       ...editingProduct,
-                      discount_tiers: [...(editingProduct.discount_tiers || []), { minQty: '', type: 'percent', value: '' }]
+                      discount_tiers: [...(editingProduct.discount_tiers || []), { minQty: '', maxQty: '', type: 'percent', value: '' }]
                     })}
                     className="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 rounded-lg text-emerald-400 text-xs font-medium transition-colors flex items-center gap-1"
                   >
@@ -9241,10 +9269,21 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                               newTiers[idx].minQty = e.target.value;
                               setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
                             }}
-                            placeholder="수량"
-                            className="w-16 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                            placeholder="최소"
+                            className="w-14 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                           />
-                          <span className="text-slate-400 text-xs">개+</span>
+                          <span className="text-slate-400 text-xs">~</span>
+                          <input
+                            type="number"
+                            value={tier.maxQty || ''}
+                            onChange={(e) => {
+                              const newTiers = [...editingProduct.discount_tiers];
+                              newTiers[idx].maxQty = e.target.value;
+                              setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
+                            }}
+                            placeholder="무제한"
+                            className="w-14 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
                         </div>
                         <select
                           value={tier.type}
@@ -9267,7 +9306,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                             setEditingProduct({ ...editingProduct, discount_tiers: newTiers });
                           }}
                           placeholder={tier.type === 'percent' ? '5' : '1000'}
-                          className="w-20 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-16 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                         />
                         <button
                           type="button"
@@ -9281,6 +9320,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                         </button>
                       </div>
                     ))}
+                    <p className="text-slate-500 text-xs">* 최대 비워두면 "이상" 조건</p>
                   </div>
                 )}
               </div>
