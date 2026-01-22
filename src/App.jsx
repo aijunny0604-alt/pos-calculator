@@ -2282,6 +2282,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
     // 입고예약 장바구니는 날짜 필터 무시 (항상 표시)
     if (isReservationCart(cart)) return true;
 
+    // 예약(scheduled) 상태인 장바구니는 날짜 필터 무시 (항상 표시)
+    if (cart.status === 'scheduled') return true;
+
     if (dateFilter === 'all') return true;
     if (!cart.date && !cart.created_at) return false;
 
