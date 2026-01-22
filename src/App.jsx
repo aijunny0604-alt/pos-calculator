@@ -1669,12 +1669,30 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
     }
   }, [order]);
 
-  // ESC 키로 모달 닫기
+  // ESC 키로 모달 닫기 (계산기가 열려있으면 계산기 먼저 닫기)
   useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        if (showQuickCalculator) {
+          setShowQuickCalculator(false);
+          setCalculatorInitialValue(null);
+        } else if (isEditing) {
+          // 편집 모드 취소
+          setEditedOrder({
+            ...order,
+            customerAddress: order.customerAddress || '',
+            items: [...order.items]
+          });
+          setIsEditing(false);
+          setShowProductSearch(false);
+        } else {
+          onClose();
+        }
+      }
+    };
     if (isOpen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showQuickCalculator, isEditing, order]);
 
   // 모달 열릴 때 body 스크롤 완전 잠금
   useEffect(() => {
@@ -2431,12 +2449,22 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
       return dateA - dateB;
     });
 
-  // ESC 키로 뒤로가기
+  // ESC 키로 뒤로가기 (모달 우선순위 순서대로 닫기)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (showDeleteAllConfirm) {
+        // 계산기 모달이 열려있으면 먼저 닫기
+        if (showQuickCalculator) {
+          setShowQuickCalculator(false);
+          setCalculatorInitialValue(null);
+        } else if (showFilterDeleteConfirm) {
+          setShowFilterDeleteConfirm(false);
+        } else if (showDeleteAllConfirm) {
           setShowDeleteAllConfirm(false);
+        } else if (isEditingDetail) {
+          // 편집 모드 취소
+          setIsEditingDetail(false);
+          setEditedDetailCart(null);
         } else if (detailCart) {
           setDetailCart(null);
           setDetailIndex(null);
@@ -2450,7 +2478,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, selectMode, detailCart, showDeleteAllConfirm]);
+  }, [onBack, selectMode, detailCart, showDeleteAllConfirm, showFilterDeleteConfirm, showQuickCalculator, isEditingDetail]);
   
   // 항목 선택/해제
   const toggleSelect = (index) => {
@@ -6895,11 +6923,14 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     setSelectedCustomers([]);
   };
 
-  // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
+  // ESC 키로 뒤로가기 (모달 우선순위 순서대로 닫기)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (selectMode) {
+        if (showQuickCalculator) {
+          setShowQuickCalculator(false);
+          setCalculatorInitialValue(null);
+        } else if (selectMode) {
           exitSelectMode();
         } else if (inlineEdit) {
           setInlineEdit(null);
@@ -6928,7 +6959,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit]);
+  }, [onBack, showAddModal, editingProduct, showAddCustomerModal, editingCustomer, showResetStockModal, deleteConfirm, deleteCustomerConfirm, inlineEdit, customerInlineEdit, showQuickCalculator, selectMode, showBulkDeleteConfirm]);
 
   const categories = ['전체', ...new Set((products || []).map(p => p.category))];
   const categoryList = [...new Set((products || []).map(p => p.category))].sort((a, b) => a.localeCompare(b, 'ko'));
@@ -9378,11 +9409,13 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
   const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 계산기
 
-  // ESC 키로 뒤로가기 (모달이 열려있지 않을 때)
+  // ESC 키로 뒤로가기 (모달 우선순위 순서대로 닫기)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (deleteConfirm) {
+        if (showQuickCalculator) {
+          setShowQuickCalculator(false);
+        } else if (deleteConfirm) {
           setDeleteConfirm(null);
         } else if (showBulkDeleteConfirm) {
           setShowBulkDeleteConfirm(false);
@@ -9397,7 +9430,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, deleteConfirm, showBulkDeleteConfirm, showFilterDeleteConfirm, selectedOrders]);
+  }, [onBack, deleteConfirm, showBulkDeleteConfirm, showFilterDeleteConfirm, selectedOrders, showQuickCalculator]);
 
   // 날짜 필터링 함수
   const filterByDate = (order) => {
@@ -10030,14 +10063,16 @@ function QuickCalculator({ onClose, initialValue = null }) {
   // 키보드 이벤트 핸들러
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // ESC: 닫기
+      // ESC: 닫기 (이벤트 전파 중단)
       if (e.key === 'Escape') {
+        e.stopPropagation();
         onClose();
         return;
       }
       // Enter: 계산
       if (e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         performOperationRef.current('=');
         return;
       }
