@@ -1673,6 +1673,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
+        e.stopPropagation(); // 이벤트 전파 방지
         if (showQuickCalculator) {
           setShowQuickCalculator(false);
           setCalculatorInitialValue(null);
@@ -9400,7 +9401,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 }
 
 // 주문 내역 페이지
-function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice, onSaveToCart }) {
+function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice, onSaveToCart, isDetailModalOpen = false }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
@@ -9411,9 +9412,12 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
   const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 계산기
 
-  // ESC 키로 뒤로가기 (모달 우선순위 순서대로 닫기)
+  // ESC 키로 뒤로가기 (모달 우선순위 순서대로 닫기, 상세 모달이 열려있으면 무시)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // 상세 모달이 열려있으면 이 핸들러는 동작하지 않음 (모달에서 처리)
+      if (isDetailModalOpen) return;
+
       if (e.key === 'Escape') {
         if (showQuickCalculator) {
           setShowQuickCalculator(false);
@@ -9432,7 +9436,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, deleteConfirm, showBulkDeleteConfirm, showFilterDeleteConfirm, selectedOrders, showQuickCalculator]);
+  }, [onBack, deleteConfirm, showBulkDeleteConfirm, showFilterDeleteConfirm, selectedOrders, showQuickCalculator, isDetailModalOpen]);
 
   // 날짜 필터링 함수
   const filterByDate = (order) => {
@@ -11424,6 +11428,7 @@ export default function PriceCalculator() {
           onRefresh={loadOrders}
           isLoading={isLoading}
           formatPrice={formatPrice}
+          isDetailModalOpen={isDetailModalOpen}
           onSaveToCart={async (order) => {
             // 주문 이력을 저장된 장바구니로 저장
             const now = new Date();
