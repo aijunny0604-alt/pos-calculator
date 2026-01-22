@@ -1655,6 +1655,8 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   const [editedOrder, setEditedOrder] = useState(null);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [showQuickCalculator, setShowQuickCalculator] = useState(false);
+  const [calculatorInitialValue, setCalculatorInitialValue] = useState(null);
 
   // order가 변경될 때마다 editedOrder 초기화
   useEffect(() => {
@@ -2134,7 +2136,11 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
             <div className="text-slate-400 text-sm space-y-1">
               <p>총 수량: <span className="text-white font-medium tabular-nums">{totalQuantity}개</span></p>
             </div>
-            <div className="text-right">
+            <div
+              className="text-right cursor-pointer hover:bg-slate-700/50 rounded-lg p-2 -m-2 transition-colors"
+              onClick={() => { setCalculatorInitialValue(currentTotal); setShowQuickCalculator(true); }}
+              title="계산기 열기"
+            >
               <div className="text-sm text-slate-400 space-y-1 mb-2">
                 <p className="flex justify-between gap-3">
                   <span>공급가액:</span>
@@ -2145,7 +2151,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                   <span className="text-slate-300 tabular-nums">{formatPrice(vat)}</span>
                 </p>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-white tabular-nums">{formatPrice(currentTotal)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-white tabular-nums">{formatPrice(currentTotal)} 💡</p>
             </div>
           </div>
 
@@ -2198,6 +2204,14 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
           )}
         </div>
       </div>
+
+      {/* 계산기 모달 */}
+      {showQuickCalculator && (
+        <QuickCalculator
+          onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
+          initialValue={calculatorInitialValue}
+        />
+      )}
     </div>
   );
 }
@@ -2221,6 +2235,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
   const [deliveryFilter, setDeliveryFilter] = useState('all'); // 배송 예정일 필터
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 영역 접기/펼치기
   const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 계산기
+  const [calculatorInitialValue, setCalculatorInitialValue] = useState(null); // 계산기 초기값
 
   // 편집 모드 초기화 useEffect
   useEffect(() => {
@@ -3133,7 +3148,11 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
 
             {/* 금액 요약 + 버튼 */}
             <div className="border-t border-slate-700 p-4 sm:p-6 flex-shrink-0 bg-slate-800">
-              <div className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-4 sm:p-5 mb-4 sm:mb-5 hover:from-slate-900/90 hover:to-slate-900/60 transition-all duration-200">
+              <div
+                className="bg-gradient-to-r from-slate-900/80 to-slate-900/40 rounded-xl p-4 sm:p-5 mb-4 sm:mb-5 hover:from-slate-900/90 hover:to-slate-900/60 transition-all duration-200 cursor-pointer"
+                onClick={() => { setCalculatorInitialValue(currentCart.total); setShowQuickCalculator(true); }}
+                title="계산기 열기"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-500 text-sm sm:text-base">공급가액</span>
                   <span className="text-slate-300 text-base sm:text-lg">{formatPrice(Math.round(currentCart.total / 1.1))}</span>
@@ -3144,7 +3163,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-lg sm:text-xl">총 금액</span>
-                  <span className="text-2xl sm:text-4xl font-bold text-emerald-400">{formatPrice(currentCart.total)}</span>
+                  <span className="text-2xl sm:text-4xl font-bold text-emerald-400">{formatPrice(currentCart.total)} 💡</span>
                 </div>
               </div>
 
@@ -3214,6 +3233,15 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
               )}
             </div>
           </div>
+        </div>
+
+          {/* 계산기 모달 - 상세보기 내 */}
+          {showQuickCalculator && (
+            <QuickCalculator
+              onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
+              initialValue={calculatorInitialValue}
+            />
+          )}
         </div>
         );
       })()}
