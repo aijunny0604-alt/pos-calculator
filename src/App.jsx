@@ -6014,6 +6014,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [changingItemId, setChangingItemId] = useState(null); // 변경 중인 제품 ID
   const [changeSearchQuery, setChangeSearchQuery] = useState(''); // 변경 검색어
+  const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 계산기
+  const [calculatorInitialValue, setCalculatorInitialValue] = useState(null); // 계산기 초기값
 
   // 처음 마운트시 주문번호 생성
   useEffect(() => {
@@ -6627,8 +6629,12 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
             <span className="text-slate-400 text-sm">부가세 (10%)</span>
             <span className="text-white">{formatPrice(vat)}</span>
           </div>
-          <div className="flex items-center justify-between pt-3 border-t border-slate-600">
-            <span className="text-white font-semibold">총 금액</span>
+          <div
+            className="flex items-center justify-between pt-3 border-t border-slate-600 cursor-pointer hover:bg-slate-700/50 rounded-lg p-2 -mx-2 transition-colors"
+            onClick={() => { setCalculatorInitialValue(currentTotal); setShowQuickCalculator(true); }}
+            title="계산기 열기"
+          >
+            <span className="text-white font-semibold">총 금액 💡</span>
             <span className="text-2xl font-bold text-emerald-400">{formatPrice(currentTotal)}</span>
           </div>
         </div>
@@ -6696,6 +6702,14 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
           </div>
         </div>
       </div>
+
+      {/* 계산기 모달 */}
+      {showQuickCalculator && (
+        <QuickCalculator
+          onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
+          initialValue={calculatorInitialValue}
+        />
+      )}
     </div>
   );
 }
@@ -9965,12 +9979,12 @@ function WelcomeSplash({ onComplete }) {
 }
 
 // ==================== 비상용 계산기 컴포넌트 ====================
-function QuickCalculator({ onClose }) {
-  const [display, setDisplay] = useState('0');
+function QuickCalculator({ onClose, initialValue = null }) {
+  const [display, setDisplay] = useState(initialValue ? String(initialValue) : '0');
   const [previousValue, setPreviousValue] = useState(null);
   const [operation, setOperation] = useState(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(initialValue ? [`초기값: ${initialValue.toLocaleString()}원`] : []);
 
   // 키보드 이벤트 핸들러
   useEffect(() => {
@@ -10264,6 +10278,7 @@ export default function PriceCalculator() {
   const [showTextAnalyzeModal, setShowTextAnalyzeModal] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 비상용 계산기
+  const [calculatorInitialValue, setCalculatorInitialValue] = useState(null); // 계산기 초기값
 
   // 알림 설정 (localStorage에서 로드)
   const [notificationSettings, setNotificationSettings] = useState(() => {
@@ -11895,8 +11910,12 @@ export default function PriceCalculator() {
                       <p>공급가 {formatPrice(calcExVat(totalAmount))}</p>
                       <p>VAT {formatPrice(totalAmount - calcExVat(totalAmount))}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-emerald-400/70 text-xs">총 금액</p>
+                    <div
+                      className="text-right cursor-pointer hover:bg-emerald-800/30 rounded-lg p-1 -m-1 transition-colors"
+                      onClick={() => { setCalculatorInitialValue(totalAmount); setShowQuickCalculator(true); }}
+                      title="계산기 열기"
+                    >
+                      <p className="text-emerald-400/70 text-xs">총 금액 💡</p>
                       <p className="text-2xl font-bold text-white">{formatPrice(totalAmount)}</p>
                     </div>
                   </div>
@@ -12061,8 +12080,12 @@ export default function PriceCalculator() {
                     <p>공급가 {formatPrice(calcExVat(totalAmount))}</p>
                     <p>VAT {formatPrice(totalAmount - calcExVat(totalAmount))}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-emerald-400/70 text-sm">총 금액</p>
+                  <div
+                    className="text-right cursor-pointer hover:bg-emerald-800/30 rounded-lg p-2 -m-2 transition-colors"
+                    onClick={() => { setCalculatorInitialValue(totalAmount); setShowQuickCalculator(true); }}
+                    title="계산기 열기"
+                  >
+                    <p className="text-emerald-400/70 text-sm">총 금액 💡</p>
                     <p className="text-3xl font-bold text-white">{formatPrice(totalAmount)}</p>
                   </div>
                 </div>
@@ -12401,7 +12424,7 @@ export default function PriceCalculator() {
       {/* 비상용 계산기 플로팅 버튼 */}
       {!showSplash && !isOrderModalOpen && !showTextAnalyzeModal && (
         <button
-          onClick={() => setShowQuickCalculator(true)}
+          onClick={() => { setCalculatorInitialValue(null); setShowQuickCalculator(true); }}
           className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-lg shadow-amber-500/30 flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
           title="계산기"
         >
@@ -12411,7 +12434,10 @@ export default function PriceCalculator() {
 
       {/* 비상용 계산기 모달 */}
       {showQuickCalculator && (
-        <QuickCalculator onClose={() => setShowQuickCalculator(false)} />
+        <QuickCalculator
+          onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
+          initialValue={calculatorInitialValue}
+        />
       )}
     </div>
     </>
