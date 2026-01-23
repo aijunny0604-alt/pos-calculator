@@ -5224,22 +5224,22 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
 
   if (!isOpen) return null;
 
+  // 모바일 감지
+  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in"
-      style={{ touchAction: 'none' }}
-      onClick={onBack}
       onTouchMove={(e) => {
         if (!e.target.closest('.modal-scroll-area')) {
           e.preventDefault();
         }
       }}
     >
-      <div
-        className="bg-slate-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-        onTouchEnd={(e) => e.stopPropagation()}
-      >
+      {/* 배경 - 클릭시 닫기 */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
+
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl animate-scale-in">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -5254,7 +5254,7 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
         <div
           className="flex-1 overflow-y-auto p-5 modal-scroll-area"
           data-lenis-prevent="true"
-          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+          style={isMobile ? { WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' } : {}}
         >
           <div className="mb-4">
             <label className="block text-slate-400 text-sm mb-2">저장 이름 (업체명)</label>
