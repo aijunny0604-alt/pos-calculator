@@ -2295,7 +2295,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
 // ==================== 저장된 장바구니 모달 ====================
 // ==================== 저장된 장바구니 페이지 ====================
-function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], formatPrice, onBack, onRefresh, isLoading }) {
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], customers = [], formatPrice, onBack, onRefresh, isLoading }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -2352,6 +2352,15 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
       return true;
     }
     return false;
+  };
+
+  // 블랙리스트 업체 체크
+  const isBlacklistCustomer = (cartName) => {
+    if (!cartName || !customers || customers.length === 0) return false;
+    const customer = customers.find(c =>
+      c?.name?.toLowerCase().replace(/\s/g, '') === cartName.toLowerCase().replace(/\s/g, '')
+    );
+    return customer?.is_blacklist || false;
   };
 
   // 배송 예정일 표시 helper
@@ -2821,6 +2830,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
               // 예약/입고예약 상태 체크
               const isReservation = cart.status === 'reservation' || isReservationCart(cart);
               const isScheduled = cart.status === 'scheduled';
+              const isBlacklist = isBlacklistCustomer(cart.name);
 
               return (
                 <div
@@ -2829,19 +2839,25 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                   className={`rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none relative overflow-hidden ${
                     selectMode && selectedItems.includes(index)
                       ? 'ring-2 ring-violet-500 bg-violet-900/20 border-violet-500/50'
-                      : isReservation
-                        ? 'bg-gradient-to-br from-orange-900/40 via-slate-800 to-slate-800 border-orange-500/50 hover:border-orange-400 hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.02]'
-                        : isScheduled
-                          ? 'bg-gradient-to-br from-yellow-900/30 via-slate-800 to-slate-800 border-yellow-500/40 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20 hover:scale-[1.02]'
-                          : 'bg-slate-800 border-slate-700 hover:border-violet-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'
+                      : isBlacklist
+                        ? 'bg-gradient-to-br from-red-900/40 via-slate-800 to-slate-800 border-red-500/50 hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20 hover:scale-[1.02]'
+                        : isReservation
+                          ? 'bg-gradient-to-br from-orange-900/40 via-slate-800 to-slate-800 border-orange-500/50 hover:border-orange-400 hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.02]'
+                          : isScheduled
+                            ? 'bg-gradient-to-br from-yellow-900/30 via-slate-800 to-slate-800 border-yellow-500/40 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20 hover:scale-[1.02]'
+                            : 'bg-slate-800 border-slate-700 hover:border-violet-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'
                   }`}
                 >
+                  {/* 블랙리스트 상단 악센트 바 */}
+                  {isBlacklist && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600"></div>
+                  )}
                   {/* 입고예약 상태일 때 상단 악센트 바 */}
-                  {isReservation && (
+                  {isReservation && !isBlacklist && (
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-orange-400 to-orange-500 animate-pulse"></div>
                   )}
                   {/* 예약 상태일 때 상단 악센트 바 */}
-                  {isScheduled && !isReservation && (
+                  {isScheduled && !isReservation && !isBlacklist && (
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500"></div>
                   )}
                   <div className="flex items-start gap-3">
@@ -2875,7 +2891,11 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                       <div className="flex items-start justify-between mb-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className={`font-semibold truncate ${isReservation ? 'text-orange-300' : 'text-white'}`}>{cart.name}</h3>
+                            {isBlacklist && <span className="flex-shrink-0">🚫</span>}
+                            <h3 className={`font-semibold truncate ${isBlacklist ? 'text-red-300' : isReservation ? 'text-orange-300' : 'text-white'}`}>{cart.name}</h3>
+                            {isBlacklist && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600/30 text-red-400 flex-shrink-0">블랙리스트</span>
+                            )}
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               cart.priceType === 'wholesale' || cart.price_type === 'wholesale'
                                 ? 'bg-blue-600/30 text-blue-400'
@@ -3459,6 +3479,14 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
   const [detailOrder, setDetailOrder] = useState(null); // 상세보기 모달용 주문
+  const [blacklistFilter, setBlacklistFilter] = useState('all'); // 'all', 'blacklist', 'normal'
+
+  // 블랙리스트 통계
+  const blacklistStats = {
+    total: (customers || []).length,
+    blacklist: (customers || []).filter(c => c.is_blacklist).length,
+    normal: (customers || []).filter(c => !c.is_blacklist).length
+  };
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -3477,8 +3505,13 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack, selectedCustomer, detailOrder]);
   
-  // 검색 필터링 (띄어쓰기 무시)
+  // 검색 필터링 (띄어쓰기 무시 + 블랙리스트 필터)
   const filteredCustomers = (customers || []).filter(c => {
+    // 블랙리스트 필터
+    if (blacklistFilter === 'blacklist' && !c.is_blacklist) return false;
+    if (blacklistFilter === 'normal' && c.is_blacklist) return false;
+
+    // 검색 필터
     const search = searchTerm.toLowerCase().replace(/\s/g, '');
     const name = c.name.toLowerCase().replace(/\s/g, '');
     const address = (c.address || '').toLowerCase().replace(/\s/g, '');
@@ -3559,8 +3592,9 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
         
         {/* 검색 영역 - 거래처 목록에서만 표시 (접기/펼치기) */}
         {!selectedCustomer && (
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[200px] opacity-100'}`}>
-            <div className="px-4 pt-2 pb-4">
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
+            <div className="px-4 pt-2 pb-4 space-y-3">
+              {/* 검색창 */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -3571,6 +3605,35 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                   placeholder="업체명, 주소, 전화번호로 검색..."
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+              </div>
+
+              {/* 블랙리스트 현황 */}
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-slate-500">현황:</span>
+                <span className="px-2 py-1 bg-slate-700 text-white rounded">전체 {blacklistStats.total}</span>
+                <span className="px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded">정상 {blacklistStats.normal}</span>
+                <span className="px-2 py-1 bg-red-600/20 text-red-400 rounded">🚫 블랙리스트 {blacklistStats.blacklist}</span>
+              </div>
+
+              {/* 블랙리스트 필터 */}
+              <div className="flex items-center gap-2">
+                {[
+                  { key: 'all', label: '전체', color: 'slate' },
+                  { key: 'normal', label: '정상', color: 'emerald' },
+                  { key: 'blacklist', label: '🚫 블랙리스트', color: 'red' }
+                ].map(({ key, label, color }) => (
+                  <button
+                    key={key}
+                    onClick={() => setBlacklistFilter(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      blacklistFilter === key
+                        ? color === 'red' ? 'bg-red-600 text-white' : color === 'emerald' ? 'bg-emerald-600 text-white' : 'bg-slate-600 text-white'
+                        : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600 hover:text-white'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -3757,17 +3820,34 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                 {filteredCustomers.map(customer => {
                   const orderCount = getCustomerOrders(customer.name).length;
                   const totalAmount = getCustomerTotalAmount(customer.name);
-                  
+                  const isBlacklist = customer.is_blacklist;
+
                   return (
-                    <div 
-                      key={customer.id} 
+                    <div
+                      key={customer.id}
                       onClick={() => setSelectedCustomer(customer)}
-                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group hover:scale-[1.02] select-none"
+                      className={`rounded-xl p-4 border transition-all cursor-pointer group hover:scale-[1.02] select-none relative overflow-hidden ${
+                        isBlacklist
+                          ? 'bg-gradient-to-br from-red-900/40 via-slate-800 to-slate-800 border-red-500/50 hover:border-red-400'
+                          : 'bg-slate-800 border-slate-700 hover:border-emerald-500/50'
+                      }`}
                     >
+                      {/* 블랙리스트 상단 바 */}
+                      {isBlacklist && (
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600"></div>
+                      )}
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-white font-semibold truncate">{customer.name}</h3>
+                            {isBlacklist && (
+                              <span className="text-red-500 flex-shrink-0">🚫</span>
+                            )}
+                            <h3 className={`font-semibold truncate ${isBlacklist ? 'text-red-300' : 'text-white'}`}>{customer.name}</h3>
+                            {isBlacklist && (
+                              <span className="px-2 py-0.5 bg-red-600/30 text-red-400 text-xs rounded-full flex-shrink-0">
+                                블랙리스트
+                              </span>
+                            )}
                             {orderCount > 0 && (
                               <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">
                                 {orderCount}건
@@ -6309,8 +6389,16 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
     if (success) {
       const isNewCustomer = customerName && !selectedCustomerId &&
         !(customers || []).find(c => c?.name?.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, ''));
-      
+
+      // 블랙리스트 업체 체크
+      const isBlacklistCustomer = customerName && (customers || []).find(c =>
+        c?.name?.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, '') && c.is_blacklist
+      );
+
       let message = `✅ 주문이 저장되었습니다!\n\n주문번호: ${orderNumber}\n총 금액: ${formatPrice(currentTotal)}`;
+      if (isBlacklistCustomer) {
+        message += `\n\n🚫 주의: "${customerName}"은(는) 블랙리스트 업체입니다!`;
+      }
       if (isNewCustomer) {
         message += `\n\n🆕 신규 거래처 "${customerName}"이(가) 자동 등록되었습니다.`;
       }
@@ -6467,12 +6555,18 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
                     <button
                       key={customer.id}
                       onClick={() => selectCustomer(customer)}
-                      className="w-full px-3 py-2.5 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
+                      className={`w-full px-3 py-2.5 text-left transition-colors border-b border-slate-700 last:border-b-0 ${
+                        customer.is_blacklist ? 'bg-red-900/30 hover:bg-red-900/50' : 'hover:bg-slate-700'
+                      }`}
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-white font-medium text-sm">{customer.name}</p>
+                        <p className={`font-medium text-sm flex items-center gap-1.5 ${customer.is_blacklist ? 'text-red-300' : 'text-white'}`}>
+                          {customer.is_blacklist && <span>🚫</span>}
+                          {customer.name}
+                          {customer.is_blacklist && <span className="px-1.5 py-0.5 bg-red-600/40 text-red-400 text-[10px] rounded">블랙리스트</span>}
+                        </p>
                         {customer.phone && (
-                          <span className="text-emerald-400 text-xs">{customer.phone}</span>
+                          <span className={`text-xs ${customer.is_blacklist ? 'text-red-400' : 'text-emerald-400'}`}>{customer.phone}</span>
                         )}
                       </div>
                       <p className="text-slate-400 text-xs truncate mt-0.5">{customer.address || '주소 미등록'}</p>
@@ -6916,8 +7010,9 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
   const [customerSearch, setCustomerSearch] = useState('');
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '', memo: '' });
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '', memo: '', is_blacklist: false, blacklist_reason: '' });
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(null);
+  const [blacklistFilter, setBlacklistFilter] = useState('all'); // 'all', 'blacklist', 'normal'
 
   // 선택 삭제 관련 state
   const [selectMode, setSelectMode] = useState(false);
@@ -7383,7 +7478,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
     if (!newCustomer.name) return;
     const success = await onAddCustomer(newCustomer);
     if (success) {
-      setNewCustomer({ name: '', phone: '', address: '', memo: '' });
+      setNewCustomer({ name: '', phone: '', address: '', memo: '', is_blacklist: false, blacklist_reason: '' });
       setShowAddCustomerModal(false);
     }
   };
@@ -7395,13 +7490,34 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
       name: editingCustomer.name,
       phone: editingCustomer.phone,
       address: editingCustomer.address,
-      memo: editingCustomer.memo
+      memo: editingCustomer.memo,
+      is_blacklist: editingCustomer.is_blacklist || false,
+      blacklist_reason: editingCustomer.blacklist_reason || ''
     });
     setEditingCustomer(null);
   };
 
-  // 필터링된 거래처 (띄어쓰기 무시)
+  // 블랙리스트 토글 (빠른 전환)
+  const toggleBlacklist = async (customer) => {
+    await onUpdateCustomer(customer.id, {
+      is_blacklist: !customer.is_blacklist
+    });
+  };
+
+  // 블랙리스트 통계
+  const blacklistStats = {
+    total: (customers || []).length,
+    blacklist: (customers || []).filter(c => c.is_blacklist).length,
+    normal: (customers || []).filter(c => !c.is_blacklist).length
+  };
+
+  // 필터링된 거래처 (띄어쓰기 무시 + 블랙리스트 필터)
   const filteredCustomers = (customers || []).filter(c => {
+    // 블랙리스트 필터
+    if (blacklistFilter === 'blacklist' && !c.is_blacklist) return false;
+    if (blacklistFilter === 'normal' && c.is_blacklist) return false;
+
+    // 검색 필터
     const search = customerSearch.toLowerCase().replace(/\s/g, '');
     const name = c.name.toLowerCase().replace(/\s/g, '');
     const address = (c.address || '').toLowerCase().replace(/\s/g, '');
@@ -8176,6 +8292,48 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
           {activeTab === 'customers' && (
           /* 거래처 관리 탭 */
           <>
+            {/* 블랙리스트 현황 및 필터 */}
+            <div className="bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                {/* 현황 통계 */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-sm">전체</span>
+                    <span className="px-2 py-1 bg-slate-700 text-white text-sm font-bold rounded-lg">{blacklistStats.total}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-400 text-sm">정상</span>
+                    <span className="px-2 py-1 bg-emerald-600/20 text-emerald-400 text-sm font-bold rounded-lg">{blacklistStats.normal}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-400 text-sm">🚫 블랙리스트</span>
+                    <span className="px-2 py-1 bg-red-600/20 text-red-400 text-sm font-bold rounded-lg">{blacklistStats.blacklist}</span>
+                  </div>
+                </div>
+                {/* 필터 버튼 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-sm mr-2">필터:</span>
+                  {[
+                    { key: 'all', label: '전체', color: 'slate' },
+                    { key: 'normal', label: '정상', color: 'emerald' },
+                    { key: 'blacklist', label: '🚫 블랙리스트', color: 'red' }
+                  ].map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      onClick={() => setBlacklistFilter(key)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        blacklistFilter === key
+                          ? color === 'red' ? 'bg-red-600 text-white' : color === 'emerald' ? 'bg-emerald-600 text-white' : 'bg-slate-600 text-white'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* 선택 모드 바 */}
             {selectMode && activeTab === 'customers' && (
               <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
@@ -8215,6 +8373,7 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                         </th>
                       )}
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[120px]">업체명</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-slate-300 whitespace-nowrap min-w-[90px]">블랙리스트</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[120px]">연락처</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[180px]">주소</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 whitespace-nowrap min-w-[100px]">메모</th>
@@ -8245,13 +8404,27 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                               className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
                             />
                           ) : (
-                            <span 
+                            <span
                               onClick={() => startCustomerInlineEdit(customer, 'name')}
-                              className="text-white font-medium cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                              className={`font-medium cursor-pointer hover:text-amber-400 hover:underline transition-colors ${customer.is_blacklist ? 'text-red-400' : 'text-white'}`}
                             >
-                              {customer.name}
+                              {customer.is_blacklist && '🚫 '}{customer.name}
                             </span>
                           )}
+                        </td>
+                        {/* 블랙리스트 토글 */}
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => toggleBlacklist(customer)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                              customer.is_blacklist
+                                ? 'bg-red-600 hover:bg-red-500 text-white'
+                                : 'bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white'
+                            }`}
+                            title={customer.is_blacklist ? '블랙리스트 해제' : '블랙리스트 등록'}
+                          >
+                            {customer.is_blacklist ? '🚫 ON' : 'OFF'}
+                          </button>
                         </td>
                         {/* 연락처 - 인라인 편집 */}
                         <td className="px-4 py-3">
@@ -8425,16 +8598,40 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       <input type="text" value={editingCustomer.phone || ''} onChange={(e) => setEditingCustomer({...editingCustomer, phone: e.target.value})} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1.5">주소</label>
-                      <input type="text" value={editingCustomer.address || ''} onChange={(e) => setEditingCustomer({...editingCustomer, address: e.target.value})} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-blue-500" />
-                    </div>
-                    <div>
                       <label className="block text-slate-300 font-medium mb-2">주소</label>
                       <input type="text" value={editingCustomer.address || ''} onChange={(e) => setEditingCustomer({...editingCustomer, address: e.target.value})} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
                       <label className="block text-slate-300 font-medium mb-2">메모</label>
-                      <textarea value={editingCustomer.memo || ''} onChange={(e) => setEditingCustomer({...editingCustomer, memo: e.target.value})} rows={3} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none" />
+                      <textarea value={editingCustomer.memo || ''} onChange={(e) => setEditingCustomer({...editingCustomer, memo: e.target.value})} rows={2} className="w-full px-5 py-4 bg-slate-700 border border-slate-600 rounded-xl text-white text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none" />
+                    </div>
+                    {/* 블랙리스트 설정 */}
+                    <div className={`p-4 rounded-xl border transition-all ${editingCustomer.is_blacklist ? 'bg-red-900/30 border-red-500/50' : 'bg-slate-700/50 border-slate-600'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🚫</span>
+                          <label className="text-slate-300 font-medium">블랙리스트</label>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCustomer({...editingCustomer, is_blacklist: !editingCustomer.is_blacklist})}
+                          className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-300 focus:outline-none ${editingCustomer.is_blacklist ? 'bg-red-600' : 'bg-slate-600'}`}
+                        >
+                          <span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 ${editingCustomer.is_blacklist ? 'translate-x-9' : 'translate-x-1'}`}></span>
+                        </button>
+                      </div>
+                      {editingCustomer.is_blacklist && (
+                        <div>
+                          <label className="block text-red-400 text-sm mb-1">블랙리스트 사유</label>
+                          <input
+                            type="text"
+                            value={editingCustomer.blacklist_reason || ''}
+                            onChange={(e) => setEditingCustomer({...editingCustomer, blacklist_reason: e.target.value})}
+                            placeholder="사유를 입력하세요 (선택)"
+                            className="w-full px-4 py-3 bg-slate-800 border border-red-500/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-4 mt-8">
@@ -11028,7 +11225,16 @@ export default function PriceCalculator() {
 
         setSavedCarts(prev => [savedCart, ...prev]);
         setCart([]); // 장바구니 초기화
-        showToast(`💾 "${name}" 저장됨!`);
+
+        // 블랙리스트 업체 경고 체크
+        const isBlacklistCustomer = customers.find(c =>
+          c?.name?.toLowerCase().replace(/\s/g, '') === name.toLowerCase().replace(/\s/g, '') && c.is_blacklist
+        );
+        if (isBlacklistCustomer) {
+          showToast(`🚫 "${name}" 저장됨 (블랙리스트 업체)`, 'warning');
+        } else {
+          showToast(`💾 "${name}" 저장됨!`);
+        }
       } else {
         console.error('저장 실패 - result:', result);
         showToast('❌ 저장 실패', 'error');
@@ -11856,6 +12062,7 @@ export default function PriceCalculator() {
           setIsOrderModalOpen(true);
         }}
         products={products}
+        customers={customers}
         formatPrice={formatPrice}
         onBack={() => setIsSavedCartsModalOpen(false)}
         onRefresh={loadSavedCartsFromDB}
