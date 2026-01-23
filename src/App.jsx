@@ -5342,28 +5342,29 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
             </div>
           </div>
 
-          <div className="bg-slate-900/30 rounded-xl p-3 mb-5 border border-slate-700/50 max-h-32 overflow-y-auto">
+          <div className="bg-slate-900/30 rounded-xl p-3 border border-slate-700/50 max-h-32 overflow-y-auto">
             <p className="text-slate-400 text-sm">
               {cart.map(item => `${item.name}(${item.quantity})`).join(', ')}
             </p>
           </div>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={handleSave}
-              disabled={!cartName.trim()}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-xl text-white font-semibold transition-colors"
-            >
-              <Save className="w-5 h-5" />
-              저장하기
-            </button>
-            <button
-              onClick={onBack}
-              className="flex-1 py-3.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
-            >
-              취소
-            </button>
-          </div>
+        </div>
+
+        {/* 하단 버튼 - 스크롤 영역 밖에 고정 */}
+        <div className="flex gap-3 p-5 pt-3 border-t border-slate-700 bg-slate-800 flex-shrink-0">
+          <button
+            onClick={handleSave}
+            disabled={!cartName.trim()}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-xl text-white font-semibold transition-colors"
+          >
+            <Save className="w-5 h-5" />
+            저장하기
+          </button>
+          <button
+            onClick={onBack}
+            className="flex-1 py-3.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
+          >
+            취소
+          </button>
         </div>
       </div>
     </div>
