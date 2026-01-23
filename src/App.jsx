@@ -5225,12 +5225,23 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
-
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md max-h-[80vh] border border-slate-700 shadow-2xl animate-fade-in flex flex-col">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in"
+      style={{ touchAction: 'none' }}
+      onClick={onBack}
+      onTouchMove={(e) => {
+        if (!e.target.closest('.modal-scroll-area')) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+      >
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <Save className="w-6 h-6 text-white" />
             <h2 className="text-lg font-bold text-white">장바구니 저장</h2>
@@ -5240,7 +5251,11 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
           </button>
         </div>
 
-        <div className="p-5 flex-1 min-h-0 modal-scroll-ios">
+        <div
+          className="flex-1 overflow-y-auto p-5 modal-scroll-area"
+          data-lenis-prevent="true"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        >
           <div className="mb-4">
             <label className="block text-slate-400 text-sm mb-2">저장 이름 (업체명)</label>
             <input
