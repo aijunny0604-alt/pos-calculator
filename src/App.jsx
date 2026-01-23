@@ -5225,12 +5225,12 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ touchAction: 'none' }}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-hidden">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onBack} />
 
-      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl animate-fade-in flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)', maxHeight: 'calc(100dvh - 2rem)' }}>
+      <div className="relative bg-slate-800 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl animate-fade-in" style={{ maxHeight: '85dvh', display: 'flex', flexDirection: 'column' }}>
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0 rounded-t-2xl">
+        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center justify-between rounded-t-2xl" style={{ flexShrink: 0 }}>
           <div className="flex items-center gap-3">
             <Save className="w-6 h-6 text-white" />
             <h2 className="text-lg font-bold text-white">장바구니 저장</h2>
@@ -5240,7 +5240,7 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
           </button>
         </div>
 
-        <div className="p-5 overflow-y-scroll flex-1" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div className="p-5" style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           <div className="mb-4">
             <label className="block text-slate-400 text-sm mb-2">저장 이름 (업체명)</label>
             <input
@@ -5350,7 +5350,7 @@ function SaveCartModal({ isOpen, onSave, cart, priceType, formatPrice, customerN
         </div>
 
         {/* 하단 버튼 - 스크롤 영역 밖에 고정 */}
-        <div className="flex gap-3 p-5 pt-3 border-t border-slate-700 bg-slate-800 flex-shrink-0">
+        <div className="flex gap-3 p-5 pt-3 border-t border-slate-700 bg-slate-800 rounded-b-2xl" style={{ flexShrink: 0 }}>
           <button
             onClick={handleSave}
             disabled={!cartName.trim()}
