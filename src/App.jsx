@@ -3864,6 +3864,12 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                               </span>
                             )}
                           </div>
+                          {/* 블랙리스트 사유 */}
+                          {isBlacklist && customer.blacklist_reason && (
+                            <div className="text-[11px] text-red-400/80 mt-1 flex items-center gap-1">
+                              <span>💬</span> {customer.blacklist_reason}
+                            </div>
+                          )}
                           <p className="text-emerald-400 text-sm flex items-center gap-1.5 mt-1">
                             <Phone className="w-3.5 h-3.5" />
                             {customer.phone || <span className="text-slate-500">전화번호 미등록</span>}
