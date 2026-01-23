@@ -2355,12 +2355,15 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
   };
 
   // 블랙리스트 업체 체크
-  const isBlacklistCustomer = (cartName) => {
-    if (!cartName || !customers || customers.length === 0) return false;
+  const getBlacklistInfo = (cartName) => {
+    if (!cartName || !customers || customers.length === 0) return null;
     const customer = customers.find(c =>
       c?.name?.toLowerCase().replace(/\s/g, '') === cartName.toLowerCase().replace(/\s/g, '')
     );
-    return customer?.is_blacklist || false;
+    if (customer?.is_blacklist) {
+      return { isBlacklist: true, reason: customer.blacklist_reason || '' };
+    }
+    return null;
   };
 
   // 배송 예정일 표시 helper
@@ -2830,7 +2833,8 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
               // 예약/입고예약 상태 체크
               const isReservation = cart.status === 'reservation' || isReservationCart(cart);
               const isScheduled = cart.status === 'scheduled';
-              const isBlacklist = isBlacklistCustomer(cart.name);
+              const blacklistInfo = getBlacklistInfo(cart.name);
+              const isBlacklist = blacklistInfo?.isBlacklist;
 
               return (
                 <div
@@ -2904,6 +2908,12 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
                               {(cart.priceType === 'wholesale' || cart.price_type === 'wholesale') ? '도매' : '소비자'}
                             </span>
                           </div>
+                          {/* 블랙리스트 사유 */}
+                          {isBlacklist && blacklistInfo?.reason && (
+                            <div className="text-[10px] text-red-400/80 mt-0.5">
+                              💬 사유: {blacklistInfo.reason}
+                            </div>
+                          )}
 
                           {/* 상태 & 배송 예정일 */}
                           <div className="flex items-center gap-2 flex-wrap">
@@ -9921,10 +9931,22 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 }
 
 // 주문 내역 페이지
-function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice, onSaveToCart, isDetailModalOpen = false }) {
+function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onViewOrder, onRefresh, isLoading, formatPrice, onSaveToCart, isDetailModalOpen = false, customers = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [dateFilter, setDateFilter] = useState('today'); // 기본값: 오늘
+
+  // 블랙리스트 업체 체크
+  const getBlacklistInfo = (customerName) => {
+    if (!customerName || !customers || customers.length === 0) return null;
+    const customer = customers.find(c =>
+      c?.name?.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, '')
+    );
+    if (customer?.is_blacklist) {
+      return { isBlacklist: true, reason: customer.blacklist_reason || '' };
+    }
+    return null;
+  };
   const [customDate, setCustomDate] = useState('');
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
@@ -10252,16 +10274,26 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredOrders.map((order, index) => (
-              <div
-                key={order.orderNumber}
-                className={`bg-slate-800 rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none ${
-                  selectedOrders.includes(order.orderNumber)
-                    ? 'ring-2 ring-emerald-500 bg-emerald-900/20 border-emerald-500/50'
-                    : 'border-slate-700 hover:border-emerald-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/20'
-                } animate-fade-in-up`}
-                style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}
-              >
+            {filteredOrders.map((order, index) => {
+              const blacklistInfo = getBlacklistInfo(order.customerName);
+              const isBlacklist = blacklistInfo?.isBlacklist;
+
+              return (
+                <div
+                  key={order.orderNumber}
+                  className={`rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none relative overflow-hidden ${
+                    selectedOrders.includes(order.orderNumber)
+                      ? 'ring-2 ring-emerald-500 bg-emerald-900/20 border-emerald-500/50'
+                      : isBlacklist
+                        ? 'bg-gradient-to-br from-red-900/40 via-slate-800 to-slate-800 border-red-500/50 hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20 hover:scale-[1.02]'
+                        : 'bg-slate-800 border-slate-700 hover:border-emerald-500 hover:bg-slate-750 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/20'
+                  } animate-fade-in-up`}
+                  style={{animationDelay: `${Math.min(index * 0.05, 0.3)}s`}}
+                >
+                {/* 블랙리스트 상단 악센트 바 */}
+                {isBlacklist && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600" />
+                )}
                 {/* 상단: 체크박스 + 주문번호 + 가격타입 + 금액 */}
                 <div className="flex items-start gap-3 mb-3">
                   <input
@@ -10304,8 +10336,16 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                     {order.items.length}종 / {order.items.reduce((sum, item) => sum + item.quantity, 0)}개
                   </div>
                   {order.customerName && (
-                    <div className="text-xs text-cyan-400 border-t border-slate-700 pt-2 mt-2">
-                      👤 {order.customerName}
+                    <div className={`text-xs border-t pt-2 mt-2 ${isBlacklist ? 'border-red-700/50' : 'border-slate-700'}`}>
+                      <div className={`flex items-center gap-1 ${isBlacklist ? 'text-red-400' : 'text-cyan-400'}`}>
+                        {isBlacklist ? '🚫' : '👤'} {order.customerName}
+                        {isBlacklist && <span className="px-1.5 py-0.5 bg-red-600/30 text-red-400 rounded text-[10px] ml-1">블랙리스트</span>}
+                      </div>
+                      {isBlacklist && blacklistInfo?.reason && (
+                        <div className="text-[10px] text-red-400/70 mt-1 pl-4">
+                          💬 {blacklistInfo.reason}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -10353,9 +10393,10 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                       삭제
                     </button>
                   )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -11971,6 +12012,7 @@ export default function PriceCalculator() {
       <>
         <OrderHistoryPage
           orders={orders}
+          customers={customers}
           onBack={() => setCurrentPage('main')}
           onDeleteOrder={deleteOrder}
           onDeleteMultiple={deleteMultipleOrders}
