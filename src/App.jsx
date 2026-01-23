@@ -8470,24 +8470,34 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                         </td>
                         {/* 메모 - 인라인 편집 */}
                         <td className="px-4 py-3">
-                          {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'memo' ? (
-                            <input
-                              type="text"
-                              value={customerInlineEdit.value}
-                              onChange={(e) => setCustomerInlineEdit({ ...customerInlineEdit, value: e.target.value })}
-                              onKeyDown={handleCustomerInlineKeyDown}
-                              onBlur={saveCustomerInlineEdit}
-                              autoFocus
-                              className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
-                            />
-                          ) : (
-                            <span 
-                              onClick={() => startCustomerInlineEdit(customer, 'memo')}
-                              className="text-slate-500 text-sm cursor-pointer hover:text-amber-400 hover:underline transition-colors"
-                            >
-                              {customer.memo || '-'}
-                            </span>
-                          )}
+                          <div className="space-y-1">
+                            {/* 블랙리스트 사유 */}
+                            {customer.is_blacklist && customer.blacklist_reason && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="px-1.5 py-0.5 bg-red-600/20 text-red-400 rounded">🚫 사유</span>
+                                <span className="text-red-400">{customer.blacklist_reason}</span>
+                              </div>
+                            )}
+                            {/* 일반 메모 */}
+                            {customerInlineEdit?.id === customer.id && customerInlineEdit?.field === 'memo' ? (
+                              <input
+                                type="text"
+                                value={customerInlineEdit.value}
+                                onChange={(e) => setCustomerInlineEdit({ ...customerInlineEdit, value: e.target.value })}
+                                onKeyDown={handleCustomerInlineKeyDown}
+                                onBlur={saveCustomerInlineEdit}
+                                autoFocus
+                                className="w-full px-2 py-1 bg-slate-900 border border-amber-500 rounded text-white text-sm focus:outline-none"
+                              />
+                            ) : (
+                              <span
+                                onClick={() => startCustomerInlineEdit(customer, 'memo')}
+                                className="text-slate-500 text-sm cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                              >
+                                {customer.memo || '-'}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
