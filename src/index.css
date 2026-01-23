@@ -9,6 +9,14 @@ html, body, #root {
   background-color: #1e293b;
 }
 
+/* ========== iOS 모달 스크롤 수정 ========== */
+.modal-scroll-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 /* ========== 전역 스크롤바 스타일 ========== */
 
 /* 기본 스크롤바 - 모든 요소에 적용 */
