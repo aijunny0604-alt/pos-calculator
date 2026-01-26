@@ -4440,20 +4440,20 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       }
     });
 
-    // A4 가로 기준 최대 약 45행 (마진 고려)
-    const maxRowsPerPage = 45;
+    // A4 가로 기준 최대 약 40행 (마진 고려, 여유있게)
+    const maxRowsPerPage = 40;
     const scaleFactor = totalRows > maxRowsPerPage ? maxRowsPerPage / totalRows : 1;
 
-    // 행 높이 계산 (기본값 대비 축소)
+    // 행 높이 계산 (기본값 대비 축소, 최소값 더 낮게)
     const baseHeaderHeight = 55;
     const baseColHeaderHeight = 45;
     const baseDataHeight = 60;
     const baseAddrHeight = 50;
 
-    const headerHeight = Math.max(30, Math.round(baseHeaderHeight * scaleFactor));
-    const colHeaderHeight = Math.max(25, Math.round(baseColHeaderHeight * scaleFactor));
-    const dataHeight = Math.max(35, Math.round(baseDataHeight * scaleFactor));
-    const addrHeight = Math.max(30, Math.round(baseAddrHeight * scaleFactor));
+    const headerHeight = Math.max(20, Math.round(baseHeaderHeight * scaleFactor));
+    const colHeaderHeight = Math.max(18, Math.round(baseColHeaderHeight * scaleFactor));
+    const dataHeight = Math.max(22, Math.round(baseDataHeight * scaleFactor));
+    const addrHeight = Math.max(20, Math.round(baseAddrHeight * scaleFactor));
 
     // A4 가로 방향 페이지 설정
     worksheet.pageSetup = {
