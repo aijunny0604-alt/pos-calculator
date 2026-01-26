@@ -5186,45 +5186,66 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               </button>
             </div>
             <div className="p-4 space-y-3">
-              {/* 등록된 거래처 선택 */}
-              <div>
-                <label className="block text-slate-400 text-sm mb-1">📋 등록된 거래처에서 선택</label>
-                <select
-                  onChange={e => {
-                    const selected = customers.find(c => c.name === e.target.value);
-                    if (selected) {
-                      const savedSetting = savedCustomerSettings[selected.name];
-                      setNewCustomEntry(prev => ({
-                        ...prev,
-                        name: selected.name,
-                        phone: selected.phone || '',
-                        address: selected.address || '',
-                        ...(savedSetting && {
-                          paymentType: savedSetting.paymentType || '착불',
-                          packaging: savedSetting.packaging || '박스1',
-                          sender: savedSetting.sender || '무브모터스'
-                        })
-                      }));
-                    }
-                  }}
-                  className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="">-- 거래처 선택 (선택사항) --</option>
-                  {(customers || []).filter(c => c?.name).sort((a, b) => a.name.localeCompare(b.name)).map(c => (
-                    <option key={c.id} value={c.name}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
-                  ))}
-                </select>
-              </div>
+              {/* 받는분 - 실시간 검색 */}
+              <div className="relative">
+                <label className="block text-slate-400 text-sm mb-1">받는분 * (입력하면 등록된 거래처 검색)</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={newCustomEntry.name}
+                    onChange={e => setNewCustomEntry(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="받는분 이름 입력..."
+                    className="w-full pl-10 pr-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                {/* 실시간 검색 결과 */}
+                {newCustomEntry.name && (() => {
+                  const searchTerm = newCustomEntry.name.toLowerCase().replace(/\s/g, '');
+                  const filtered = (customers || []).filter(c => {
+                    if (!c?.name) return false;
+                    const name = c.name.toLowerCase().replace(/\s/g, '');
+                    const phone = (c.phone || '').replace(/\s/g, '');
+                    return name.includes(searchTerm) || phone.includes(searchTerm);
+                  }).slice(0, 5);
 
-              <div className="border-t border-slate-600 pt-3">
-                <label className="block text-slate-400 text-sm mb-1">받는분 *</label>
-                <input
-                  type="text"
-                  value={newCustomEntry.name}
-                  onChange={e => setNewCustomEntry(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="받는분 이름 (직접 입력 가능)"
-                  className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                />
+                  if (filtered.length === 0) return null;
+                  // 이미 정확히 일치하는 거래처가 선택된 경우 숨김
+                  const exactMatch = filtered.find(c => c.name === newCustomEntry.name);
+                  if (exactMatch && newCustomEntry.phone === (exactMatch.phone || '')) return null;
+
+                  return (
+                    <div className="absolute z-10 w-full mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {filtered.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            const savedSetting = savedCustomerSettings[c.name];
+                            setNewCustomEntry(prev => ({
+                              ...prev,
+                              name: c.name,
+                              phone: c.phone || '',
+                              address: c.address || '',
+                              ...(savedSetting && {
+                                paymentType: savedSetting.paymentType || '착불',
+                                packaging: savedSetting.packaging || '박스1',
+                                sender: savedSetting.sender || '무브모터스'
+                              })
+                            }));
+                          }}
+                          className="w-full px-3 py-2.5 text-left hover:bg-slate-600 transition-colors flex items-center justify-between border-b border-slate-600/50 last:border-0"
+                        >
+                          <div>
+                            <span className="text-white font-medium">{c.name}</span>
+                            {savedCustomerSettings[c.name] && <span className="ml-2 text-blue-400 text-xs">💾</span>}
+                          </div>
+                          <span className="text-slate-400 text-sm">{c.phone || ''}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
