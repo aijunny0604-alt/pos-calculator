@@ -4399,20 +4399,20 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('택배 송장');
     
-    // A4 가로 방향 페이지 설정
+    // A4 가로 방향 페이지 설정 - 한 페이지에 자동 맞춤
     worksheet.pageSetup = {
       paperSize: 9, // A4
       orientation: 'landscape', // 가로 방향
       fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      horizontalCentered: true, // 가로 가운데 정렬
-      verticalCentered: true,   // 세로 가운데 정렬
+      fitToWidth: 1,  // 가로 1페이지에 맞춤
+      fitToHeight: 1, // 세로 1페이지에 맞춤 (자동 축소)
+      horizontalCentered: true,
+      verticalCentered: true,
       margins: {
-        left: 0.2,
-        right: 0.2,
-        top: 0.2,
-        bottom: 0.2,
+        left: 0.3,
+        right: 0.3,
+        top: 0.3,
+        bottom: 0.3,
         header: 0.1,
         footer: 0.1
       }
@@ -4476,7 +4476,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       //   };
       // }
       senderHeaderRow.getCell(1).border = thinBorder;
-      senderHeaderRow.height = 55;
+      senderHeaderRow.height = 40;
       rowNum++;
 
       // 컬럼 헤더
@@ -4488,7 +4488,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = thinBorder;
       });
-      colHeaderRow.height = 45;
+      colHeaderRow.height = 30;
       rowNum++;
 
       const { orders, custom } = groupedBySender[sender] || { orders: [], custom: [] };
@@ -4503,7 +4503,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           cell.border = thinBorder;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
-        emptyRow.height = 60;
+        emptyRow.height = 40;
         rowNum++;
 
         // 주소 입력용 빈 행 추가 (셀 병합)
@@ -4512,7 +4512,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         addrRow.getCell(1).value = '';
         addrRow.getCell(1).border = thinBorder;
         addrRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-        addrRow.height = 50;
+        addrRow.height = 35;
         rowNum++;
       } else {
         // 해당 보내는 곳의 주문 데이터
@@ -4567,7 +4567,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             (packagingValue.match(/,/g) || []).length + 1,
             (shippingCostValue.match(/,/g) || []).length + 1
           );
-          dataRow.height = Math.max(60, 35 * maxLines);
+          dataRow.height = Math.max(40, 25 * maxLines);
           rowNum++;
           
           // 주소 행 추가 (줄바꿈 적용)
@@ -4582,7 +4582,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               wrapText: true  // 줄바꿈 활성화
             };
             addrRow.getCell(1).border = thinBorder;
-            addrRow.height = 50;
+            addrRow.height = 35;
             rowNum++;
           }
         });
@@ -4630,7 +4630,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             (packagingValue.match(/,/g) || []).length + 1,
             (shippingCostValue.match(/,/g) || []).length + 1
           );
-          dataRow.height = Math.max(60, 35 * maxLines);
+          dataRow.height = Math.max(40, 25 * maxLines);
           rowNum++;
 
           // 주소 행 추가
@@ -4645,7 +4645,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               wrapText: true
             };
             addrRow.getCell(1).border = thinBorder;
-            addrRow.height = 50;
+            addrRow.height = 35;
             rowNum++;
           }
         });
