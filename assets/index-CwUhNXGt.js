@@ -890,6 +890,7 @@ Error generating stack: `+a.message+`
 `,c.memo&&(g+=`메모: ${c.memo}
 
 `),g+=`입금 계좌: 부산은행 010-5858-6046 무브모터스
+
 `,g+=`※ 입금 확인 후 빠른 출고로 보답하겠습니다.
 `,g},ne=async()=>{try{await navigator.clipboard.writeText(M()),B(!0),setTimeout(()=>B(!1),2e3)}catch(g){console.error("복사 실패:",g)}},ee=()=>{const g=window.open("","_blank");g.document.write(`
       <html>
@@ -938,7 +939,7 @@ Error generating stack: `+a.message+`
           ${c.memo?`<div class="memo"><strong>메모:</strong> ${c.memo}</div>`:""}
           <div class="account">
             <strong>입금 계좌</strong><br>
-            부산은행 010-5858-6046 무브모터스<br>
+            부산은행 010-5858-6046 무브모터스<br><br>
             <span style="color: #e74c3c; font-size: 12px;">※ 입금 확인 후 빠른 출고로 보답하겠습니다.</span>
           </div>
           <script>window.onload = function() { window.print(); }<\/script>
