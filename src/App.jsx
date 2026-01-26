@@ -5223,8 +5223,48 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                       </div>
 
                       {isSelected && (
-                        <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="px-3 pb-3 pt-2 border-t border-slate-600/50 space-y-2" onClick={(e) => e.stopPropagation()}>
+                          {/* 기본 정보 수정 */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-slate-500 text-xs mb-1">받는분</label>
+                              <input
+                                type="text"
+                                value={entry.name}
+                                onChange={(e) => updateCustomEntry(entry.id, 'name', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 text-xs mb-1">연락처</label>
+                              <input
+                                type="text"
+                                value={entry.phone}
+                                onChange={(e) => updateCustomEntry(entry.id, 'phone', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 text-xs mb-1">주소</label>
+                            <input
+                              type="text"
+                              value={entry.address}
+                              onChange={(e) => updateCustomEntry(entry.id, 'address', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 text-xs mb-1">품명</label>
+                            <input
+                              type="text"
+                              value={entry.product}
+                              onChange={(e) => updateCustomEntry(entry.id, 'product', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          {/* 배송 설정 */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-600/30">
                             <div>
                               <label className="block text-slate-500 text-xs mb-1 text-center">📦 보내는 곳</label>
                               <select
