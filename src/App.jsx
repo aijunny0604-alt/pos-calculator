@@ -1877,7 +1877,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
     if (order.memo) text += `메모: ${order.memo}\n\n`;
 
-    text += `입금 계좌: 부산은행 010-5858-6046 무브모터스\n`;
+    text += `입금 계좌: 부산은행 010-5858-6046 무브모터스\n\n`;
     text += `※ 입금 확인 후 빠른 출고로 보답하겠습니다.\n`;
 
     return text;
@@ -1942,7 +1942,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
           ${order.memo ? `<div class="memo"><strong>메모:</strong> ${order.memo}</div>` : ''}
           <div class="account">
             <strong>입금 계좌</strong><br>
-            부산은행 010-5858-6046 무브모터스<br>
+            부산은행 010-5858-6046 무브모터스<br><br>
             <span style="color: #e74c3c; font-size: 12px;">※ 입금 확인 후 빠른 출고로 보답하겠습니다.</span>
           </div>
           <script>window.onload = function() { window.print(); }</script>
