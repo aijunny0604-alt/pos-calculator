@@ -5175,7 +5175,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       {/* 임의 추가 모달 */}
       {showAddCustomModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setShowAddCustomModal(false)}>
-          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-slate-800 rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 rounded-t-2xl flex items-center justify-between">
               <h3 className="text-white font-bold flex items-center gap-2">
                 <Plus className="w-5 h-5" />
@@ -5186,25 +5186,67 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               </button>
             </div>
             <div className="p-4 space-y-3">
+              {/* 등록된 거래처 선택 */}
               <div>
+                <label className="block text-slate-400 text-sm mb-1">📋 등록된 거래처에서 선택</label>
+                <select
+                  onChange={e => {
+                    const selected = customers.find(c => c.name === e.target.value);
+                    if (selected) {
+                      const savedSetting = savedCustomerSettings[selected.name];
+                      setNewCustomEntry(prev => ({
+                        ...prev,
+                        name: selected.name,
+                        phone: selected.phone || '',
+                        address: selected.address || '',
+                        ...(savedSetting && {
+                          paymentType: savedSetting.paymentType || '착불',
+                          packaging: savedSetting.packaging || '박스1',
+                          sender: savedSetting.sender || '무브모터스'
+                        })
+                      }));
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">-- 거래처 선택 (선택사항) --</option>
+                  {(customers || []).filter(c => c?.name).sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+                    <option key={c.id} value={c.name}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="border-t border-slate-600 pt-3">
                 <label className="block text-slate-400 text-sm mb-1">받는분 *</label>
                 <input
                   type="text"
                   value={newCustomEntry.name}
                   onChange={e => setNewCustomEntry(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="받는분 이름"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="받는분 이름 (직접 입력 가능)"
+                  className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 text-sm mb-1">연락처</label>
-                <input
-                  type="text"
-                  value={newCustomEntry.phone}
-                  onChange={e => setNewCustomEntry(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="010-0000-0000"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">연락처</label>
+                  <input
+                    type="text"
+                    value={newCustomEntry.phone}
+                    onChange={e => setNewCustomEntry(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="010-0000-0000"
+                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">품명</label>
+                  <input
+                    type="text"
+                    value={newCustomEntry.product}
+                    onChange={e => setNewCustomEntry(prev => ({ ...prev, product: e.target.value }))}
+                    placeholder="상품명"
+                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-slate-400 text-sm mb-1">주소</label>
@@ -5213,26 +5255,16 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                   value={newCustomEntry.address}
                   onChange={e => setNewCustomEntry(prev => ({ ...prev, address: e.target.value }))}
                   placeholder="배송 주소"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 text-sm mb-1">품명</label>
-                <input
-                  type="text"
-                  value={newCustomEntry.product}
-                  onChange={e => setNewCustomEntry(prev => ({ ...prev, product: e.target.value }))}
-                  placeholder="상품명"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-400 text-sm mb-1">보내는 곳</label>
                   <select
                     value={newCustomEntry.sender}
                     onChange={e => setNewCustomEntry(prev => ({ ...prev, sender: e.target.value }))}
-                    className="w-full px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-2 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                   >
                     {senderList.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -5242,7 +5274,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                   <select
                     value={newCustomEntry.paymentType}
                     onChange={e => setNewCustomEntry(prev => ({ ...prev, paymentType: e.target.value }))}
-                    className="w-full px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-2 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="착불">착불</option>
                     <option value="선불">선불</option>
@@ -5255,24 +5287,24 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                     value={newCustomEntry.packaging}
                     onChange={e => setNewCustomEntry(prev => ({ ...prev, packaging: e.target.value }))}
                     placeholder="박스1"
-                    className="w-full px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-2 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
             </div>
-            <div className="p-4 pt-0 flex gap-2">
+            <div className="p-4 pt-2 flex gap-3">
               <button
                 onClick={() => setShowAddCustomModal(false)}
-                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={addCustomEntry}
                 disabled={!newCustomEntry.name}
-                className={`flex-1 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${newCustomEntry.name ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-600 text-slate-400 cursor-not-allowed'}`}
+                className={`flex-1 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${newCustomEntry.name ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-600 text-slate-400 cursor-not-allowed'}`}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-5 h-5" />
                 추가
               </button>
             </div>
