@@ -4006,6 +4006,25 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   const [tempAddress, setTempAddress] = useState('');
   const [tempPhone, setTempPhone] = useState('');
 
+  // 고객별 저장된 택배 설정 (localStorage)
+  const [savedCustomerSettings, setSavedCustomerSettings] = useState(() => {
+    const saved = localStorage.getItem('shippingCustomerSettings');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // 임의 추가 리스트 관련 state
+  const [customEntries, setCustomEntries] = useState([]);
+  const [showAddCustomModal, setShowAddCustomModal] = useState(false);
+  const [newCustomEntry, setNewCustomEntry] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    product: '',
+    packaging: '박스1',
+    paymentType: '착불',
+    sender: '무브모터스'
+  });
+
   // ESC 키로 뒤로가기
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -4120,13 +4139,23 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     return costs.join(',');
   };
   
-  const getOrderSetting = (orderNumber) => {
-    const defaultPackaging = '박스1';
-    return orderSettings[orderNumber] || { 
-      paymentType: '착불', 
-      packaging: defaultPackaging, 
+  const getOrderSetting = (orderNumber, customerName = null) => {
+    // 이미 설정된 값이 있으면 반환
+    if (orderSettings[orderNumber]) {
+      return orderSettings[orderNumber];
+    }
+
+    // 저장된 고객 설정이 있으면 적용
+    if (customerName && savedCustomerSettings[customerName]) {
+      return savedCustomerSettings[customerName];
+    }
+
+    // 기본값
+    return {
+      paymentType: '착불',
+      packaging: '박스1',
       shippingCost: '7300',
-      sender: senderList[0] // 기본 보내는 곳
+      sender: senderList[0]
     };
   };
   
@@ -4145,6 +4174,73 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     setEditingCustomer(null);
     setTempAddress('');
     setTempPhone('');
+  };
+
+  // 임의 항목 추가
+  const addCustomEntry = () => {
+    if (!newCustomEntry.name) return;
+    const entry = {
+      ...newCustomEntry,
+      id: `custom_${Date.now()}`,
+      shippingCost: calculateShippingCost(newCustomEntry.packaging)
+    };
+    setCustomEntries(prev => [...prev, entry]);
+    setNewCustomEntry({
+      name: '',
+      phone: '',
+      address: '',
+      product: '',
+      packaging: '박스1',
+      paymentType: '착불',
+      sender: '무브모터스'
+    });
+    setShowAddCustomModal(false);
+  };
+
+  // 임의 항목 삭제
+  const removeCustomEntry = (id) => {
+    setCustomEntries(prev => prev.filter(e => e.id !== id));
+    setSelectedOrders(prev => prev.filter(o => o !== id));
+  };
+
+  // 임의 항목 설정 업데이트
+  const updateCustomEntry = (id, field, value) => {
+    setCustomEntries(prev => prev.map(entry => {
+      if (entry.id === id) {
+        const updated = { ...entry, [field]: value };
+        if (field === 'packaging') {
+          updated.shippingCost = calculateShippingCost(value);
+        }
+        return updated;
+      }
+      return entry;
+    }));
+  };
+
+  // 고객별 택배 설정 저장
+  const saveCustomerSetting = (customerName, setting) => {
+    if (!customerName) return;
+    const newSettings = {
+      ...savedCustomerSettings,
+      [customerName]: {
+        paymentType: setting.paymentType,
+        packaging: setting.packaging,
+        shippingCost: setting.shippingCost,
+        sender: setting.sender
+      }
+    };
+    setSavedCustomerSettings(newSettings);
+    localStorage.setItem('shippingCustomerSettings', JSON.stringify(newSettings));
+    showToast(`✅ ${customerName} 설정 저장됨`, 'success');
+  };
+
+  // 고객별 저장된 설정 삭제
+  const deleteCustomerSetting = (customerName) => {
+    const newSettings = { ...savedCustomerSettings };
+    delete newSettings[customerName];
+    setSavedCustomerSettings(newSettings);
+    localStorage.setItem('shippingCustomerSettings', JSON.stringify(newSettings));
+    showToast(`🗑️ ${customerName} 설정 삭제됨`, 'success');
   };
 
   // 고객 정보 저장
@@ -4193,8 +4289,9 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   };
   
   const handleSelectAll = () => {
-    if (selectedOrders.length === filteredOrders.length) setSelectedOrders([]);
-    else setSelectedOrders(filteredOrders.map(o => o.orderNumber));
+    const allIds = [...filteredOrders.map(o => o.orderNumber), ...customEntries.map(e => e.id)];
+    if (selectedOrders.length === allIds.length) setSelectedOrders([]);
+    else setSelectedOrders(allIds);
   };
   
   const toggleOrder = (orderNumber) => {
@@ -4207,48 +4304,70 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   };
   
   const generateShippingLabel = () => {
-    const selectedData = selectedOrders.length > 0 
+    const selectedData = selectedOrders.length > 0
       ? filteredOrders.filter(o => selectedOrders.includes(o.orderNumber))
       : [];
-    
+    const selectedCustom = customEntries.filter(e => selectedOrders.includes(e.id));
+
     // 보내는 곳별로 그룹화
     const groupedBySender = {};
     senderList.forEach(sender => {
-      groupedBySender[sender] = [];
+      groupedBySender[sender] = { orders: [], custom: [] };
     });
+
+    // 주문 데이터 그룹화
     selectedData.forEach(order => {
-      const setting = getOrderSetting(order.orderNumber);
+      const setting = getOrderSetting(order.orderNumber, order.customerName);
       const sender = setting.sender || senderList[0];
       if (groupedBySender[sender]) {
-        groupedBySender[sender].push(order);
+        groupedBySender[sender].orders.push(order);
       }
     });
-    
+
+    // 임의 추가 데이터 그룹화
+    selectedCustom.forEach(entry => {
+      const sender = entry.sender || senderList[0];
+      if (groupedBySender[sender]) {
+        groupedBySender[sender].custom.push(entry);
+      }
+    });
+
     let csv = '\uFEFF';
-    
+
     // 항상 모든 보내는 곳 섹션 출력 (무브모터스 → 엠파츠 순서)
     senderList.forEach((sender, senderIndex) => {
       if (senderIndex > 0) csv += '\n'; // 그룹 간 빈 줄
       csv += '보내는곳 : ' + sender + '\n';
       csv += '번호,받는곳,배송,포장,운임,품명,연락처\n';
-      
-      const orders = groupedBySender[sender] || [];
-      if (orders.length === 0) {
+
+      const { orders, custom } = groupedBySender[sender];
+      const totalCount = orders.length + custom.length;
+
+      if (totalCount === 0) {
         // 주문이 없으면 빈 행 추가
         csv += ',,,,,, \n';
       } else {
-        orders.forEach((order, index) => {
+        let index = 1;
+        // 주문 데이터
+        orders.forEach((order) => {
           const customer = findCustomer(order.customerName);
           const mostExpensive = getMostExpensiveItem(order.items);
           const phone = customer?.phone || order.customerPhone || '';
           const address = customer?.address || '';
-          const setting = getOrderSetting(order.orderNumber);
-          csv += `${index + 1},${order.customerName},${setting.paymentType},${setting.packaging},${setting.shippingCost},${mostExpensive},${phone}\n`;
+          const setting = getOrderSetting(order.orderNumber, order.customerName);
+          csv += `${index},${order.customerName},${setting.paymentType},${setting.packaging},${setting.shippingCost},${mostExpensive},${phone}\n`;
           if (address) csv += `${address}\n`;
+          index++;
+        });
+        // 임의 추가 데이터
+        custom.forEach((entry) => {
+          csv += `${index},${entry.name},${entry.paymentType},${entry.packaging},${entry.shippingCost},${entry.product || '상품'},${entry.phone}\n`;
+          if (entry.address) csv += `${entry.address}\n`;
+          index++;
         });
       }
     });
-    
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -4309,13 +4428,13 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       groupedBySender[sender] = [];
     });
     selectedData.forEach(order => {
-      const setting = getOrderSetting(order.orderNumber);
+      const setting = getOrderSetting(order.orderNumber, order.customerName);
       const sender = setting.sender || senderList[0];
       if (groupedBySender[sender]) {
         groupedBySender[sender].push(order);
       }
     });
-    
+
     let rowNum = 1;
     
     // 항상 모든 보내는 곳 섹션 출력 (무브모터스 → 엠파츠 순서)
@@ -4384,7 +4503,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           const mostExpensive = getMostExpensiveItem(order.items);
           const phone = customer?.phone || order.customerPhone || '';
           const address = customer?.address || '';
-          const setting = getOrderSetting(order.orderNumber);
+          const setting = getOrderSetting(order.orderNumber, order.customerName);
           const isPrepaid = setting.paymentType === '선불';
           
           // 포장과 운임 쉼표로 분리
@@ -4546,13 +4665,13 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       groupedBySender[sender] = [];
     });
     selectedData.forEach(order => {
-      const setting = getOrderSetting(order.orderNumber);
+      const setting = getOrderSetting(order.orderNumber, order.customerName);
       const sender = setting.sender || senderList[0];
       if (groupedBySender[sender]) {
         groupedBySender[sender].push(order);
       }
     });
-    
+
     let html = `<!DOCTYPE html>
 <html>
 <head>
@@ -4666,7 +4785,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           const mostExpensive = getMostExpensiveItem(order.items);
           const phone = customer?.phone || order.customerPhone || '';
           const address = customer?.address || '';
-          const setting = getOrderSetting(order.orderNumber);
+          const setting = getOrderSetting(order.orderNumber, order.customerName);
           const isPrepaid = setting.paymentType === '선불';
           const rowClass = isPrepaid ? 'prepaid' : '';
           
@@ -4754,12 +4873,19 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             </div>
           </div>
           
-          {/* 전체 선택 */}
+          {/* 전체 선택 + 임의 추가 버튼 */}
           <div className="flex items-center justify-between mb-3">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500" />
+              <input type="checkbox" checked={(filteredOrders.length + customEntries.length) > 0 && selectedOrders.length === (filteredOrders.length + customEntries.length)} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-orange-500 focus:ring-orange-500" />
               <span className="text-slate-300 text-sm">전체 선택</span>
             </label>
+            <button
+              onClick={() => setShowAddCustomModal(true)}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              임의 추가
+            </button>
           </div>
           
           {/* 주문 목록 */}
@@ -4774,8 +4900,9 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               {filteredOrders.map(order => {
                 const customer = order.customerName ? findCustomer(order.customerName) : null;
                 const hasAddress = customer?.address;
-                const setting = getOrderSetting(order.orderNumber);
+                const setting = getOrderSetting(order.orderNumber, order.customerName);
                 const isSelected = selectedOrders.includes(order.orderNumber);
+                const hasSavedSetting = order.customerName && savedCustomerSettings[order.customerName];
                 
                 return (
                   <div key={order.orderNumber} className={`rounded-xl border transition-all select-none ${isSelected ? 'bg-orange-600/20 border-orange-500' : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'}`}>
@@ -4795,6 +4922,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                             </span>
                             {setting.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
                             {hasAddress ? <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">주소 있음</span> : <span className="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded-full">주소 없음</span>}
+                            {hasSavedSetting && <span className="px-2 py-0.5 bg-blue-600/30 text-blue-400 text-xs rounded-full">💾 설정저장됨</span>}
                           </div>
                           <p className="text-slate-400 text-sm truncate">{customer?.address || '주소 미등록'}</p>
                           <p className="text-slate-500 text-xs mt-1">{order.items?.length || 0}종 · {formatPrice(order.totalAmount)}</p>
@@ -4869,6 +4997,26 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
                           </div>
                         </div>
 
+                        {/* 설정 저장/삭제 버튼 */}
+                        {order.customerName && (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => saveCustomerSetting(order.customerName, setting)}
+                              className="flex-1 px-2 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-medium rounded transition-colors flex items-center justify-center gap-1"
+                            >
+                              💾 {hasSavedSetting ? '설정 업데이트' : '이 설정 저장'}
+                            </button>
+                            {hasSavedSetting && (
+                              <button
+                                onClick={() => deleteCustomerSetting(order.customerName)}
+                                className="px-2 py-1.5 bg-red-600/80 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         {/* 업체 정보 수정 폼 */}
                         {customer && editingCustomer === customer.id && (
                           <div className="mt-3 p-3 bg-blue-900/20 border border-blue-600/30 rounded-lg">
@@ -4918,8 +5066,99 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               })}
             </div>
           )}
+
+          {/* 임의 추가 리스트 */}
+          {customEntries.length > 0 && (
+            <div className="mt-4">
+              <p className="text-emerald-400 font-medium text-sm mb-2 flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                임의 추가 ({customEntries.length}건)
+              </p>
+              <div className="space-y-2">
+                {customEntries.map(entry => {
+                  const isSelected = selectedOrders.includes(entry.id);
+                  return (
+                    <div key={entry.id} className={`rounded-xl border transition-all ${isSelected ? 'bg-emerald-600/20 border-emerald-500' : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'}`}>
+                      <div className="p-3 cursor-pointer" onClick={() => toggleOrder(entry.id)}>
+                        <div className="flex items-start gap-3">
+                          <input type="checkbox" checked={isSelected} onChange={() => {}} className="mt-1 w-4 h-4 rounded border-slate-500 bg-slate-700 text-emerald-500" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-white">{entry.name}</span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${entry.sender === '엠파츠' ? 'bg-purple-600/30 text-purple-300' : 'bg-cyan-600/30 text-cyan-300'}`}>
+                                {entry.sender}
+                              </span>
+                              {entry.paymentType === '선불' && <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full font-bold">선불</span>}
+                              <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 text-xs rounded-full">직접 추가</span>
+                            </div>
+                            <p className="text-slate-400 text-sm truncate">{entry.address || '주소 미입력'}</p>
+                            <p className="text-slate-500 text-xs mt-1">{entry.product || '상품'} · {entry.packaging} · {entry.shippingCost}원</p>
+                          </div>
+                          <div className="text-right flex items-center gap-2">
+                            <p className="text-slate-400 text-xs">{entry.phone || '번호 없음'}</p>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); removeCustomEntry(entry.id); }}
+                              className="p-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <div className="px-3 pb-3 pt-2 border-t border-slate-600/50" onClick={(e) => e.stopPropagation()}>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div>
+                              <label className="block text-slate-500 text-xs mb-1 text-center">📦 보내는 곳</label>
+                              <select
+                                value={entry.sender}
+                                onChange={(e) => updateCustomEntry(entry.id, 'sender', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-emerald-600/20 border border-emerald-500/50 rounded text-emerald-300 text-sm font-medium focus:outline-none text-center"
+                              >
+                                {senderList.map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 text-xs mb-1 text-center">💳 결제</label>
+                              <select
+                                value={entry.paymentType}
+                                onChange={(e) => updateCustomEntry(entry.id, 'paymentType', e.target.value)}
+                                className={`w-full px-2 py-1.5 border rounded text-sm font-medium focus:outline-none text-center ${entry.paymentType === '선불' ? 'bg-yellow-600/30 border-yellow-500/50 text-yellow-300' : 'bg-slate-700 border-slate-600 text-white'}`}
+                              >
+                                <option value="착불">착불</option>
+                                <option value="선불">선불</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 text-xs mb-1 text-center">📦 포장</label>
+                              <input
+                                type="text"
+                                value={entry.packaging}
+                                onChange={(e) => updateCustomEntry(entry.id, 'packaging', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-emerald-500 text-center"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 text-xs mb-1 text-center">💰 운임</label>
+                              <input
+                                type="text"
+                                value={entry.shippingCost}
+                                onChange={(e) => updateCustomEntry(entry.id, 'shippingCost', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-emerald-500 text-center"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-        
+
         {/* 하단 버튼 영역 */}
         <div className="border-t border-slate-700 p-4 flex-shrink-0 bg-slate-800">
           <p className="text-slate-400 text-xs text-center mb-2">
@@ -4932,6 +5171,114 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           </div>
         </div>
       </div>
+
+      {/* 임의 추가 모달 */}
+      {showAddCustomModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setShowAddCustomModal(false)}>
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 rounded-t-2xl flex items-center justify-between">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                임의 항목 추가
+              </h3>
+              <button onClick={() => setShowAddCustomModal(false)} className="p-1 hover:bg-white/20 rounded transition-colors">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-slate-400 text-sm mb-1">받는분 *</label>
+                <input
+                  type="text"
+                  value={newCustomEntry.name}
+                  onChange={e => setNewCustomEntry(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="받는분 이름"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1">연락처</label>
+                <input
+                  type="text"
+                  value={newCustomEntry.phone}
+                  onChange={e => setNewCustomEntry(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="010-0000-0000"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1">주소</label>
+                <input
+                  type="text"
+                  value={newCustomEntry.address}
+                  onChange={e => setNewCustomEntry(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="배송 주소"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1">품명</label>
+                <input
+                  type="text"
+                  value={newCustomEntry.product}
+                  onChange={e => setNewCustomEntry(prev => ({ ...prev, product: e.target.value }))}
+                  placeholder="상품명"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">보내는 곳</label>
+                  <select
+                    value={newCustomEntry.sender}
+                    onChange={e => setNewCustomEntry(prev => ({ ...prev, sender: e.target.value }))}
+                    className="w-full px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {senderList.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">결제</label>
+                  <select
+                    value={newCustomEntry.paymentType}
+                    onChange={e => setNewCustomEntry(prev => ({ ...prev, paymentType: e.target.value }))}
+                    className="w-full px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="착불">착불</option>
+                    <option value="선불">선불</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">포장</label>
+                  <input
+                    type="text"
+                    value={newCustomEntry.packaging}
+                    onChange={e => setNewCustomEntry(prev => ({ ...prev, packaging: e.target.value }))}
+                    placeholder="박스1"
+                    className="w-full px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 pt-0 flex gap-2">
+              <button
+                onClick={() => setShowAddCustomModal(false)}
+                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={addCustomEntry}
+                disabled={!newCustomEntry.name}
+                className={`flex-1 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${newCustomEntry.name ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-600 text-slate-400 cursor-not-allowed'}`}
+              >
+                <Plus className="w-4 h-4" />
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
