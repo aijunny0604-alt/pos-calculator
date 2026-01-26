@@ -4376,9 +4376,11 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   };
 
   const generateXlsxLabel = async () => {
-    const selectedData = selectedOrders.length > 0 
+    const selectedData = selectedOrders.length > 0
       ? filteredOrders.filter(o => selectedOrders.includes(o.orderNumber))
       : [];
+    const selectedCustom = customEntries.filter(e => selectedOrders.includes(e.id));
+
     if (!window.ExcelJS) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
@@ -4425,13 +4427,20 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     // 보내는 곳별로 그룹화 (항상 모든 보내는 곳 초기화)
     const groupedBySender = {};
     senderList.forEach(sender => {
-      groupedBySender[sender] = [];
+      groupedBySender[sender] = { orders: [], custom: [] };
     });
     selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber, order.customerName);
       const sender = setting.sender || senderList[0];
       if (groupedBySender[sender]) {
-        groupedBySender[sender].push(order);
+        groupedBySender[sender].orders.push(order);
+      }
+    });
+    // 임의 추가 데이터 그룹화
+    selectedCustom.forEach(entry => {
+      const sender = entry.sender || senderList[0];
+      if (groupedBySender[sender]) {
+        groupedBySender[sender].custom.push(entry);
       }
     });
 
@@ -4473,10 +4482,11 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       });
       colHeaderRow.height = 45;
       rowNum++;
-      
-      const orders = groupedBySender[sender] || [];
-      
-      if (orders.length === 0) {
+
+      const { orders, custom } = groupedBySender[sender] || { orders: [], custom: [] };
+      const totalCount = orders.length + custom.length;
+
+      if (totalCount === 0) {
         // 주문이 없으면 빈 행 추가
         const emptyRow = worksheet.getRow(rowNum);
         headers.forEach((_, idx) => {
@@ -4498,7 +4508,8 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         rowNum++;
       } else {
         // 해당 보내는 곳의 주문 데이터
-        orders.forEach((order, index) => {
+        let dataIndex = 1;
+        orders.forEach((order) => {
           const customer = order.customerName ? findCustomer(order.customerName) : null;
           const mostExpensive = getMostExpensiveItem(order.items);
           const phone = customer?.phone || order.customerPhone || '';
@@ -4521,14 +4532,15 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           
           const dataRow = worksheet.getRow(rowNum);
           const rowData = [
-            index + 1, 
-            order.customerName || '', 
-            setting.paymentType, 
-            packagingDisplay, 
-            shippingDisplay, 
-            mostExpensive, 
+            dataIndex,
+            order.customerName || '',
+            setting.paymentType,
+            packagingDisplay,
+            shippingDisplay,
+            mostExpensive,
             phone
           ];
+          dataIndex++;
           
           rowData.forEach((value, idx) => {
             const cell = dataRow.getCell(idx + 1);
@@ -4566,12 +4578,76 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             rowNum++;
           }
         });
+
+        // 임의 추가 데이터
+        custom.forEach((entry) => {
+          const isPrepaid = entry.paymentType === '선불';
+
+          const packagingValue = String(entry.packaging || '');
+          const shippingCostValue = String(entry.shippingCost || '');
+
+          const packagingDisplay = packagingValue.includes(',')
+            ? packagingValue.split(',').join('\n')
+            : packagingValue;
+
+          const shippingDisplay = shippingCostValue.includes(',')
+            ? shippingCostValue.split(',').join('\n')
+            : shippingCostValue;
+
+          const dataRow = worksheet.getRow(rowNum);
+          const rowData = [
+            dataIndex,
+            entry.name || '',
+            entry.paymentType,
+            packagingDisplay,
+            shippingDisplay,
+            entry.product || '상품',
+            entry.phone || ''
+          ];
+          dataIndex++;
+
+          rowData.forEach((value, idx) => {
+            const cell = dataRow.getCell(idx + 1);
+            cell.value = value;
+            cell.font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
+            cell.alignment = {
+              horizontal: 'center',
+              vertical: 'middle',
+              wrapText: true
+            };
+            cell.border = thinBorder;
+          });
+
+          const maxLines = Math.max(
+            (packagingValue.match(/,/g) || []).length + 1,
+            (shippingCostValue.match(/,/g) || []).length + 1
+          );
+          dataRow.height = Math.max(60, 35 * maxLines);
+          rowNum++;
+
+          // 주소 행 추가
+          if (entry.address) {
+            worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
+            const addrRow = worksheet.getRow(rowNum);
+            addrRow.getCell(1).value = entry.address;
+            addrRow.getCell(1).font = { size: 12, bold: isPrepaid, name: 'Malgun Gothic' };
+            addrRow.getCell(1).alignment = {
+              horizontal: 'center',
+              vertical: 'middle',
+              wrapText: true
+            };
+            addrRow.getCell(1).border = thinBorder;
+            addrRow.height = 50;
+            rowNum++;
+          }
+        });
       }
     });
 
     // 바깥 테두리만 굵게 적용
     senderList.forEach((sender, senderIndex) => {
-      const orders = groupedBySender[sender] || [];
+      const { orders: senderOrders, custom: senderCustom } = groupedBySender[sender] || { orders: [], custom: [] };
+      const senderTotalCount = senderOrders.length + senderCustom.length;
       let startRow, endRow;
 
       // 각 섹션의 시작/끝 행 계산
@@ -4581,10 +4657,11 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         // 이전 섹션들의 행 수 계산
         let prevRows = 1; // 첫 섹션 시작
         for (let i = 0; i < senderIndex; i++) {
-          const prevOrders = groupedBySender[senderList[i]] || [];
+          const { orders: prevOrders, custom: prevCustom } = groupedBySender[senderList[i]] || { orders: [], custom: [] };
+          const prevTotalCount = prevOrders.length + prevCustom.length;
           prevRows += 1; // 빈 줄
           prevRows += 2; // 보내는곳 헤더 + 컬럼 헤더
-          if (prevOrders.length === 0) {
+          if (prevTotalCount === 0) {
             prevRows += 2; // 빈 데이터 행 + 주소 입력 행
           } else {
             prevOrders.forEach(order => {
@@ -4593,6 +4670,10 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
               prevRows += 1; // 데이터 행
               if (address) prevRows += 1; // 주소 행
             });
+            prevCustom.forEach(entry => {
+              prevRows += 1; // 데이터 행
+              if (entry.address) prevRows += 1; // 주소 행
+            });
           }
         }
         startRow = prevRows;
@@ -4600,14 +4681,18 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
 
       // 현재 섹션 끝 행 계산
       endRow = startRow + 1; // 보내는곳 헤더 + 컬럼 헤더
-      if (orders.length === 0) {
+      if (senderTotalCount === 0) {
         endRow += 2; // 빈 데이터 행 + 주소 입력 행
       } else {
-        orders.forEach(order => {
+        senderOrders.forEach(order => {
           const customer = order.customerName ? findCustomer(order.customerName) : null;
           const address = customer?.address || '';
           endRow += 1; // 데이터 행
           if (address) endRow += 1; // 주소 행
+        });
+        senderCustom.forEach(entry => {
+          endRow += 1; // 데이터 행
+          if (entry.address) endRow += 1; // 주소 행
         });
       }
 
@@ -4655,20 +4740,27 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
   };
   
   const printShippingLabels = () => {
-    const selectedData = selectedOrders.length > 0 
+    const selectedData = selectedOrders.length > 0
       ? filteredOrders.filter(o => selectedOrders.includes(o.orderNumber))
       : [];
-    
+    const selectedCustom = customEntries.filter(e => selectedOrders.includes(e.id));
+
     // 보내는 곳별로 그룹화 (항상 모든 보내는 곳 초기화)
     const groupedBySender = {};
     senderList.forEach(sender => {
-      groupedBySender[sender] = [];
+      groupedBySender[sender] = { orders: [], custom: [] };
     });
     selectedData.forEach(order => {
       const setting = getOrderSetting(order.orderNumber, order.customerName);
       const sender = setting.sender || senderList[0];
       if (groupedBySender[sender]) {
-        groupedBySender[sender].push(order);
+        groupedBySender[sender].orders.push(order);
+      }
+    });
+    selectedCustom.forEach(entry => {
+      const sender = entry.sender || senderList[0];
+      if (groupedBySender[sender]) {
+        groupedBySender[sender].custom.push(entry);
       }
     });
 
@@ -4766,9 +4858,10 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     </thead>
     <tbody>`;
     
-      const orders = groupedBySender[sender] || [];
-      
-      if (orders.length === 0) {
+      const { orders, custom } = groupedBySender[sender] || { orders: [], custom: [] };
+      const totalCount = orders.length + custom.length;
+
+      if (totalCount === 0) {
         // 주문이 없으면 빈 행 추가
         html += `<tr>
           <td class="col-num"></td>
@@ -4780,7 +4873,9 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           <td class="col-phone"></td>
         </tr>`;
       } else {
-        orders.forEach((order, index) => {
+        let dataIndex = 1;
+        // 주문 데이터
+        orders.forEach((order) => {
           const customer = findCustomer(order.customerName);
           const mostExpensive = getMostExpensiveItem(order.items);
           const phone = customer?.phone || order.customerPhone || '';
@@ -4788,13 +4883,12 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           const setting = getOrderSetting(order.orderNumber, order.customerName);
           const isPrepaid = setting.paymentType === '선불';
           const rowClass = isPrepaid ? 'prepaid' : '';
-          
-          // 포장과 운임을 쉼표로 구분하여 줄바꿈 처리
+
           const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
           const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
-          
+
           html += `<tr class="${rowClass}">
-            <td class="col-num">${index + 1}</td>
+            <td class="col-num">${dataIndex}</td>
             <td class="col-name">${order.customerName || ''}</td>
             <td class="col-payment">${setting.paymentType}</td>
             <td class="col-pack">${packagingDisplay}</td>
@@ -4803,9 +4897,31 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             <td class="col-phone">${phone}</td>
           </tr>`;
           if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
+          dataIndex++;
+        });
+
+        // 임의 추가 데이터
+        custom.forEach((entry) => {
+          const isPrepaid = entry.paymentType === '선불';
+          const rowClass = isPrepaid ? 'prepaid' : '';
+
+          const packagingDisplay = String(entry.packaging || '').replace(/,/g, '<br>');
+          const shippingDisplay = String(entry.shippingCost || '').replace(/,/g, '<br>');
+
+          html += `<tr class="${rowClass}">
+            <td class="col-num">${dataIndex}</td>
+            <td class="col-name">${entry.name || ''}</td>
+            <td class="col-payment">${entry.paymentType}</td>
+            <td class="col-pack">${packagingDisplay}</td>
+            <td class="col-cost">${shippingDisplay}</td>
+            <td class="col-item">${entry.product || '상품'}</td>
+            <td class="col-phone">${entry.phone || ''}</td>
+          </tr>`;
+          if (entry.address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${entry.address}</td></tr>`;
+          dataIndex++;
         });
       }
-      
+
       html += `
     </tbody>
   </table>`;
