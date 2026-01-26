@@ -4012,9 +4012,17 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
     return saved ? JSON.parse(saved) : {};
   });
 
-  // 임의 추가 리스트 관련 state
-  const [customEntries, setCustomEntries] = useState([]);
+  // 임의 추가 리스트 관련 state (localStorage 저장)
+  const [customEntries, setCustomEntries] = useState(() => {
+    const saved = localStorage.getItem('shippingCustomEntries');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [showAddCustomModal, setShowAddCustomModal] = useState(false);
+
+  // customEntries 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('shippingCustomEntries', JSON.stringify(customEntries));
+  }, [customEntries]);
   const [newCustomEntry, setNewCustomEntry] = useState({
     name: '',
     phone: '',
