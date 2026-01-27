@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square, Maximize2, Minimize2 } from 'lucide-react';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square, Maximize2, Minimize2, FolderOpen } from 'lucide-react';
 
 // ==================== 공통 검색 함수 ====================
 const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
@@ -1877,7 +1877,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
     if (order.memo) text += `메모: ${order.memo}\n\n`;
 
-    text += `입금 계좌: 부산은행 010-5858-6046 무브모터스\n\n`;
+    text += `입금 계좌: 신한은행 010-5858-6046 무브모터스\n\n`;
     text += `※ 입금 확인 후 빠른 출고로 보답하겠습니다.\n`;
 
     return text;
@@ -1942,7 +1942,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
           ${order.memo ? `<div class="memo"><strong>메모:</strong> ${order.memo}</div>` : ''}
           <div class="account">
             <strong>입금 계좌</strong><br>
-            부산은행 010-5858-6046 무브모터스<br><br>
+            신한은행 010-5858-6046 무브모터스<br><br>
             <span style="color: #e74c3c; font-size: 12px;">※ 입금 확인 후 빠른 출고로 보답하겠습니다.</span>
           </div>
           <script>window.onload = function() { window.print(); }</script>
@@ -4418,59 +4418,24 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       }
     });
 
-    // 총 행 수 계산 (동적 행 높이 결정용)
-    let totalRows = 0;
-    senderList.forEach((sender, idx) => {
-      if (idx > 0) totalRows += 1; // 그룹 간 빈 줄
-      totalRows += 2; // 보내는곳 헤더 + 컬럼 헤더
-      const { orders, custom } = groupedBySender[sender];
-      const count = orders.length + custom.length;
-      if (count === 0) {
-        totalRows += 2; // 빈 행 + 주소 행
-      } else {
-        orders.forEach(order => {
-          const customer = order.customerName ? (customers || []).find(c => c?.name?.toLowerCase().replace(/\s/g, '') === order.customerName?.toLowerCase().replace(/\s/g, '')) : null;
-          totalRows += 1; // 데이터 행
-          if (customer?.address) totalRows += 1; // 주소 행
-        });
-        custom.forEach(entry => {
-          totalRows += 1; // 데이터 행
-          if (entry.address) totalRows += 1; // 주소 행
-        });
-      }
-    });
-
-    // A4 가로 기준 최대 약 40행 (마진 고려, 여유있게)
-    const maxRowsPerPage = 40;
-    const scaleFactor = totalRows > maxRowsPerPage ? maxRowsPerPage / totalRows : 1;
-
-    // 행 높이 계산 (기본값 대비 축소, 최소값 더 낮게)
-    const baseHeaderHeight = 55;
-    const baseColHeaderHeight = 45;
-    const baseDataHeight = 60;
-    const baseAddrHeight = 50;
-
-    const headerHeight = Math.max(20, Math.round(baseHeaderHeight * scaleFactor));
-    const colHeaderHeight = Math.max(18, Math.round(baseColHeaderHeight * scaleFactor));
-    const dataHeight = Math.max(22, Math.round(baseDataHeight * scaleFactor));
-    const addrHeight = Math.max(20, Math.round(baseAddrHeight * scaleFactor));
+    // 행 높이 설정
+    const headerHeight = 55;
+    const colHeaderHeight = 45;
+    const dataHeight = 60;
+    const addrHeight = 50;
 
     // A4 가로 방향 페이지 설정
     worksheet.pageSetup = {
       paperSize: 9, // A4
       orientation: 'landscape', // 가로 방향
-      fitToPage: true,
-      fitToWidth: 1,  // 가로 1페이지에 맞춤
-      fitToHeight: 0, // 세로는 수동 조절
       horizontalCentered: true,
-      verticalCentered: true,
       margins: {
-        left: 0.3,
-        right: 0.3,
-        top: 0.3,
-        bottom: 0.3,
-        header: 0.1,
-        footer: 0.1
+        left: 0.5,
+        right: 0.5,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.3,
+        footer: 0.3
       }
     };
 
@@ -6233,11 +6198,56 @@ function NotificationSettingsModal({ isOpen, onClose, settings, onSave }) {
 
 // ==================== AI 주문 인식 페이지 ====================
 function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initialText = '', onBack }) {
-  const [inputText, setInputText] = useState(initialText || '');
+  // 실시간 저장에서 불러오기
+  const [inputText, setInputText] = useState(() => {
+    const saved = localStorage.getItem('aiOrderInputText');
+    return initialText || saved || '';
+  });
   const [analyzedItems, setAnalyzedItems] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [searchingIndex, setSearchingIndex] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [backupList, setBackupList] = useState(() => {
+    const saved = localStorage.getItem('aiOrderBackups');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showBackupModal, setShowBackupModal] = useState(false);
+
+  // 실시간 자동 저장
+  useEffect(() => {
+    localStorage.setItem('aiOrderInputText', inputText);
+  }, [inputText]);
+
+  // 백업 저장
+  const saveBackup = () => {
+    if (!inputText.trim()) {
+      alert('저장할 내용이 없습니다.');
+      return;
+    }
+    const newBackup = {
+      id: Date.now(),
+      text: inputText,
+      date: new Date().toLocaleString('ko-KR'),
+      preview: inputText.slice(0, 50) + (inputText.length > 50 ? '...' : '')
+    };
+    const newList = [newBackup, ...backupList].slice(0, 20); // 최대 20개
+    setBackupList(newList);
+    localStorage.setItem('aiOrderBackups', JSON.stringify(newList));
+    alert('백업 저장 완료!');
+  };
+
+  // 백업 불러오기
+  const loadBackup = (backup) => {
+    setInputText(backup.text);
+    setShowBackupModal(false);
+  };
+
+  // 백업 삭제
+  const deleteBackup = (id) => {
+    const newList = backupList.filter(b => b.id !== id);
+    setBackupList(newList);
+    localStorage.setItem('aiOrderBackups', JSON.stringify(newList));
+  };
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -6314,6 +6324,37 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
     return result;
   };
 
+  // 레벤슈타인 거리 계산 (오타 허용)
+  const levenshteinDistance = (str1, str2) => {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const dp = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+
+    for (let i = 0; i <= len1; i++) dp[i][0] = i;
+    for (let j = 0; j <= len2; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,      // 삭제
+          dp[i][j - 1] + 1,      // 삽입
+          dp[i - 1][j - 1] + cost // 교체
+        );
+      }
+    }
+    return dp[len1][len2];
+  };
+
+  // 유사도 계산 (0~1, 1이 완전 일치)
+  const getSimilarity = (str1, str2) => {
+    if (!str1 || !str2) return 0;
+    const maxLen = Math.max(str1.length, str2.length);
+    if (maxLen === 0) return 1;
+    const distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
+    return 1 - distance / maxLen;
+  };
+
   // 유사어 변환
   const applySynonyms = (text) => {
     let result = text.toLowerCase();
@@ -6362,17 +6403,25 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       score += 80 + normalizedSearch.length * 4;
     }
 
-    // 4. 숫자+단위 매칭 (크기 매칭)
+    // 4. 숫자+단위 매칭 (크기 매칭) - ±1 허용
     const searchUnits = extractNumberUnits(searchText);
     const productUnits = extractNumberUnits(productName);
     searchUnits.forEach(su => {
       productUnits.forEach(pu => {
-        if (su.number === pu.number) {
-          score += 50; // 숫자 일치
+        const diff = Math.abs(su.number - pu.number);
+        if (diff === 0) {
+          score += 50; // 정확히 일치
           if (su.unit === pu.unit ||
               (su.unit === '파이' && pu.unit === 'mm') ||
               (su.unit === 'mm' && pu.unit === '파이')) {
             score += 30; // 단위도 일치하거나 호환
+          }
+        } else if (diff <= 1) {
+          score += 35; // ±1 근접 매칭
+          if (su.unit === pu.unit ||
+              (su.unit === '파이' && pu.unit === 'mm') ||
+              (su.unit === 'mm' && pu.unit === '파이')) {
+            score += 20; // 단위 호환
           }
         }
       });
@@ -6397,15 +6446,34 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       }
     }
 
-    // 6. 개별 단어 매칭
+    // 6. 개별 단어 매칭 + 오타 허용
     const searchWords = searchText.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
+    const productWords = productName.toLowerCase().split(/[\s\-_]+/).filter(w => w.length > 0);
     let matchedWords = 0;
     searchWords.forEach(word => {
       const normalizedWord = normalizeText(word);
       const synonymWord = applySynonyms(word);
+
+      // 정확히 포함되면 높은 점수
       if (normalizedProduct.includes(normalizedWord) || synonymProduct.includes(synonymWord)) {
         matchedWords++;
         score += word.length * 2;
+      } else if (word.length >= 2) {
+        // 오타 허용 매칭 (레벤슈타인 거리)
+        let bestSimilarity = 0;
+        productWords.forEach(pw => {
+          if (pw.length >= 2) {
+            const similarity = getSimilarity(word, pw);
+            if (similarity > bestSimilarity) {
+              bestSimilarity = similarity;
+            }
+          }
+        });
+        // 70% 이상 유사하면 매칭으로 인정
+        if (bestSimilarity >= 0.7) {
+          matchedWords++;
+          score += Math.floor(word.length * bestSimilarity * 1.5);
+        }
       }
     });
     // 모든 단어가 매칭되면 보너스
@@ -6426,6 +6494,12 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       if (matchRatio > 0.5) {
         score += Math.floor(matchRatio * 20);
       }
+    }
+
+    // 9. 전체 문자열 유사도 (오타 종합 체크)
+    const overallSimilarity = getSimilarity(normalizedSearch, normalizedProduct);
+    if (overallSimilarity >= 0.6) {
+      score += Math.floor(overallSimilarity * 30);
     }
 
     return score;
@@ -6591,10 +6665,29 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
         <div className="flex-shrink-0 px-4 pt-4 bg-slate-800">
           {/* 입력 영역 */}
           <div className="mb-3">
-            <label className="block text-slate-300 text-sm mb-2 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              메모 입력 (줄 단위로 분석)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-slate-300 text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                메모 입력 (줄 단위로 분석)
+                <span className="text-xs text-green-400">(자동저장)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={saveBackup}
+                  className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
+                >
+                  <Save className="w-3 h-3" />
+                  백업
+                </button>
+                <button
+                  onClick={() => setShowBackupModal(true)}
+                  className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
+                >
+                  <FolderOpen className="w-3 h-3" />
+                  불러오기 {backupList.length > 0 && `(${backupList.length})`}
+                </button>
+              </div>
+            </div>
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -6829,6 +6922,59 @@ MVB 64 Y R 2개`}
           </div>
         )}
       </div>
+
+      {/* 백업 불러오기 모달 */}
+      {showBackupModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md max-h-[70vh] flex flex-col">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-blue-400" />
+                백업 목록
+              </h3>
+              <button
+                onClick={() => setShowBackupModal(false)}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {backupList.length === 0 ? (
+                <div className="text-center text-slate-400 py-8">
+                  저장된 백업이 없습니다.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {backupList.map((backup) => (
+                    <div
+                      key={backup.id}
+                      className="p-3 bg-slate-700/50 rounded-xl border border-slate-600 hover:border-slate-500 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <span className="text-xs text-slate-400">{backup.date}</span>
+                        <button
+                          onClick={() => deleteBackup(backup.id)}
+                          className="p-1 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-slate-300 mb-2 font-mono truncate">{backup.preview}</p>
+                      <button
+                        onClick={() => loadBackup(backup)}
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors"
+                      >
+                        불러오기
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
