@@ -4568,7 +4568,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             (packagingValue.match(/,/g) || []).length + 1,
             (shippingCostValue.match(/,/g) || []).length + 1
           );
-          dataRow.height = Math.max(dataHeight, Math.round(35 * maxLines * scaleFactor));
+          dataRow.height = Math.max(dataHeight, 35 * maxLines);
           rowNum++;
           
           // 주소 행 추가 (줄바꿈 적용)
@@ -4631,7 +4631,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
             (packagingValue.match(/,/g) || []).length + 1,
             (shippingCostValue.match(/,/g) || []).length + 1
           );
-          dataRow.height = Math.max(dataHeight, Math.round(35 * maxLines * scaleFactor));
+          dataRow.height = Math.max(dataHeight, 35 * maxLines);
           rowNum++;
 
           // 주소 행 추가
