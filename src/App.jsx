@@ -4485,7 +4485,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       headers.forEach((header, idx) => {
         const cell = colHeaderRow.getCell(idx + 1);
         cell.value = header;
-        cell.font = { bold: true, size: 14, name: 'Malgun Gothic' };
+        cell.font = { bold: true, size: 12, name: 'Malgun Gothic' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = thinBorder;
       });
