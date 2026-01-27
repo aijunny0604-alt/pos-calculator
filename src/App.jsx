@@ -4429,6 +4429,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       paperSize: 9, // A4
       orientation: 'landscape', // 가로 방향
       horizontalCentered: true,
+      verticalCentered: true,
       margins: {
         left: 0.5,
         right: 0.5,
@@ -4485,7 +4486,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       headers.forEach((header, idx) => {
         const cell = colHeaderRow.getCell(idx + 1);
         cell.value = header;
-        cell.font = { bold: true, size: 12, name: 'Malgun Gothic' };
+        cell.font = { bold: true, size: 14, name: 'Malgun Gothic' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = thinBorder;
       });
