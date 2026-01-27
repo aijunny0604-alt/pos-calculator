@@ -4502,6 +4502,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         headers.forEach((_, idx) => {
           const cell = emptyRow.getCell(idx + 1);
           cell.value = '';
+          cell.font = { size: 12, name: 'Malgun Gothic' };
           cell.border = thinBorder;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
@@ -4512,6 +4513,7 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
         worksheet.mergeCells(`A${rowNum}:G${rowNum}`);
         const addrRow = worksheet.getRow(rowNum);
         addrRow.getCell(1).value = '';
+        addrRow.getCell(1).font = { size: 12, name: 'Malgun Gothic' };
         addrRow.getCell(1).border = thinBorder;
         addrRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         addrRow.height = addrHeight;
