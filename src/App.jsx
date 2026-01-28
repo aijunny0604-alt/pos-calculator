@@ -6701,6 +6701,18 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
               </label>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    if (inputText.trim() && confirm('메모 내용을 초기화할까요?')) {
+                      setInputText('');
+                      localStorage.removeItem('aiOrderInputText');
+                    }
+                  }}
+                  className="px-2 py-1 bg-red-600/80 hover:bg-red-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  초기화
+                </button>
+                <button
                   onClick={saveBackup}
                   className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
                 >
