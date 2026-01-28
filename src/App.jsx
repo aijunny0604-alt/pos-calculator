@@ -6269,8 +6269,8 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
     setShowProductSearch(false);
   };
 
-  // 제품 검색 결과
-  const searchResults = productSearchQuery.trim()
+  // 제품 직접 추가 검색 결과
+  const productAddResults = productSearchQuery.trim()
     ? products.filter(p =>
         normalizeText(p.name).includes(normalizeText(productSearchQuery)) ||
         p.name.toLowerCase().includes(productSearchQuery.toLowerCase())
@@ -6790,9 +6790,9 @@ MVB 64 Y R 2개`}
                   </button>
                 </div>
               </div>
-              {searchResults.length > 0 && (
+              {productAddResults.length > 0 && (
                 <div className="max-h-48 overflow-y-auto space-y-1">
-                  {searchResults.map(product => (
+                  {productAddResults.map(product => (
                     <button
                       key={product.id}
                       onClick={() => addProductDirect(product)}
@@ -6806,7 +6806,7 @@ MVB 64 Y R 2개`}
                   ))}
                 </div>
               )}
-              {productSearchQuery && searchResults.length === 0 && (
+              {productSearchQuery && productAddResults.length === 0 && (
                 <p className="text-slate-400 text-sm text-center py-2">검색 결과 없음</p>
               )}
             </div>
