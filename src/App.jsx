@@ -6215,6 +6215,9 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
     return saved ? JSON.parse(saved) : [];
   });
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [addQuantity, setAddQuantity] = useState(1);
 
   // 실시간 자동 저장
   useEffect(() => {
@@ -6251,6 +6254,28 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
     setBackupList(newList);
     localStorage.setItem('aiOrderBackups', JSON.stringify(newList));
   };
+
+  // 제품 직접 추가
+  const addProductDirect = (product) => {
+    const newItem = {
+      originalText: `${product.name} ${addQuantity}개 (직접추가)`,
+      matchedProduct: product,
+      quantity: addQuantity,
+      selected: true
+    };
+    setAnalyzedItems(prev => [...prev, newItem]);
+    setProductSearchQuery('');
+    setAddQuantity(1);
+    setShowProductSearch(false);
+  };
+
+  // 제품 검색 결과
+  const searchResults = productSearchQuery.trim()
+    ? products.filter(p =>
+        normalizeText(p.name).includes(normalizeText(productSearchQuery)) ||
+        p.name.toLowerCase().includes(productSearchQuery.toLowerCase())
+      ).slice(0, 10)
+    : [];
 
   // ESC 키로 뒤로가기
   useEffect(() => {
@@ -6704,22 +6729,88 @@ MVB 64 Y R 2개`}
             />
           </div>
 
-          {/* 분석 버튼 */}
-          <button
-            onClick={analyzeText}
-            disabled={!inputText.trim() || isAnalyzing}
-            className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all mb-3 ${
-              !inputText.trim() || isAnalyzing
-                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30'
-            }`}
-          >
-            {isAnalyzing ? (
-              <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
-            ) : (
-              <><Sparkles className="w-5 h-5" />텍스트 분석하기</>
-            )}
-          </button>
+          {/* 분석 버튼 + 제품 추가 버튼 */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={analyzeText}
+              disabled={!inputText.trim() || isAnalyzing}
+              className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                !inputText.trim() || isAnalyzing
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30'
+              }`}
+            >
+              {isAnalyzing ? (
+                <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
+              ) : (
+                <><Sparkles className="w-5 h-5" />텍스트 분석</>
+              )}
+            </button>
+            <button
+              onClick={() => setShowProductSearch(!showProductSearch)}
+              className={`px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                showProductSearch
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-700 hover:bg-slate-600 text-white'
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              제품추가
+            </button>
+          </div>
+
+          {/* 제품 직접 검색 추가 */}
+          {showProductSearch && (
+            <div className="mb-3 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
+              <div className="flex gap-2 mb-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={productSearchQuery}
+                    onChange={(e) => setProductSearchQuery(e.target.value)}
+                    placeholder="제품명 검색..."
+                    className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex items-center gap-1 bg-slate-800 rounded-lg px-2">
+                  <button
+                    onClick={() => setAddQuantity(Math.max(1, addQuantity - 1))}
+                    className="p-1 hover:bg-slate-700 rounded"
+                  >
+                    <Minus className="w-4 h-4 text-slate-400" />
+                  </button>
+                  <span className="text-white text-sm w-8 text-center">{addQuantity}</span>
+                  <button
+                    onClick={() => setAddQuantity(addQuantity + 1)}
+                    className="p-1 hover:bg-slate-700 rounded"
+                  >
+                    <Plus className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
+              </div>
+              {searchResults.length > 0 && (
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {searchResults.map(product => (
+                    <button
+                      key={product.id}
+                      onClick={() => addProductDirect(product)}
+                      className="w-full p-2 bg-slate-800 hover:bg-emerald-600/30 rounded-lg text-left flex justify-between items-center transition-colors"
+                    >
+                      <span className="text-white text-sm truncate">{product.name}</span>
+                      <span className="text-emerald-400 text-sm font-medium">
+                        {formatPrice(priceType === 'wholesale' ? product.wholesalePrice : product.retailPrice)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {productSearchQuery && searchResults.length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-2">검색 결과 없음</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 분석 결과 - 스크롤 영역 */}
