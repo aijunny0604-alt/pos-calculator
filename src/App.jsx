@@ -6693,13 +6693,12 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
         <div className="flex-shrink-0 px-4 pt-4 bg-slate-800">
           {/* 입력 영역 */}
           <div className="mb-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
               <label className="text-slate-300 text-sm flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                메모 입력 (줄 단위로 분석)
-                <span className="text-xs text-green-400">(자동저장)</span>
+                메모 입력 <span className="text-xs text-green-400">(자동저장)</span>
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => {
                     if (inputText.trim() && confirm('메모 내용을 초기화할까요?')) {
@@ -6707,24 +6706,24 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
                       localStorage.removeItem('aiOrderInputText');
                     }
                   }}
-                  className="px-2 py-1 bg-red-600/80 hover:bg-red-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
+                  className="px-2 py-1.5 bg-red-600/80 hover:bg-red-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
                   초기화
                 </button>
                 <button
                   onClick={saveBackup}
-                  className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
+                  className="px-2 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
                 >
                   <Save className="w-3 h-3" />
                   백업
                 </button>
                 <button
                   onClick={() => setShowBackupModal(true)}
-                  className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
+                  className="px-2 py-1.5 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded-lg flex items-center gap-1 transition-colors"
                 >
                   <FolderOpen className="w-3 h-3" />
-                  불러오기 {backupList.length > 0 && `(${backupList.length})`}
+                  불러오기{backupList.length > 0 && ` (${backupList.length})`}
                 </button>
               </div>
             </div>
