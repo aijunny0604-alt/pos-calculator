@@ -6891,17 +6891,17 @@ MVB 64 Y R 2개`}
                           </div>
 
                           {/* 가격 + 수량 + 삭제 */}
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <p className={`text-lg font-bold ${priceType === 'wholesale' ? 'text-blue-400' : 'text-red-400'}`}>
                               {formatPrice(priceType === 'wholesale' ? item.matchedProduct.wholesale : (item.matchedProduct.retail || item.matchedProduct.wholesale))}
                             </p>
 
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-2">
                               {/* 수량 조절 */}
-                              <div className="flex items-center gap-1 bg-slate-900/80 rounded-xl p-1.5 border border-slate-600/50">
+                              <div className="flex items-center gap-1 bg-slate-900/80 rounded-xl p-1 border border-slate-600/50">
                                 <button
                                   onClick={() => updateQuantity(index, item.quantity - 1)}
-                                  className="w-8 h-8 flex items-center justify-center hover:bg-slate-700 rounded-lg transition-colors"
+                                  className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded-lg transition-colors"
                                 >
                                   <Minus className="w-4 h-4 text-white" />
                                 </button>
@@ -6909,11 +6909,11 @@ MVB 64 Y R 2개`}
                                   type="number"
                                   value={item.quantity}
                                   onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                                  className="w-12 h-8 text-center text-white text-base font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className="w-10 h-7 text-center text-white text-sm font-bold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <button
                                   onClick={() => updateQuantity(index, item.quantity + 1)}
-                                  className="w-8 h-8 flex items-center justify-center hover:bg-slate-700 rounded-lg transition-colors"
+                                  className="w-7 h-7 flex items-center justify-center hover:bg-slate-700 rounded-lg transition-colors"
                                 >
                                   <Plus className="w-4 h-4 text-white" />
                                 </button>
@@ -6921,9 +6921,9 @@ MVB 64 Y R 2개`}
                               {/* 삭제 버튼 */}
                               <button
                                 onClick={() => removeItem(index)}
-                                className="w-10 h-10 flex items-center justify-center bg-red-600/30 hover:bg-red-600 rounded-xl transition-all border border-red-500/30 hover:border-red-500"
+                                className="w-9 h-9 flex items-center justify-center bg-red-600/30 hover:bg-red-600 rounded-xl transition-all border border-red-500/30 hover:border-red-500 flex-shrink-0"
                               >
-                                <Trash2 className="w-5 h-5 text-red-400 hover:text-white" />
+                                <Trash2 className="w-4 h-4 text-red-400 hover:text-white" />
                               </button>
                             </div>
                           </div>
