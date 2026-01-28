@@ -6845,7 +6845,7 @@ MVB 64 Y R 2개`}
               {analyzedItems.map((item, index) => (
                 <div
                   key={index}
-                  className={`p-4 rounded-2xl border-2 transition-all shadow-lg ${
+                  className={`p-3 rounded-2xl border-2 transition-all shadow-lg ${
                     item.matchedProduct
                       ? item.selected
                         ? 'bg-gradient-to-r from-purple-900/40 to-pink-900/30 border-purple-500/60 shadow-purple-500/20'
@@ -6853,12 +6853,12 @@ MVB 64 Y R 2개`}
                       : 'bg-gradient-to-r from-red-900/30 to-orange-900/20 border-red-500/40'
                   }`}
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-2">
                     {/* 체크박스 */}
                     <button
                       onClick={() => item.matchedProduct && toggleSelect(index)}
                       disabled={!item.matchedProduct}
-                      className={`mt-1 w-7 h-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      className={`mt-1 w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                         !item.matchedProduct
                           ? 'border-slate-600 bg-slate-700/50 cursor-not-allowed'
                           : item.selected
@@ -6866,7 +6866,7 @@ MVB 64 Y R 2개`}
                             : 'border-slate-500 hover:border-purple-400 hover:bg-slate-700'
                       }`}
                     >
-                      {item.selected && item.matchedProduct && <Check className="w-4 h-4 text-white" />}
+                      {item.selected && item.matchedProduct && <Check className="w-3 h-3 text-white" />}
                     </button>
 
                     <div className="flex-1 min-w-0">
