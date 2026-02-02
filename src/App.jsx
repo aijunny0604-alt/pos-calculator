@@ -362,6 +362,72 @@ const supabase = {
     }
   },
 
+  // ===== 고객 반품 내역 관련 =====
+  async getCustomerReturns(customerId = null) {
+    try {
+      let url = `${SUPABASE_URL}/rest/v1/customer_returns?order=returned_at.desc`;
+      if (customerId) {
+        url += `&customer_id=eq.${customerId}`;
+      }
+      const response = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        // 테이블이 없을 수 있음
+        console.warn('customer_returns 테이블이 없을 수 있습니다.');
+        return [];
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase getCustomerReturns error:', error);
+      return [];
+    }
+  },
+
+  async addCustomerReturn(returnData) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customer_returns`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(returnData)
+      });
+      if (!response.ok) {
+        console.warn('customer_returns 테이블 추가 실패. Supabase에 테이블을 생성하세요.');
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Supabase addCustomerReturn error:', error);
+      return null;
+    }
+  },
+
+  async deleteCustomerReturn(id) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customer_returns?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete customer return');
+      return true;
+    } catch (error) {
+      console.error('Supabase deleteCustomerReturn error:', error);
+      return false;
+    }
+  },
+
   // ===== 저장된 장바구니 관련 =====
   async getSavedCarts() {
     try {
@@ -1705,7 +1771,7 @@ const formatDateTime = (dateString) => {
 const STORAGE_KEY = 'pos-orders-shared';
 
 // 주문 상세 보기 모달
-function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, products }) {
+function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, products, onSaveCustomerReturn, onDeleteCustomerReturn }) {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState(null);
@@ -1713,6 +1779,10 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [showQuickCalculator, setShowQuickCalculator] = useState(false);
   const [calculatorInitialValue, setCalculatorInitialValue] = useState(null);
+  // 반품 관련 state
+  const [isReturning, setIsReturning] = useState(false);
+  const [returnItems, setReturnItems] = useState([]);
+  const [deletingReturnId, setDeletingReturnId] = useState(null);
 
   // order가 변경될 때마다 editedOrder 초기화
   useEffect(() => {
@@ -1853,6 +1923,133 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
     });
     setIsEditing(false);
     setShowProductSearch(false);
+  };
+
+  // 반품 모드 시작
+  const startReturn = () => {
+    // 각 상품별 반품 가능 수량 초기화 (이미 반품된 수량 제외)
+    const items = order.items.map(item => {
+      const alreadyReturned = (order.returns || [])
+        .filter(r => r.itemId === item.id)
+        .reduce((sum, r) => sum + r.quantity, 0);
+      return {
+        ...item,
+        returnQuantity: 0,
+        maxReturnQuantity: item.quantity - alreadyReturned
+      };
+    });
+    setReturnItems(items);
+    setIsReturning(true);
+  };
+
+  // 반품 수량 변경
+  const handleReturnQuantityChange = (index, delta) => {
+    setReturnItems(prev => {
+      const newItems = [...prev];
+      const newQty = newItems[index].returnQuantity + delta;
+      if (newQty >= 0 && newQty <= newItems[index].maxReturnQuantity) {
+        newItems[index].returnQuantity = newQty;
+      }
+      return newItems;
+    });
+  };
+
+  // 반품 처리 완료
+  const handleReturnSubmit = async () => {
+    const itemsToReturn = returnItems.filter(item => item.returnQuantity > 0);
+    if (itemsToReturn.length === 0) {
+      alert('반품할 상품을 선택해주세요.');
+      return;
+    }
+
+    const returnTotal = itemsToReturn.reduce((sum, item) => sum + (item.price * item.returnQuantity), 0);
+    const returnId = `RET-${Date.now()}`;
+    const returnedAt = new Date().toISOString();
+
+    const newReturns = itemsToReturn.map(item => ({
+      returnId,
+      itemId: item.id,
+      itemName: item.name,
+      price: item.price,
+      quantity: item.returnQuantity,
+      total: item.price * item.returnQuantity,
+      returnedAt
+    }));
+
+    const updatedOrder = {
+      ...order,
+      returns: [...(order.returns || []), ...newReturns],
+      totalReturned: (order.totalReturned || 0) + returnTotal,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (onUpdateOrder) {
+      onUpdateOrder(updatedOrder);
+    }
+
+    // 고객 반품 DB에도 저장
+    if (onSaveCustomerReturn && order.customerName) {
+      const customerReturnData = {
+        return_id: returnId,
+        customer_name: order.customerName,
+        customer_id: order.customerId || null,
+        order_number: order.orderNumber,
+        items: newReturns,
+        total_amount: returnTotal,
+        returned_at: returnedAt
+      };
+      await onSaveCustomerReturn(customerReturnData);
+    }
+
+    setIsReturning(false);
+    setReturnItems([]);
+  };
+
+  // 반품 모드 취소
+  const handleReturnCancel = () => {
+    setIsReturning(false);
+    setReturnItems([]);
+  };
+
+  // 반품 내역 삭제 (반품 취소)
+  const handleDeleteReturn = async (returnId) => {
+    if (!confirm('이 반품을 취소하시겠습니까?')) return;
+
+    setDeletingReturnId(returnId);
+
+    // 해당 returnId의 반품들 찾기
+    const returnsToDelete = (order.returns || []).filter(r => r.returnId === returnId);
+    const deleteTotal = returnsToDelete.reduce((sum, r) => sum + r.total, 0);
+
+    // 주문에서 반품 제거
+    const updatedOrder = {
+      ...order,
+      returns: (order.returns || []).filter(r => r.returnId !== returnId),
+      totalReturned: Math.max(0, (order.totalReturned || 0) - deleteTotal),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (onUpdateOrder) {
+      onUpdateOrder(updatedOrder);
+    }
+
+    // 고객 반품 DB에서도 삭제
+    if (onDeleteCustomerReturn) {
+      await onDeleteCustomerReturn(returnId);
+    }
+
+    setDeletingReturnId(null);
+  };
+
+  // 반품 총액 계산
+  const returnTotal = returnItems.reduce((sum, item) => sum + (item.price * item.returnQuantity), 0);
+  const totalReturned = order.totalReturned || 0;
+
+  // 특정 상품의 반품 수량 가져오기
+  const getReturnedQuantity = (itemId) => {
+    return (order.returns || [])
+      .filter(r => r.itemId === itemId)
+      .reduce((sum, r) => sum + r.quantity, 0);
   };
 
   const generateOrderText = () => {
@@ -2094,8 +2291,10 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
             {/* 모바일: 카드 형식, 태블릿 이상: 표 형식 */}
             <div className="space-y-3">
-              {currentItems.map((item, index) => (
-                <div key={index} className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden">
+              {currentItems.map((item, index) => {
+                const returnedQty = getReturnedQuantity(item.id);
+                return (
+                <div key={index} className={`bg-slate-900/50 rounded-xl border overflow-hidden ${returnedQty > 0 ? 'border-orange-500/50' : 'border-slate-700/50'}`}>
                   {/* 모바일 카드 형식 */}
                   <div className="block sm:hidden">
                     <div className="p-3 space-y-2.5">
@@ -2104,6 +2303,9 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">No.{index + 1}</span>
+                            {returnedQty > 0 && (
+                              <span className="text-xs text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">반품 {returnedQty}개</span>
+                            )}
                           </div>
                           <div className="text-white font-medium text-sm leading-snug break-words">{item.name}</div>
                         </div>
@@ -2159,7 +2361,12 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                   <div className="hidden sm:block">
                     <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
                       <div className="col-span-1 text-slate-400 text-center font-medium">{index + 1}</div>
-                      <div className="col-span-4 text-white font-medium">{item.name}</div>
+                      <div className="col-span-4 text-white font-medium flex items-center gap-2">
+                        {item.name}
+                        {returnedQty > 0 && (
+                          <span className="text-xs text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">반품 {returnedQty}개</span>
+                        )}
+                      </div>
                       <div className="col-span-2 text-right text-slate-300 tabular-nums">{formatPrice(item.price)}</div>
                       <div className="col-span-2 text-center">
                         {isEditing ? (
@@ -2196,7 +2403,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             {order.memo && (
@@ -2205,6 +2412,57 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                 <span className="text-white text-sm">{order.memo}</span>
               </div>
             )}
+
+            {/* 반품 내역 */}
+            {order.returns && order.returns.length > 0 && (() => {
+              // returnId별로 그룹핑
+              const groupedReturns = (order.returns || []).reduce((acc, r) => {
+                const key = r.returnId || 'legacy';
+                if (!acc[key]) acc[key] = { items: [], total: 0, returnedAt: r.returnedAt };
+                acc[key].items.push(r);
+                acc[key].total += r.total;
+                return acc;
+              }, {});
+
+              return (
+                <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                  <h4 className="text-orange-400 font-medium text-sm mb-2 flex items-center gap-2">
+                    <RotateCcw className="w-4 h-4" />
+                    반품 내역
+                  </h4>
+                  <div className="space-y-3">
+                    {Object.entries(groupedReturns).map(([returnId, group]) => (
+                      <div key={returnId} className="bg-slate-800/50 rounded-lg p-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-slate-400 text-xs">
+                            {group.returnedAt ? new Date(group.returnedAt).toLocaleDateString('ko-KR') : ''}
+                          </span>
+                          {returnId !== 'legacy' && (
+                            <button
+                              onClick={() => handleDeleteReturn(returnId)}
+                              disabled={deletingReturnId === returnId}
+                              className="text-xs px-2 py-0.5 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded transition-colors disabled:opacity-50"
+                            >
+                              {deletingReturnId === returnId ? '취소중...' : '취소'}
+                            </button>
+                          )}
+                        </div>
+                        {group.items.map((r, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-300 truncate flex-1">{r.itemName} x{r.quantity}</span>
+                            <span className="text-orange-400 font-medium ml-2">-{formatPrice(r.total)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-orange-500/30 flex justify-between items-center">
+                    <span className="text-orange-300 text-sm font-medium">반품 총액</span>
+                    <span className="text-orange-400 font-bold">-{formatPrice(order.totalReturned || 0)}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -2215,7 +2473,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
             </div>
             <div
               className="text-right cursor-pointer hover:bg-slate-700/50 rounded-lg p-2 -m-2 transition-colors"
-              onClick={() => { setCalculatorInitialValue(currentTotal); setShowQuickCalculator(true); }}
+              onClick={() => { setCalculatorInitialValue(currentTotal - totalReturned); setShowQuickCalculator(true); }}
               title="계산기 열기"
             >
               <div className="text-sm text-slate-400 space-y-1 mb-2">
@@ -2227,12 +2485,86 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                   <span>부가세:</span>
                   <span className="text-slate-300 tabular-nums">{formatPrice(vat)}</span>
                 </p>
+                {totalReturned > 0 && (
+                  <p className="flex justify-between gap-3">
+                    <span className="text-orange-400">반품:</span>
+                    <span className="text-orange-400 tabular-nums">-{formatPrice(totalReturned)}</span>
+                  </p>
+                )}
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-white tabular-nums">{formatPrice(currentTotal)} 💡</p>
+              {totalReturned > 0 ? (
+                <div>
+                  <p className="text-sm text-slate-500 line-through tabular-nums">{formatPrice(currentTotal)}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-400 tabular-nums">{formatPrice(currentTotal - totalReturned)} 💡</p>
+                </div>
+              ) : (
+                <p className="text-xl sm:text-2xl font-bold text-white tabular-nums">{formatPrice(currentTotal)} 💡</p>
+              )}
             </div>
           </div>
 
-          {isEditing ? (
+          {isReturning ? (
+            /* 반품 모드 UI */
+            <div className="space-y-3">
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3">
+                <h4 className="text-orange-400 font-medium text-sm mb-2 flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4" />
+                  반품할 상품 선택
+                </h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {returnItems.map((item, index) => (
+                    <div key={item.id} className="flex items-center justify-between bg-slate-700/50 rounded-lg p-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm truncate">{item.name}</p>
+                        <p className="text-slate-400 text-xs">
+                          {formatPrice(item.price)} × 최대 {item.maxReturnQuantity}개
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          onClick={() => handleReturnQuantityChange(index, -1)}
+                          disabled={item.returnQuantity <= 0}
+                          className="w-7 h-7 flex items-center justify-center bg-slate-600 hover:bg-slate-500 disabled:opacity-50 rounded-lg"
+                        >
+                          <Minus className="w-3 h-3 text-white" />
+                        </button>
+                        <span className="w-8 text-center text-white text-sm font-medium">{item.returnQuantity}</span>
+                        <button
+                          onClick={() => handleReturnQuantityChange(index, 1)}
+                          disabled={item.returnQuantity >= item.maxReturnQuantity}
+                          className="w-7 h-7 flex items-center justify-center bg-slate-600 hover:bg-slate-500 disabled:opacity-50 rounded-lg"
+                        >
+                          <Plus className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {returnTotal > 0 && (
+                  <div className="mt-2 pt-2 border-t border-orange-500/30 flex justify-between items-center">
+                    <span className="text-orange-300 text-sm">반품 금액</span>
+                    <span className="text-orange-400 font-bold">{formatPrice(returnTotal)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReturnCancel}
+                  className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium text-sm transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleReturnSubmit}
+                  disabled={returnTotal === 0}
+                  className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-1"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  반품 처리
+                </button>
+              </div>
+            </div>
+          ) : isEditing ? (
             <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={handleCancel}
@@ -2248,34 +2580,35 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
               </button>
             </div>
           ) : (
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex-1 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-colors"
+                className="flex-1 min-w-[70px] py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-1 text-sm sm:text-base transition-colors"
               >
-                <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Edit3 className="w-4 h-4" />
                 수정
               </button>
               <button
+                onClick={startReturn}
+                className="flex-1 min-w-[70px] py-2.5 sm:py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-medium flex items-center justify-center gap-1 text-sm sm:text-base transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                반품
+              </button>
+              <button
                 onClick={handleCopy}
-                className={`flex-1 py-2.5 sm:py-3 rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-all ${
+                className={`flex-1 min-w-[70px] py-2.5 sm:py-3 rounded-xl font-medium flex items-center justify-center gap-1 text-sm sm:text-base transition-all ${
                   copied ? 'bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'
                 }`}
               >
-                {copied ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" />복사됨</> : <><Copy className="w-4 h-4 sm:w-5 sm:h-5" />복사</>}
+                {copied ? <><Check className="w-4 h-4" />완료</> : <><Copy className="w-4 h-4" />복사</>}
               </button>
               <button
                 onClick={handlePrint}
-                className="flex-1 py-2.5 sm:py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base transition-colors"
+                className="flex-1 min-w-[70px] py-2.5 sm:py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium flex items-center justify-center gap-1 text-sm sm:text-base transition-colors"
               >
-                <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Printer className="w-4 h-4" />
                 인쇄
-              </button>
-              <button
-                onClick={onClose}
-                className="flex-1 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-medium text-sm sm:text-base transition-colors"
-              >
-                확인
               </button>
             </div>
           )}
@@ -3681,11 +4014,19 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
             
             {/* 총 주문 금액 - 상단 강조 표시 */}
             {getCustomerOrders(selectedCustomer.name).length > 0 && (() => {
-              const totalAmount = getCustomerOrders(selectedCustomer.name).reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-              const supplyAmount = calcExVat(totalAmount);
-              const vatAmount = totalAmount - supplyAmount;
+              const customerOrders = getCustomerOrders(selectedCustomer.name);
+              const totalAmount = customerOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+              const totalReturned = customerOrders.reduce((sum, o) => sum + (o.totalReturned || 0), 0);
+              const netAmount = totalAmount - totalReturned;
+              const supplyAmount = calcExVat(netAmount);
+              const vatAmount = netAmount - supplyAmount;
+              const returnCount = customerOrders.filter(o => o.returns && o.returns.length > 0).length;
               return (
-                <div className="bg-gradient-to-r from-emerald-600/20 via-emerald-500/10 to-emerald-600/20 rounded-xl p-4 mb-4 border border-emerald-500/30">
+                <div className={`rounded-xl p-4 mb-4 border ${
+                  totalReturned > 0
+                    ? 'bg-gradient-to-r from-emerald-600/20 via-orange-500/10 to-emerald-600/20 border-emerald-500/30'
+                    : 'bg-gradient-to-r from-emerald-600/20 via-emerald-500/10 to-emerald-600/20 border-emerald-500/30'
+                }`}>
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-emerald-500/20 rounded-lg">
@@ -3693,12 +4034,17 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                       </div>
                       <div>
                         <p className="text-slate-400 text-xs">총 주문 금액</p>
-                        <p className="text-emerald-400 font-bold text-2xl">
-                          {formatPrice(totalAmount)}
-                        </p>
+                        {totalReturned > 0 ? (
+                          <>
+                            <p className="text-slate-500 text-sm line-through">{formatPrice(totalAmount)}</p>
+                            <p className="text-emerald-400 font-bold text-2xl">{formatPrice(netAmount)}</p>
+                          </>
+                        ) : (
+                          <p className="text-emerald-400 font-bold text-2xl">{formatPrice(totalAmount)}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 flex-wrap">
                       <div className="text-right">
                         <p className="text-slate-400 text-xs">공급가액</p>
                         <p className="text-blue-400 font-bold text-lg">{formatPrice(supplyAmount)}</p>
@@ -3709,8 +4055,14 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                       </div>
                       <div className="text-right">
                         <p className="text-slate-400 text-xs">주문 건수</p>
-                        <p className="text-white font-bold text-lg">{getCustomerOrders(selectedCustomer.name).length}건</p>
+                        <p className="text-white font-bold text-lg">{customerOrders.length}건</p>
                       </div>
+                      {totalReturned > 0 && (
+                        <div className="text-right">
+                          <p className="text-orange-400 text-xs">반품 ({returnCount}건)</p>
+                          <p className="text-orange-400 font-bold text-lg">-{formatPrice(totalReturned)}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3770,15 +4122,29 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                     <div
                       key={order.orderNumber}
                       onClick={() => setDetailOrder(order)}
-                      className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-emerald-500/50 transition-all group hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer select-none"
+                      className={`bg-slate-800 rounded-xl p-4 border transition-all group hover:scale-[1.02] hover:shadow-lg cursor-pointer select-none ${
+                        order.totalReturned > 0
+                          ? 'border-orange-500/50 hover:border-orange-400/70 hover:shadow-orange-500/10'
+                          : 'border-slate-700 hover:border-emerald-500/50 hover:shadow-emerald-500/10'
+                      }`}
                     >
                       {/* 카드 상단: 날짜 + 금액 */}
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <span className="text-slate-300 text-sm font-medium">{formatDate(order.createdAt)}</span>
+                          {order.totalReturned > 0 && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded">반품</span>
+                          )}
                         </div>
                         <div className="text-right">
-                          <p className="text-emerald-400 font-bold text-lg">{formatPrice(order.totalAmount)}</p>
+                          {order.totalReturned > 0 ? (
+                            <>
+                              <p className="text-slate-500 text-sm line-through">{formatPrice(order.totalAmount)}</p>
+                              <p className="text-emerald-400 font-bold text-lg">{formatPrice(order.totalAmount - order.totalReturned)}</p>
+                            </>
+                          ) : (
+                            <p className="text-emerald-400 font-bold text-lg">{formatPrice(order.totalAmount)}</p>
+                          )}
                         </div>
                       </div>
 
@@ -3795,6 +4161,21 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
                             <p className="text-slate-500 text-xs">외 {order.items.length - 3}개 상품</p>
                           )}
                         </div>
+                        {/* 반품 내역 표시 */}
+                        {order.returns && order.returns.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-orange-500/30">
+                            <p className="text-orange-400 text-xs font-medium mb-1">반품:</p>
+                            {order.returns.slice(0, 2).map((r, idx) => (
+                              <div key={idx} className="flex justify-between text-xs">
+                                <span className="text-orange-300/80 truncate flex-1 mr-2">{r.itemName} x{r.quantity}</span>
+                                <span className="text-orange-400 flex-shrink-0">-{formatPrice(r.total)}</span>
+                              </div>
+                            ))}
+                            {order.returns.length > 2 && (
+                              <p className="text-orange-400/60 text-xs">외 {order.returns.length - 2}건</p>
+                            )}
+                          </div>
+                        )}
                         {order.memo && (
                           <p className="text-cyan-400 text-xs mt-2 pt-2 border-t border-slate-700 truncate">
                             💬 {order.memo}
@@ -3905,15 +4286,22 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setDetailOrder(null)}>
           <div className="bg-slate-800 rounded-2xl w-full max-w-lg border border-emerald-500/30 shadow-2xl shadow-emerald-500/20 overflow-hidden animate-scale-in max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* 모달 헤더 */}
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex-shrink-0">
+            <div className={`px-6 py-4 flex-shrink-0 ${detailOrder.totalReturned > 0 ? 'bg-gradient-to-r from-orange-600 to-amber-600' : 'bg-gradient-to-r from-emerald-600 to-teal-600'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                     <Receipt className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">주문 상세</h2>
-                    <p className="text-emerald-200 text-sm">{formatDate(detailOrder.createdAt)}</p>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-white">주문 상세</h2>
+                      {detailOrder.totalReturned > 0 && (
+                        <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white font-medium flex items-center gap-1">
+                          <RotateCcw className="w-3 h-3" /> 반품
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm ${detailOrder.totalReturned > 0 ? 'text-orange-200' : 'text-emerald-200'}`}>{formatDate(detailOrder.createdAt)}</p>
                   </div>
                 </div>
                 <button
@@ -3929,37 +4317,119 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
             <div className="p-6 overflow-y-auto flex-1">
               {/* 금액 요약 */}
               <div className="bg-slate-900/50 rounded-xl p-4 mb-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className={`grid gap-4 text-center ${detailOrder.totalReturned > 0 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                   <div>
                     <p className="text-slate-400 text-xs mb-1">총 금액</p>
                     <p className="text-emerald-400 font-bold text-lg">{formatPrice(detailOrder.totalAmount)}</p>
                   </div>
-                  <div>
-                    <p className="text-slate-400 text-xs mb-1">공급가액</p>
-                    <p className="text-blue-400 font-bold text-lg">{formatPrice(calcExVat(detailOrder.totalAmount))}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-xs mb-1">부가세</p>
-                    <p className="text-purple-400 font-bold text-lg">{formatPrice(detailOrder.totalAmount - calcExVat(detailOrder.totalAmount))}</p>
-                  </div>
+                  {detailOrder.totalReturned > 0 ? (
+                    <>
+                      <div>
+                        <p className="text-slate-400 text-xs mb-1">반품 금액</p>
+                        <p className="text-orange-400 font-bold text-lg">-{formatPrice(detailOrder.totalReturned)}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-slate-400 text-xs mb-1">공급가액</p>
+                        <p className="text-blue-400 font-bold text-lg">{formatPrice(calcExVat(detailOrder.totalAmount))}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-xs mb-1">부가세</p>
+                        <p className="text-purple-400 font-bold text-lg">{formatPrice(detailOrder.totalAmount - calcExVat(detailOrder.totalAmount))}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
+                {detailOrder.totalReturned > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-700">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-sm">실결제액</span>
+                      <span className="text-cyan-400 font-bold text-xl">{formatPrice(detailOrder.totalAmount - detailOrder.totalReturned)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 상품 목록 */}
               <div className="mb-4">
                 <p className="text-slate-400 text-xs mb-2 font-medium">상품 목록 ({(detailOrder.items || []).length}종)</p>
                 <div className="bg-slate-900/30 rounded-xl border border-slate-700 divide-y divide-slate-700">
-                  {(detailOrder.items || []).map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3">
-                      <div className="flex-1">
-                        <p className="text-white text-sm font-medium">{item.name}</p>
-                        <p className="text-slate-400 text-xs">수량: {item.quantity}개 × {formatPrice(item.price)}</p>
+                  {(detailOrder.items || []).map((item, idx) => {
+                    // 해당 상품이 반품된 수량 계산 (itemId 또는 itemName으로 매칭)
+                    const returnedQty = (detailOrder.returns || []).reduce((sum, ret) => {
+                      if (ret.itemId === item.id || ret.itemName === item.name) {
+                        return sum + (ret.quantity || 0);
+                      }
+                      return sum;
+                    }, 0);
+
+                    return (
+                      <div key={idx} className={`flex justify-between items-center p-3 ${returnedQty > 0 ? 'bg-orange-500/5' : ''}`}>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-white text-sm font-medium">{item.name}</p>
+                            {returnedQty > 0 && (
+                              <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] rounded font-medium">
+                                반품 {returnedQty}개
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-slate-400 text-xs">수량: {item.quantity}개 × {formatPrice(item.price)}</p>
+                        </div>
+                        <p className={`font-semibold ${returnedQty > 0 ? 'text-orange-400 line-through' : 'text-emerald-400'}`}>{formatPrice(item.price * item.quantity)}</p>
                       </div>
-                      <p className="text-emerald-400 font-semibold">{formatPrice(item.price * item.quantity)}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* 반품 내역 */}
+              {detailOrder.returns && detailOrder.returns.length > 0 && (() => {
+                // returnId로 그룹핑
+                const groupedReturns = (detailOrder.returns || []).reduce((acc, ret) => {
+                  const key = ret.returnId || 'unknown';
+                  if (!acc[key]) {
+                    acc[key] = {
+                      returnId: key,
+                      returnedAt: ret.returnedAt,
+                      items: [],
+                      totalAmount: 0
+                    };
+                  }
+                  acc[key].items.push(ret);
+                  acc[key].totalAmount += ret.total || (ret.price * ret.quantity);
+                  return acc;
+                }, {});
+                const returnGroups = Object.values(groupedReturns);
+
+                return (
+                  <div className="mb-4">
+                    <p className="text-orange-400 text-xs mb-2 font-medium flex items-center gap-1">
+                      <RotateCcw className="w-3 h-3" /> 반품 내역 ({returnGroups.length}건)
+                    </p>
+                    <div className="bg-orange-500/10 rounded-xl border border-orange-500/30 divide-y divide-orange-500/20">
+                      {returnGroups.map((group, idx) => (
+                        <div key={idx} className="p-3">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-orange-300 text-xs">{formatDate(group.returnedAt)}</span>
+                            <span className="text-orange-400 font-semibold">-{formatPrice(group.totalAmount)}</span>
+                          </div>
+                          <div className="space-y-1">
+                            {group.items.map((item, itemIdx) => (
+                              <div key={itemIdx} className="flex justify-between items-center text-xs">
+                                <span className="text-slate-300">{item.itemName || item.name} x{item.quantity || item.returnQuantity}</span>
+                                <span className="text-orange-400/70">-{formatPrice(item.total || (item.price * (item.quantity || item.returnQuantity)))}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 메모 */}
               {detailOrder.memo && (
@@ -3975,13 +4445,38 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
               <button
                 onClick={() => {
                   const lines = [
+                    `[${selectedCustomer?.name || '업체명'}]`,
                     formatDate(detailOrder.createdAt),
+                    '',
                     ...(detailOrder.items || []).map(item => `${item.name} x${item.quantity}  ${formatPrice(item.price * item.quantity)}`),
+                    '',
                     `총 금액: ${formatPrice(detailOrder.totalAmount)}`,
-                    `공급가액: ${formatPrice(calcExVat(detailOrder.totalAmount))}`,
-                    detailOrder.memo ? `메모: ${detailOrder.memo}` : ''
-                  ].filter(Boolean).join('\n');
-                  navigator.clipboard.writeText(lines);
+                  ];
+
+                  // 반품 정보 추가
+                  if (detailOrder.totalReturned > 0) {
+                    lines.push(`반품: -${formatPrice(detailOrder.totalReturned)}`);
+                    lines.push(`실결제액: ${formatPrice(detailOrder.totalAmount - detailOrder.totalReturned)}`);
+                  } else {
+                    lines.push(`공급가액: ${formatPrice(calcExVat(detailOrder.totalAmount))}`);
+                  }
+
+                  if (detailOrder.memo) {
+                    lines.push(`메모: ${detailOrder.memo}`);
+                  }
+
+                  navigator.clipboard.writeText(lines.join('\n'));
+
+                  // 복사 완료 알림
+                  const toast = document.createElement('div');
+                  toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg z-[100] animate-fade-in';
+                  toast.textContent = '✓ 복사되었습니다';
+                  document.body.appendChild(toast);
+                  setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.3s';
+                    setTimeout(() => toast.remove(), 300);
+                  }, 1500);
                 }}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
               >
@@ -10903,9 +11398,13 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   // 필터된 주문의 통계
   const filteredTotalSales = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
   const filteredTotalExVat = calcExVat(filteredTotalSales);
+  const filteredTotalReturned = filteredOrders.reduce((sum, order) => sum + (order.totalReturned || 0), 0);
+  const filteredReturnCount = filteredOrders.filter(order => order.totalReturned > 0).length;
 
   const totalSales = orders.reduce((sum, order) => sum + order.totalAmount, 0);
   const totalExVat = calcExVat(totalSales);
+  const totalReturned = orders.reduce((sum, order) => sum + (order.totalReturned || 0), 0);
+  const totalReturnCount = orders.filter(order => order.totalReturned > 0).length;
 
   // 전체 선택/해제
   const handleSelectAll = () => {
@@ -11022,7 +11521,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
           <div className="px-4 pb-4 space-y-3">
             {/* 통계 카드 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
               <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
                 <p className="text-slate-400 text-xs flex items-center gap-1"><FileText className="w-3 h-3" /> {dateFilter === 'all' ? '총 주문' : '조회 주문'}</p>
                 <p className="text-white font-bold text-lg">{filteredOrders.length}건</p>
@@ -11030,16 +11529,26 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
               </div>
               <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
                 <p className="text-slate-400 text-xs flex items-center gap-1"><Calculator className="w-3 h-3" /> {dateFilter === 'all' ? '총 매출' : '조회 매출'}</p>
-                <p className="text-emerald-400 font-bold text-lg">{formatPrice(filteredTotalSales)}</p>
-                {dateFilter !== 'all' && <p className="text-slate-500 text-[10px]">전체 {formatPrice(totalSales)}</p>}
+                <p className="text-emerald-400 font-bold text-lg">{formatPrice(filteredTotalSales - filteredTotalReturned)}</p>
+                {filteredTotalReturned > 0 && <p className="text-slate-500 text-[10px] line-through">{formatPrice(filteredTotalSales)}</p>}
+                {dateFilter !== 'all' && <p className="text-slate-500 text-[10px]">전체 {formatPrice(totalSales - totalReturned)}</p>}
               </div>
               <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
                 <p className="text-slate-400 text-xs flex items-center gap-1"><Receipt className="w-3 h-3" /> 공급가액</p>
-                <p className="text-blue-400 font-bold text-lg">{formatPrice(filteredTotalExVat)}</p>
+                <p className="text-blue-400 font-bold text-lg">{formatPrice(calcExVat(filteredTotalSales - filteredTotalReturned))}</p>
               </div>
               <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
                 <p className="text-slate-400 text-xs flex items-center gap-1"><Receipt className="w-3 h-3" /> 부가세</p>
-                <p className="text-purple-400 font-bold text-lg">{formatPrice(filteredTotalSales - filteredTotalExVat)}</p>
+                <p className="text-purple-400 font-bold text-lg">{formatPrice((filteredTotalSales - filteredTotalReturned) - calcExVat(filteredTotalSales - filteredTotalReturned))}</p>
+              </div>
+              <div className={`rounded-lg p-3 border ${filteredTotalReturned > 0 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-slate-700/50 border-slate-600'}`}>
+                <p className={`text-xs flex items-center gap-1 ${filteredTotalReturned > 0 ? 'text-orange-400' : 'text-slate-400'}`}>
+                  <RotateCcw className="w-3 h-3" /> 반품 ({filteredReturnCount}건)
+                </p>
+                <p className={`font-bold text-lg ${filteredTotalReturned > 0 ? 'text-orange-400' : 'text-slate-500'}`}>
+                  {filteredTotalReturned > 0 ? `-${formatPrice(filteredTotalReturned)}` : '0원'}
+                </p>
+                {dateFilter !== 'all' && <p className={`text-[10px] ${totalReturned > 0 ? 'text-orange-400/50' : 'text-slate-500'}`}>전체 {totalReturned > 0 ? `-${formatPrice(totalReturned)}` : '0원'} ({totalReturnCount}건)</p>}
               </div>
             </div>
             
@@ -11199,8 +11708,8 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                     {order.items.length}종 / {order.items.reduce((sum, item) => sum + item.quantity, 0)}개
                   </div>
                   {order.customerName && (
-                    <div className={`text-xs border-t pt-2 mt-2 ${isBlacklist ? 'border-red-700/50' : 'border-slate-700'}`}>
-                      <div className={`flex items-center gap-1 ${isBlacklist ? 'text-red-400' : 'text-cyan-400'}`}>
+                    <div className={`border-t pt-2 mt-2 ${isBlacklist ? 'border-red-700/50' : 'border-slate-700'}`}>
+                      <div className={`flex items-center gap-1.5 text-sm font-semibold ${isBlacklist ? 'text-red-400' : 'text-cyan-400'}`}>
                         {isBlacklist ? '🚫' : '👤'} {order.customerName}
                         {isBlacklist && <span className="px-1.5 py-0.5 bg-red-600/30 text-red-400 rounded text-[10px] ml-1">블랙리스트</span>}
                       </div>
@@ -12456,7 +12965,10 @@ export default function PriceCalculator() {
           priceType: order.price_type,
           items: order.items,
           totalAmount: order.total,
-          memo: order.memo
+          memo: order.memo,
+          // 반품 정보 추가
+          returns: order.returns || [],
+          totalReturned: order.total_returned || 0
         }));
         setOrders(formattedOrders);
         setIsOnline(true);
@@ -12628,7 +13140,7 @@ export default function PriceCalculator() {
   const updateOrder = async (updatedOrder) => {
     setIsLoading(true);
     try {
-      // Supabase 형식으로 변환 (updated_at, customer_address 컬럼 없음)
+      // Supabase 형식으로 변환
       const supabaseOrder = {
         customer_name: updatedOrder.customerName || null,
         customer_phone: updatedOrder.customerPhone || null,
@@ -12637,7 +13149,10 @@ export default function PriceCalculator() {
         subtotal: Math.round(updatedOrder.totalAmount / 1.1),
         vat: updatedOrder.totalAmount - Math.round(updatedOrder.totalAmount / 1.1),
         total: updatedOrder.totalAmount,
-        memo: updatedOrder.memo || null
+        memo: updatedOrder.memo || null,
+        // 반품 정보 추가
+        returns: updatedOrder.returns || null,
+        total_returned: updatedOrder.totalReturned || 0
       };
 
       console.log('🔄 주문 수정 요청:', updatedOrder.orderNumber, supabaseOrder);
@@ -12916,6 +13431,23 @@ export default function PriceCalculator() {
           formatPrice={formatPrice}
           onUpdateOrder={updateOrder}
           products={products.length > 0 ? products : priceData}
+          onSaveCustomerReturn={async (returnData) => {
+            await supabase.addCustomerReturn(returnData);
+          }}
+          onDeleteCustomerReturn={async (returnId) => {
+            // customer_returns 테이블에서 return_id로 삭제
+            try {
+              await fetch(`${SUPABASE_URL}/rest/v1/customer_returns?return_id=eq.${returnId}`, {
+                method: 'DELETE',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                }
+              });
+            } catch (e) {
+              console.error('고객 반품 삭제 실패:', e);
+            }
+          }}
         />
         {/* 토스트 알림 */}
         {toast && (
