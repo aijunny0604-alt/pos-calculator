@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
+import { createClient } from '@supabase/supabase-js';
 import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square, Maximize2, Minimize2, FolderOpen } from 'lucide-react';
 
 // ==================== 공통 검색 함수 ====================
@@ -106,6 +107,9 @@ const calculateItemDiscount = (item, products) => {
 // ==================== SUPABASE 설정 ====================
 const SUPABASE_URL = 'https://icqxomltplewrhopafpq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_YB9UnUwuMql8hUGHgC0bsg_DhrAxpji';
+
+// Supabase 클라이언트 (실시간 구독용)
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Supabase API 호출 함수 (주문 + 제품)
 const supabase = {
@@ -13247,18 +13251,38 @@ export default function PriceCalculator() {
     loadCustomers();
   }, []);
 
-  // 실시간 카운트 업데이트를 위한 주기적 데이터 갱신 (30초마다)
+  // Supabase 실시간 구독 - 데이터 변경 시 즉시 업데이트
   useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      // 백그라운드에서 조용히 갱신 (로딩 표시 없이)
-      if (isOnline) {
-        loadOrders(true);  // silent = true
-        loadSavedCartsFromDB(true);  // silent = true
-      }
-    }, 30000); // 30초
+    // orders 테이블 실시간 구독
+    const ordersChannel = supabaseClient
+      .channel('orders-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('📦 주문 변경 감지:', payload.eventType);
+          loadOrders(true);  // silent reload
+        }
+      )
+      .subscribe();
 
-    return () => clearInterval(refreshInterval);
-  }, [isOnline]);
+    // saved_carts 테이블 실시간 구독
+    const cartsChannel = supabaseClient
+      .channel('carts-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'saved_carts' },
+        (payload) => {
+          console.log('🛒 장바구니 변경 감지:', payload.eventType);
+          loadSavedCartsFromDB(true);  // silent reload
+        }
+      )
+      .subscribe();
+
+    // 클린업 - 구독 해제
+    return () => {
+      supabaseClient.removeChannel(ordersChannel);
+      supabaseClient.removeChannel(cartsChannel);
+    };
+  }, []);
 
   const viewOrder = (order) => {
     setSelectedOrder(order);
