@@ -12387,8 +12387,8 @@ export default function PriceCalculator() {
   }, [showAdminLogin]);
 
   // 저장된 장바구니 불러오기 (Supabase)
-  const loadSavedCartsFromDB = async () => {
-    setIsLoading(true);
+  const loadSavedCartsFromDB = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       console.log('장바구니 불러오기 시도...');
       const data = await supabase.getSavedCarts();
@@ -12409,7 +12409,7 @@ export default function PriceCalculator() {
     } catch (e) {
       console.error('저장된 장바구니 불러오기 실패:', e);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -12950,8 +12950,8 @@ export default function PriceCalculator() {
   };
 
   // Supabase에서 주문 불러오기
-  const loadOrders = async () => {
-    setIsLoading(true);
+  const loadOrders = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const data = await supabase.getOrders();
       if (data) {
@@ -12980,7 +12980,7 @@ export default function PriceCalculator() {
       setOrders([]);
       setIsOnline(false);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -13246,6 +13246,19 @@ export default function PriceCalculator() {
     loadOrders();
     loadCustomers();
   }, []);
+
+  // 실시간 카운트 업데이트를 위한 주기적 데이터 갱신 (30초마다)
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      // 백그라운드에서 조용히 갱신 (로딩 표시 없이)
+      if (isOnline) {
+        loadOrders(true);  // silent = true
+        loadSavedCartsFromDB(true);  // silent = true
+      }
+    }, 30000); // 30초
+
+    return () => clearInterval(refreshInterval);
+  }, [isOnline]);
 
   const viewOrder = (order) => {
     setSelectedOrder(order);
