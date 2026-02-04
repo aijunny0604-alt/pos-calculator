@@ -5362,6 +5362,24 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
       }
     });
 
+    // 조건부 서식 추가: C열(배송)이 "선불"이면 해당 행 전체 굵게
+    // 전체 데이터 범위에 적용 (1행부터 마지막 행까지)
+    const lastRow = rowNum - 1;
+    if (lastRow > 1) {
+      worksheet.addConditionalFormatting({
+        ref: `A1:G${lastRow}`,
+        rules: [
+          {
+            type: 'expression',
+            formulae: ['$C1="선불"'],
+            style: {
+              font: { bold: true }
+            }
+          }
+        ]
+      });
+    }
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const fileName = `택배송장_${new Date().toISOString().slice(0, 10)}.xlsx`;
