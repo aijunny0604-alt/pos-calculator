@@ -6718,6 +6718,78 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [addQuantity, setAddQuantity] = useState(1);
 
+  // Gemini AI 설정
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    return localStorage.getItem('geminiApiKey') || '';
+  });
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [useAI, setUseAI] = useState(() => {
+    return localStorage.getItem('useGeminiAI') === 'true';
+  });
+  const [aiError, setAiError] = useState('');
+
+  // Gemini API로 분석
+  const analyzeWithGemini = async (text) => {
+    if (!geminiApiKey) {
+      throw new Error('API 키가 설정되지 않았습니다.');
+    }
+
+    // 제품 목록 요약 (이름만)
+    const productNames = products.map(p => p.name).join(', ');
+
+    const prompt = `당신은 주문서 분석 AI입니다. 아래 제품 목록과 주문 텍스트를 분석해서 JSON 형식으로 결과를 반환하세요.
+
+제품 목록: ${productNames}
+
+주문 텍스트:
+${text}
+
+규칙:
+1. 각 줄에서 제품명과 수량을 추출하세요
+2. 오타, 줄임말, 띄어쓰기 오류를 자동 보정하세요
+3. "하나", "두개", "세개" 등 한글 숫자도 인식하세요
+4. 매칭되는 제품이 없으면 matchedProduct를 null로 설정
+5. 결과는 반드시 JSON 배열로만 반환 (설명 없이)
+
+응답 형식 (JSON만):
+[
+  {"originalText": "원본 텍스트", "matchedProduct": "정확한 제품명 또는 null", "quantity": 숫자}
+]`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 2048
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'API 호출 실패');
+    }
+
+    const data = await response.json();
+    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // JSON 추출 (```json ... ``` 또는 순수 JSON)
+    let jsonStr = aiText;
+    const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1] || jsonMatch[0];
+    }
+
+    return JSON.parse(jsonStr);
+  };
+
   // 실시간 자동 저장
   useEffect(() => {
     localStorage.setItem('aiOrderInputText', inputText);
@@ -7033,11 +7105,42 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   };
 
   // 텍스트 분석 함수
-  const analyzeText = () => {
+  const analyzeText = async () => {
     if (!inputText.trim()) return;
 
     setIsAnalyzing(true);
     setSearchingIndex(null);
+    setAiError('');
+
+    // Gemini AI 사용
+    if (useAI && geminiApiKey) {
+      try {
+        const aiResults = await analyzeWithGemini(inputText);
+        const results = aiResults.map(item => {
+          const matchedProduct = item.matchedProduct
+            ? products.find(p => p.name === item.matchedProduct || p.name.includes(item.matchedProduct) || item.matchedProduct.includes(p.name))
+            : null;
+          return {
+            originalText: item.originalText,
+            searchText: item.originalText,
+            quantity: item.quantity || 1,
+            matchedProduct: matchedProduct,
+            score: matchedProduct ? 100 : 0,
+            selected: !!matchedProduct,
+            aiMatched: true
+          };
+        });
+        setAnalyzedItems(results);
+        setIsAnalyzing(false);
+        return;
+      } catch (error) {
+        console.error('Gemini AI 오류:', error);
+        setAiError(`AI 분석 실패: ${error.message}. 기본 분석으로 전환합니다.`);
+        // 기본 분석으로 폴백
+      }
+    }
+
+    // 기본 패턴 매칭 분석
     const lines = inputText.split('\n').filter(line => line.trim());
     const results = [];
 
@@ -7170,18 +7273,34 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       
       <div className="relative bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl flex flex-col">
         {/* 헤더 - 고정 */}
-        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <div className={`px-4 py-3 flex items-center justify-between flex-shrink-0 ${useAI && geminiApiKey ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600' : 'bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600'}`}>
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-white" />
             <div>
-              <h1 className="text-lg font-bold text-white">AI 주문 인식</h1>
-              <p className="text-purple-100 text-xs">메모를 붙여넣으면 자동으로 제품을 찾아드려요</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-white">AI 주문 인식</h1>
+                {useAI && geminiApiKey ? (
+                  <span className="px-2 py-0.5 bg-white/20 text-white text-[10px] rounded-full font-medium">Gemini AI</span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-white/20 text-white text-[10px] rounded-full font-medium">패턴 매칭</span>
+                )}
+              </div>
+              <p className="text-white/70 text-xs">
+                {useAI && geminiApiKey ? 'Google Gemini AI로 자연어 분석' : '메모를 붙여넣으면 자동으로 제품을 찾아드려요'}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {selectedCount > 0 && (
               <span className="px-3 py-1 bg-white/20 text-white text-sm font-medium rounded-lg">{selectedCount}개 선택</span>
             )}
+            <button
+              onClick={() => { setTempApiKey(geminiApiKey); setShowApiSettings(true); }}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              title="AI 설정"
+            >
+              <Settings className="w-5 h-5 text-white" />
+            </button>
             <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
               <X className="w-5 h-5 text-white" />
             </button>
@@ -7239,6 +7358,16 @@ MVB 64 Y R 2개`}
             />
           </div>
 
+          {/* AI 에러 메시지 */}
+          {aiError && (
+            <div className="mb-3 p-3 bg-orange-500/20 border border-orange-500/50 rounded-xl">
+              <p className="text-orange-400 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                {aiError}
+              </p>
+            </div>
+          )}
+
           {/* 분석 버튼 + 제품 추가 버튼 */}
           <div className="flex gap-2 mb-3">
             <button
@@ -7247,13 +7376,15 @@ MVB 64 Y R 2개`}
               className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
                 !inputText.trim() || isAnalyzing
                   ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                  : useAI && geminiApiKey
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/30'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30'
               }`}
             >
               {isAnalyzing ? (
-                <><RefreshCw className="w-5 h-5 animate-spin" />분석 중...</>
+                <><RefreshCw className="w-5 h-5 animate-spin" />{useAI && geminiApiKey ? 'AI 분석 중...' : '분석 중...'}</>
               ) : (
-                <><Sparkles className="w-5 h-5" />텍스트 분석</>
+                <><Sparkles className="w-5 h-5" />{useAI && geminiApiKey ? 'AI 분석' : '텍스트 분석'}</>
               )}
             </button>
             <button
@@ -7526,6 +7657,82 @@ MVB 64 Y R 2개`}
           </div>
         )}
       </div>
+
+      {/* AI 설정 모달 */}
+      {showApiSettings && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowApiSettings(false)}>
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 flex items-center justify-between">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                AI 설정
+              </h3>
+              <button onClick={() => setShowApiSettings(false)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* AI 사용 토글 */}
+              <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
+                <div>
+                  <p className="text-white font-medium">Gemini AI 사용</p>
+                  <p className="text-slate-400 text-xs">자연어 주문 분석 활성화</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !useAI;
+                    setUseAI(newValue);
+                    localStorage.setItem('useGeminiAI', String(newValue));
+                  }}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${useAI ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${useAI ? 'translate-x-7' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
+              {/* API Key 입력 */}
+              <div>
+                <label className="block text-slate-300 text-sm mb-2">Google Gemini API Key</label>
+                <input
+                  type="password"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-slate-500 text-xs mt-2">
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                    Google AI Studio
+                  </a>
+                  에서 무료로 발급받을 수 있습니다
+                </p>
+              </div>
+
+              {/* 저장 버튼 */}
+              <button
+                onClick={() => {
+                  setGeminiApiKey(tempApiKey);
+                  localStorage.setItem('geminiApiKey', tempApiKey);
+                  setShowApiSettings(false);
+                }}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl transition-colors"
+              >
+                저장
+              </button>
+
+              {/* 안내 */}
+              <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                <p className="text-blue-400 text-xs">
+                  <strong>💡 Gemini AI 장점:</strong><br />
+                  • 오타, 줄임말 자동 인식<br />
+                  • "하나", "두개" 등 자연어 수량 이해<br />
+                  • 문맥 기반 제품 매칭
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 백업 불러오기 모달 */}
       {showBackupModal && (
