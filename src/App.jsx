@@ -7190,7 +7190,6 @@ ${text}
         const aiResults = await analyzeWithGemini(inputText);
         const results = aiResults.map(item => {
           let matchedProduct = null;
-          let bestScore = 0;
 
           // AI가 추천한 제품명 또는 원본 텍스트로 검색
           const searchTerms = [
@@ -7210,25 +7209,25 @@ ${text}
               matchedProduct = products.find(p => p.name.toLowerCase() === searchTerm.toLowerCase());
             }
 
-            // 3. 부분 일치
+            // 3. 부분 일치 (숫자도 포함되어야 함)
             if (!matchedProduct) {
-              matchedProduct = products.find(p => p.name.includes(searchTerm) || searchTerm.includes(p.name));
+              matchedProduct = products.find(p => {
+                const included = p.name.includes(searchTerm) || searchTerm.includes(p.name);
+                if (!included) return false;
+                // 숫자가 있으면 숫자도 ±1 범위 내에서 일치해야 함
+                const searchNums = searchTerm.match(/\d+/g) || [];
+                const productNums = p.name.match(/\d+/g) || [];
+                if (searchNums.length === 0 || productNums.length === 0) return included;
+                // 최소한 하나의 숫자가 ±1 범위 내에 있어야 함
+                return searchNums.some(sn =>
+                  productNums.some(pn => Math.abs(parseInt(sn) - parseInt(pn)) <= 1)
+                );
+              });
             }
 
-            // 4. ±1 오차 허용 매칭
+            // 4. ±1 오차 허용 매칭 (엄격한 기준)
             if (!matchedProduct) {
               matchedProduct = products.find(p => matchWithTolerance(searchTerm, p.name));
-            }
-
-            // 5. 점수 기반 매칭 (최후의 수단)
-            if (!matchedProduct) {
-              products.forEach(product => {
-                const score = calculateMatchScore(product.name, searchTerm);
-                if (score > bestScore && score >= 30) {
-                  bestScore = score;
-                  matchedProduct = product;
-                }
-              });
             }
           }
 
@@ -7237,7 +7236,7 @@ ${text}
             searchText: item.originalText,
             quantity: item.quantity || 1,
             matchedProduct: matchedProduct,
-            score: matchedProduct ? (bestScore || 100) : 0,
+            score: matchedProduct ? 100 : 0,
             selected: !!matchedProduct,
             aiMatched: true
           };
