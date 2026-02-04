@@ -9947,6 +9947,24 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              setNewProduct({
+                                name: product.name + ' (복사)',
+                                wholesale: String(product.wholesale || ''),
+                                retail: String(product.retail || ''),
+                                category: product.category || '',
+                                stock: String(product.stock || ''),
+                                min_stock: String(product.min_stock || '5'),
+                                discount_tiers: product.discount_tiers || []
+                              });
+                              setShowAddModal(true);
+                            }}
+                            className="p-2 hover:bg-slate-600 rounded-lg text-emerald-400 transition-colors"
+                            title="복사"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
                           <button onClick={() => setEditingProduct(product)} className="p-2 hover:bg-slate-600 rounded-lg text-blue-400 transition-colors" title="전체 수정">
                             <Edit3 className="w-4 h-4" />
                           </button>
