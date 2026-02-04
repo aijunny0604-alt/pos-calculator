@@ -1775,7 +1775,7 @@ const formatDateTime = (dateString) => {
 const STORAGE_KEY = 'pos-orders-shared';
 
 // 주문 상세 보기 모달
-function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, products, onSaveCustomerReturn, onDeleteCustomerReturn }) {
+function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, products, onSaveCustomerReturn, onDeleteCustomerReturn, onUpdateProduct }) {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState(null);
@@ -1787,6 +1787,9 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
   const [isReturning, setIsReturning] = useState(false);
   const [returnItems, setReturnItems] = useState([]);
   const [deletingReturnId, setDeletingReturnId] = useState(null);
+  // 제품 수정 관련 state
+  const [editingProductItem, setEditingProductItem] = useState(null);
+  const [productEditForm, setProductEditForm] = useState({ wholesale: '', retail: '' });
 
   // order가 변경될 때마다 editedOrder 초기화
   useEffect(() => {
@@ -1877,6 +1880,39 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
     } else {
       alert('최소 1개의 제품이 필요합니다.');
     }
+  };
+
+  // 등록된 제품 편집 열기
+  const openProductEdit = (item) => {
+    const product = products?.find(p => p.id === item.id);
+    if (product) {
+      setEditingProductItem(product);
+      setProductEditForm({
+        wholesale: String(product.wholesale || ''),
+        retail: String(product.retail || '')
+      });
+    }
+  };
+
+  // 등록된 제품 가격 저장
+  const saveProductEdit = async () => {
+    if (!editingProductItem || !onUpdateProduct) return;
+
+    const wholesale = parseInt(productEditForm.wholesale.replace(/[^0-9]/g, '')) || 0;
+    const retail = parseInt(productEditForm.retail.replace(/[^0-9]/g, '')) || 0;
+
+    await onUpdateProduct(editingProductItem.id, { wholesale, retail });
+
+    // 현재 주문의 해당 제품 가격도 업데이트
+    if (editedOrder) {
+      const priceToUse = order.priceType === 'wholesale' ? wholesale : retail;
+      const newItems = editedOrder.items.map(item =>
+        item.id === editingProductItem.id ? { ...item, price: priceToUse } : item
+      );
+      setEditedOrder({ ...editedOrder, items: newItems });
+    }
+
+    setEditingProductItem(null);
   };
 
   // 제품 추가
@@ -2311,7 +2347,18 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                               <span className="text-xs text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">반품 {returnedQty}개</span>
                             )}
                           </div>
-                          <div className="text-white font-medium text-sm leading-snug break-words">{item.name}</div>
+                          <div className="text-white font-medium text-sm leading-snug break-words flex items-center gap-2">
+                            <span>{item.name}</span>
+                            {onUpdateProduct && (
+                              <button
+                                onClick={() => openProductEdit(item)}
+                                className="p-1 hover:bg-slate-600 rounded text-blue-400 transition-colors"
+                                title="제품 가격 수정"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {isEditing && (
                           <button
@@ -2366,9 +2413,18 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
                     <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
                       <div className="col-span-1 text-slate-400 text-center font-medium">{index + 1}</div>
                       <div className="col-span-4 text-white font-medium flex items-center gap-2">
-                        {item.name}
+                        <span className="flex-1">{item.name}</span>
                         {returnedQty > 0 && (
                           <span className="text-xs text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">반품 {returnedQty}개</span>
+                        )}
+                        {onUpdateProduct && (
+                          <button
+                            onClick={() => openProductEdit(item)}
+                            className="p-1 hover:bg-slate-600 rounded text-blue-400 transition-colors opacity-60 hover:opacity-100"
+                            title="제품 가격 수정"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
                       <div className="col-span-2 text-right text-slate-300 tabular-nums">{formatPrice(item.price)}</div>
@@ -2625,6 +2681,59 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
           onClose={() => { setShowQuickCalculator(false); setCalculatorInitialValue(null); }}
           initialValue={calculatorInitialValue}
         />
+      )}
+
+      {/* 제품 가격 편집 모달 */}
+      {editingProductItem && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in" onClick={() => setEditingProductItem(null)}>
+          <div className="bg-slate-800 rounded-2xl w-full max-w-sm border border-blue-500/50 shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <Edit3 className="w-5 h-5 text-white" />
+                <div>
+                  <h3 className="text-lg font-bold text-white">제품 가격 수정</h3>
+                  <p className="text-blue-100 text-sm truncate">{editingProductItem.name}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-slate-400 text-sm mb-1.5">도매가</label>
+                <input
+                  type="text"
+                  value={productEditForm.wholesale}
+                  onChange={(e) => setProductEditForm({ ...productEditForm, wholesale: e.target.value.replace(/[^0-9]/g, '') })}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white text-right text-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1.5">소비자가</label>
+                <input
+                  type="text"
+                  value={productEditForm.retail}
+                  onChange={(e) => setProductEditForm({ ...productEditForm, retail: e.target.value.replace(/[^0-9]/g, '') })}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white text-right text-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditingProductItem(null)}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={saveProductEdit}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-medium transition-colors"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -13796,6 +13905,7 @@ export default function PriceCalculator() {
           formatPrice={formatPrice}
           onUpdateOrder={updateOrder}
           products={products.length > 0 ? products : priceData}
+          onUpdateProduct={updateProduct}
           onSaveCustomerReturn={async (returnData) => {
             await supabase.addCustomerReturn(returnData);
           }}
