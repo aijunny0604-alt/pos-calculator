@@ -6721,7 +6721,7 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   // Gemini AI 설정
   // 기본 API 키 (난독화)
   const getDefaultApiKey = () => {
-    const encoded = 'QUl6YVN5QkZtcDhZYzB4VDBkQzA3ODRNN3c2c01JQm9aSVlIOFBj';
+    const encoded = 'QUl6YVN5QkZtcDhZYzB4VDBkQzA3ODRNNnc2c01JQm9aSVlIOFBj';
     try { return atob(encoded); } catch { return ''; }
   };
 
