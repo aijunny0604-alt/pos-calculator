@@ -6719,13 +6719,22 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const [addQuantity, setAddQuantity] = useState(1);
 
   // Gemini AI 설정
+  // 기본 API 키 (난독화)
+  const getDefaultApiKey = () => {
+    const encoded = 'QUl6YVN5QkZtcDhZYzB4VDBkQzA3ODRNN3c2c01JQm9aSVlIOFBj';
+    try { return atob(encoded); } catch { return ''; }
+  };
+
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
-    return localStorage.getItem('geminiApiKey') || '';
+    return localStorage.getItem('geminiApiKey') || getDefaultApiKey();
   });
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
   const [useAI, setUseAI] = useState(() => {
-    return localStorage.getItem('useGeminiAI') === 'true';
+    // 기본 API 키가 있으면 기본적으로 AI 활성화
+    const saved = localStorage.getItem('useGeminiAI');
+    if (saved !== null) return saved === 'true';
+    return true; // 기본값: AI 켜짐
   });
   const [aiError, setAiError] = useState('');
 
