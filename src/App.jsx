@@ -14200,7 +14200,7 @@ export default function PriceCalculator() {
 
               {/* JSR 단가표 바로가기 */}
               <a
-                href="https://docs.google.com/document/d/1VbohmFR_au6X3c9iKZny6VxdZAODlXqNzzzSeiTj580/edit?tab=t.0"
+                href="https://docs.google.com/document/d/e/2PACX-1vTfbJ0wRV2bW5D-lJ1na9vFLjpjQzofyxh0MF5kcsrhz6KYydBqJRz7IFCvwrAuYhZeUrAHU0DBeCNj/pub"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-shrink-0 flex items-center justify-center gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/50 rounded-lg transition-all hover-lift"
@@ -14212,7 +14212,7 @@ export default function PriceCalculator() {
 
               {/* 번웨이 단가표 바로가기 */}
               <a
-                href="https://docs.google.com/document/d/1iESSzMif9QMWHfzpmr0lv5p4GB5jjH44sTMOX_C4gNo/edit?tab=t.0"
+                href="https://docs.google.com/document/d/e/2PACX-1vQbwis0GO8q03dNHA6p-G-xD1OOoENk9EP6s0PgjGBXY89ziSnP2yVPFmd4JThokUFLgYSepmL3zyPt/pub"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-shrink-0 flex items-center justify-center gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/50 rounded-lg transition-all hover-lift"
