@@ -14195,6 +14195,33 @@ export default function PriceCalculator() {
                 <Package className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-slate-300" />
               </button>
 
+              {/* 구분선 */}
+              <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
+
+              {/* JSR 단가표 바로가기 */}
+              <a
+                href="https://docs.google.com/document/d/1VbohmFR_au6X3c9iKZny6VxdZAODlXqNzzzSeiTj580/edit?tab=t.0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 flex items-center justify-center gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/50 rounded-lg transition-all hover-lift"
+                title="JSR 퍼포먼스 단가표"
+              >
+                <FileText className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-rose-400" />
+                <span className="hidden sm:inline text-xs text-rose-300 font-medium">JSR</span>
+              </a>
+
+              {/* 번웨이 단가표 바로가기 */}
+              <a
+                href="https://docs.google.com/document/d/1iESSzMif9QMWHfzpmr0lv5p4GB5jjH44sTMOX_C4gNo/edit?tab=t.0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 flex items-center justify-center gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/50 rounded-lg transition-all hover-lift"
+                title="번웨이 퍼포먼스 단가표"
+              >
+                <FileText className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                <span className="hidden sm:inline text-xs text-cyan-300 font-medium">번웨이</span>
+              </a>
+
               {/* 알림 설정 버튼 - 맨 오른쪽 */}
               <button
                 onClick={() => setShowNotificationSettings(true)}
