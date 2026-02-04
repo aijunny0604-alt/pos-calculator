@@ -7670,74 +7670,66 @@ MVB 64 Y R 2개`}
       {/* AI 설정 모달 */}
       {showApiSettings && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowApiSettings(false)}>
-          <div className="bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 flex items-center justify-between">
               <h3 className="text-white font-bold flex items-center gap-2">
                 <Sparkles className="w-5 h-5" />
-                AI 설정
+                분석 모드 설정
               </h3>
               <button onClick={() => setShowApiSettings(false)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <div className="p-4 space-y-4">
-              {/* AI 사용 토글 */}
-              <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
-                <div>
-                  <p className="text-white font-medium">Gemini AI 사용</p>
-                  <p className="text-slate-400 text-xs">자연어 주문 분석 활성화</p>
-                </div>
-                <button
-                  onClick={() => {
-                    const newValue = !useAI;
-                    setUseAI(newValue);
-                    localStorage.setItem('useGeminiAI', String(newValue));
-                  }}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${useAI ? 'bg-emerald-500' : 'bg-slate-600'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${useAI ? 'translate-x-7' : 'translate-x-1'}`} />
-                </button>
-              </div>
-
-              {/* API Key 입력 */}
-              <div>
-                <label className="block text-slate-300 text-sm mb-2">Google Gemini API Key</label>
-                <input
-                  type="password"
-                  value={tempApiKey}
-                  onChange={(e) => setTempApiKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
-                <p className="text-slate-500 text-xs mt-2">
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
-                    Google AI Studio
-                  </a>
-                  에서 무료로 발급받을 수 있습니다
-                </p>
-              </div>
-
-              {/* 저장 버튼 */}
+            <div className="p-4 space-y-3">
+              {/* AI ON 옵션 */}
               <button
                 onClick={() => {
-                  setGeminiApiKey(tempApiKey);
-                  localStorage.setItem('geminiApiKey', tempApiKey);
+                  setUseAI(true);
+                  localStorage.setItem('useGeminiAI', 'true');
                   setShowApiSettings(false);
                 }}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl transition-colors"
+                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  useAI
+                    ? 'bg-emerald-500/20 border-emerald-500 ring-2 ring-emerald-500/50'
+                    : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                }`}
               >
-                저장
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${useAI ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-bold ${useAI ? 'text-emerald-400' : 'text-white'}`}>Gemini AI 분석</p>
+                    <p className="text-slate-400 text-xs">오타/줄임말 자동 인식, 자연어 이해</p>
+                  </div>
+                  {useAI && <Check className="w-5 h-5 text-emerald-400 ml-auto" />}
+                </div>
               </button>
 
-              {/* 안내 */}
-              <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                <p className="text-blue-400 text-xs">
-                  <strong>💡 Gemini AI 장점:</strong><br />
-                  • 오타, 줄임말 자동 인식<br />
-                  • "하나", "두개" 등 자연어 수량 이해<br />
-                  • 문맥 기반 제품 매칭
-                </p>
-              </div>
+              {/* 패턴 매칭 옵션 */}
+              <button
+                onClick={() => {
+                  setUseAI(false);
+                  localStorage.setItem('useGeminiAI', 'false');
+                  setShowApiSettings(false);
+                }}
+                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  !useAI
+                    ? 'bg-purple-500/20 border-purple-500 ring-2 ring-purple-500/50'
+                    : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!useAI ? 'bg-purple-500' : 'bg-slate-600'}`}>
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-bold ${!useAI ? 'text-purple-400' : 'text-white'}`}>패턴 분석</p>
+                    <p className="text-slate-400 text-xs">기본 텍스트 매칭, 오프라인 사용 가능</p>
+                  </div>
+                  {!useAI && <Check className="w-5 h-5 text-purple-400 ml-auto" />}
+                </div>
+              </button>
             </div>
           </div>
         </div>
