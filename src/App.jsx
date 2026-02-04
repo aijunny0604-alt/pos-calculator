@@ -7121,34 +7121,62 @@ ${text}
     setSearchingIndex(null);
     setAiError('');
 
+    // 검색어에서 수량 접미사 제거
+    const cleanSearchText = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/\d+\s*(개|세트|set|ea|pcs|본|장|박스|box)\s*$/i, '') // 수량+단위 제거
+        .replace(/[x×*]\s*\d+\s*$/i, '') // x3 같은 패턴 제거
+        .replace(/[,.\-_\/\\()[\]{}]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
     // 숫자 ±1 오차 허용 매칭 함수
     const matchWithTolerance = (searchName, productName) => {
       if (!searchName || !productName) return false;
 
+      // 검색어 정리 (수량 접미사 제거)
+      const cleanSearch = cleanSearchText(searchName);
+      const cleanProduct = productName.trim();
+
       // 정확히 일치
-      if (productName === searchName || productName.includes(searchName) || searchName.includes(productName)) {
+      if (cleanProduct === cleanSearch ||
+          cleanProduct.toLowerCase() === cleanSearch.toLowerCase() ||
+          cleanProduct.includes(cleanSearch) ||
+          cleanSearch.includes(cleanProduct)) {
         return true;
       }
 
-      // 숫자 추출 (마지막 숫자가 규격인 경우가 많음)
-      const searchNums = searchName.match(/\d+/g) || [];
-      const productNums = productName.match(/\d+/g) || [];
+      // 숫자 추출 (규격 숫자들)
+      const searchNums = cleanSearch.match(/\d+/g) || [];
+      const productNums = cleanProduct.match(/\d+/g) || [];
 
-      // 숫자 없으면 일반 비교
-      if (searchNums.length === 0 || productNums.length === 0) return false;
+      // 숫자 없으면 텍스트만 비교
+      if (searchNums.length === 0 && productNums.length === 0) {
+        const searchTextOnly = cleanSearch.replace(/\s+/g, '').toLowerCase();
+        const productTextOnly = cleanProduct.replace(/\s+/g, '').toLowerCase();
+        return searchTextOnly === productTextOnly ||
+               searchTextOnly.includes(productTextOnly) ||
+               productTextOnly.includes(searchTextOnly);
+      }
 
       // 문자 부분 추출 (숫자 제거)
-      const searchText = searchName.replace(/\d+/g, '').replace(/\s+/g, '').toLowerCase();
-      const productText = productName.replace(/\d+/g, '').replace(/\s+/g, '').toLowerCase();
+      const searchText = cleanSearch.replace(/\d+/g, '').replace(/\s+/g, '').toLowerCase();
+      const productText = cleanProduct.replace(/\d+/g, '').replace(/\s+/g, '').toLowerCase();
 
-      // 문자 부분이 다르면 매칭 실패
-      if (searchText !== productText) return false;
+      // 문자 부분 비교 (포함 관계도 허용)
+      const textMatch = searchText === productText ||
+                        searchText.includes(productText) ||
+                        productText.includes(searchText);
+      if (!textMatch) return false;
 
-      // 숫자 개수가 같아야 함
-      if (searchNums.length !== productNums.length) return false;
+      // 숫자 개수가 다르면 일부만 비교
+      const minLen = Math.min(searchNums.length, productNums.length);
+      if (minLen === 0) return textMatch;
 
       // 각 숫자 비교 (±1 허용)
-      for (let i = 0; i < searchNums.length; i++) {
+      for (let i = 0; i < minLen; i++) {
         const diff = Math.abs(parseInt(searchNums[i]) - parseInt(productNums[i]));
         if (diff > 1) return false; // ±1 초과면 실패
       }
@@ -7162,19 +7190,45 @@ ${text}
         const aiResults = await analyzeWithGemini(inputText);
         const results = aiResults.map(item => {
           let matchedProduct = null;
+          let bestScore = 0;
 
-          if (item.matchedProduct) {
+          // AI가 추천한 제품명 또는 원본 텍스트로 검색
+          const searchTerms = [
+            item.matchedProduct,
+            cleanSearchText(item.originalText),
+            item.originalText
+          ].filter(Boolean);
+
+          for (const searchTerm of searchTerms) {
+            if (matchedProduct) break;
+
             // 1. 정확히 일치하는 제품 찾기
-            matchedProduct = products.find(p => p.name === item.matchedProduct);
+            matchedProduct = products.find(p => p.name === searchTerm);
 
-            // 2. 부분 일치
+            // 2. 대소문자 무시 일치
             if (!matchedProduct) {
-              matchedProduct = products.find(p => p.name.includes(item.matchedProduct) || item.matchedProduct.includes(p.name));
+              matchedProduct = products.find(p => p.name.toLowerCase() === searchTerm.toLowerCase());
             }
 
-            // 3. ±1 오차 허용 매칭
+            // 3. 부분 일치
             if (!matchedProduct) {
-              matchedProduct = products.find(p => matchWithTolerance(item.matchedProduct, p.name));
+              matchedProduct = products.find(p => p.name.includes(searchTerm) || searchTerm.includes(p.name));
+            }
+
+            // 4. ±1 오차 허용 매칭
+            if (!matchedProduct) {
+              matchedProduct = products.find(p => matchWithTolerance(searchTerm, p.name));
+            }
+
+            // 5. 점수 기반 매칭 (최후의 수단)
+            if (!matchedProduct) {
+              products.forEach(product => {
+                const score = calculateMatchScore(product.name, searchTerm);
+                if (score > bestScore && score >= 30) {
+                  bestScore = score;
+                  matchedProduct = product;
+                }
+              });
             }
           }
 
@@ -7183,7 +7237,7 @@ ${text}
             searchText: item.originalText,
             quantity: item.quantity || 1,
             matchedProduct: matchedProduct,
-            score: matchedProduct ? 100 : 0,
+            score: matchedProduct ? (bestScore || 100) : 0,
             selected: !!matchedProduct,
             aiMatched: true
           };
