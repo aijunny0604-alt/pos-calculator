@@ -7121,14 +7121,63 @@ ${text}
     setSearchingIndex(null);
     setAiError('');
 
+    // 숫자 ±1 오차 허용 매칭 함수
+    const matchWithTolerance = (searchName, productName) => {
+      if (!searchName || !productName) return false;
+
+      // 정확히 일치
+      if (productName === searchName || productName.includes(searchName) || searchName.includes(productName)) {
+        return true;
+      }
+
+      // 숫자 추출 (마지막 숫자가 규격인 경우가 많음)
+      const searchNums = searchName.match(/\d+/g) || [];
+      const productNums = productName.match(/\d+/g) || [];
+
+      // 숫자 없으면 일반 비교
+      if (searchNums.length === 0 || productNums.length === 0) return false;
+
+      // 문자 부분 추출 (숫자 제거)
+      const searchText = searchName.replace(/\d+/g, '').replace(/\s+/g, '').toLowerCase();
+      const productText = productName.replace(/\d+/g, '').replace(/\s+/g, '').toLowerCase();
+
+      // 문자 부분이 다르면 매칭 실패
+      if (searchText !== productText) return false;
+
+      // 숫자 개수가 같아야 함
+      if (searchNums.length !== productNums.length) return false;
+
+      // 각 숫자 비교 (±1 허용)
+      for (let i = 0; i < searchNums.length; i++) {
+        const diff = Math.abs(parseInt(searchNums[i]) - parseInt(productNums[i]));
+        if (diff > 1) return false; // ±1 초과면 실패
+      }
+
+      return true;
+    };
+
     // Gemini AI 사용
     if (useAI && geminiApiKey) {
       try {
         const aiResults = await analyzeWithGemini(inputText);
         const results = aiResults.map(item => {
-          const matchedProduct = item.matchedProduct
-            ? products.find(p => p.name === item.matchedProduct || p.name.includes(item.matchedProduct) || item.matchedProduct.includes(p.name))
-            : null;
+          let matchedProduct = null;
+
+          if (item.matchedProduct) {
+            // 1. 정확히 일치하는 제품 찾기
+            matchedProduct = products.find(p => p.name === item.matchedProduct);
+
+            // 2. 부분 일치
+            if (!matchedProduct) {
+              matchedProduct = products.find(p => p.name.includes(item.matchedProduct) || item.matchedProduct.includes(p.name));
+            }
+
+            // 3. ±1 오차 허용 매칭
+            if (!matchedProduct) {
+              matchedProduct = products.find(p => matchWithTolerance(item.matchedProduct, p.name));
+            }
+          }
+
           return {
             originalText: item.originalText,
             searchText: item.originalText,
