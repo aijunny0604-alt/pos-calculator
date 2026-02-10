@@ -3948,12 +3948,14 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
 
 // ==================== 장바구니 저장 모달 ====================
 // ==================== 거래처 목록 페이지 ====================
-function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
+function CustomerListPage({ customers, orders = [], formatPrice, onBack, onSaveCustomerReturn, onRefreshOrders, onUpdateOrder }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
   const [detailOrder, setDetailOrder] = useState(null); // 상세보기 모달용 주문
   const [blacklistFilter, setBlacklistFilter] = useState('all'); // 'all', 'blacklist', 'normal'
+  const [isReturning, setIsReturning] = useState(false); // 반품 모드
+  const [returnItems, setReturnItems] = useState([]); // 반품 항목들
 
   // 블랙리스트 통계
   const blacklistStats = {
@@ -4012,7 +4014,85 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
     const date = new Date(dateStr);
     return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
   };
-  
+
+  // 반품 모드 시작
+  const startReturn = () => {
+    if (!detailOrder) return;
+    setReturnItems((detailOrder.items || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      returnQty: 0
+    })));
+    setIsReturning(true);
+  };
+
+  // 반품 저장
+  const saveReturn = async () => {
+    if (!detailOrder || !onSaveCustomerReturn) return;
+    const returnedItems = returnItems.filter(item => item.returnQty > 0);
+    if (returnedItems.length === 0) {
+      alert('반품할 제품을 선택하세요.');
+      return;
+    }
+
+    const returnId = `RET-${Date.now()}`;
+    const returnData = returnedItems.map(item => ({
+      order_number: detailOrder.orderNumber,
+      return_id: returnId,
+      item_id: item.id,
+      item_name: item.name,
+      quantity: item.returnQty,
+      price: item.price,
+      total: item.price * item.returnQty,
+      returned_at: new Date().toISOString()
+    }));
+
+    for (const data of returnData) {
+      await onSaveCustomerReturn(data);
+    }
+
+    // 모달에 반품 정보 즉시 반영
+    const newReturns = [
+      ...(detailOrder.returns || []),
+      ...returnedItems.filter(ri => ri.returnQty > 0).map(item => ({
+        returnId: returnId,
+        itemId: item.id,
+        itemName: item.name,
+        quantity: item.returnQty,
+        price: item.price,
+        total: item.price * item.returnQty,
+        returnedAt: new Date().toISOString()
+      }))
+    ];
+    const totalReturned = newReturns.reduce((sum, r) => sum + (r.total || r.price * r.quantity), 0);
+
+    const updatedOrder = {
+      ...detailOrder,
+      returns: newReturns,
+      totalReturned: totalReturned,
+      updatedAt: new Date().toISOString()
+    };
+
+    setDetailOrder(updatedOrder);
+
+    // orders 테이블에도 반품 정보 업데이트 (모달 닫고 다시 열어도 유지)
+    if (onUpdateOrder) {
+      await onUpdateOrder(updatedOrder);
+    }
+
+    setIsReturning(false);
+    setReturnItems([]);
+
+    // 알림
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg z-[100] animate-fade-in';
+    toast.textContent = `✓ 반품 처리 완료 (${returnedItems.length}건)`;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 1500);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col select-none">
       {/* 헤더 */}
@@ -4571,49 +4651,105 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack }) {
               )}
             </div>
 
+            {/* 반품 처리 UI */}
+            {isReturning && (
+              <div className="px-4 pb-3">
+                <div className="bg-orange-500/10 border border-orange-500/40 rounded-xl p-3">
+                  <p className="text-orange-400 text-xs font-bold mb-3 flex items-center gap-1">
+                    <RotateCcw className="w-3.5 h-3.5" /> 반품 수량 선택
+                  </p>
+                  <div className="space-y-2">
+                    {returnItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{item.name}</p>
+                          <p className="text-slate-400 text-xs">{formatPrice(item.price)} × 주문 {item.quantity}개</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setReturnItems(prev => prev.map((ri, i) => i === idx ? { ...ri, returnQty: Math.max(0, ri.returnQty - 1) } : ri))}
+                            className="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
+                          >-</button>
+                          <span className={`w-8 text-center text-sm font-bold ${item.returnQty > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{item.returnQty}</span>
+                          <button
+                            onClick={() => setReturnItems(prev => prev.map((ri, i) => i === idx ? { ...ri, returnQty: Math.min(ri.quantity, ri.returnQty + 1) } : ri))}
+                            className="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center text-white"
+                          >+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {returnItems.some(ri => ri.returnQty > 0) && (
+                    <div className="mt-3 pt-3 border-t border-orange-500/30 text-right">
+                      <span className="text-orange-400 font-bold">
+                        반품 금액: -{formatPrice(returnItems.reduce((sum, ri) => sum + ri.price * ri.returnQty, 0))}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 모달 하단 버튼 */}
             <div className="p-4 border-t border-slate-700 flex-shrink-0">
-              <button
-                onClick={() => {
-                  const lines = [
-                    `[${selectedCustomer?.name || '업체명'}]`,
-                    formatDate(detailOrder.createdAt),
-                    '',
-                    ...(detailOrder.items || []).map(item => `${item.name} x${item.quantity}  ${formatPrice(item.price * item.quantity)}`),
-                    '',
-                    `총 금액: ${formatPrice(detailOrder.totalAmount)}`,
-                  ];
-
-                  // 반품 정보 추가
-                  if (detailOrder.totalReturned > 0) {
-                    lines.push(`반품: -${formatPrice(detailOrder.totalReturned)}`);
-                    lines.push(`실결제액: ${formatPrice(detailOrder.totalAmount - detailOrder.totalReturned)}`);
-                  } else {
-                    lines.push(`공급가액: ${formatPrice(calcExVat(detailOrder.totalAmount))}`);
-                  }
-
-                  if (detailOrder.memo) {
-                    lines.push(`메모: ${detailOrder.memo}`);
-                  }
-
-                  navigator.clipboard.writeText(lines.join('\n'));
-
-                  // 복사 완료 알림
-                  const toast = document.createElement('div');
-                  toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg z-[100] animate-fade-in';
-                  toast.textContent = '✓ 복사되었습니다';
-                  document.body.appendChild(toast);
-                  setTimeout(() => {
-                    toast.style.opacity = '0';
-                    toast.style.transition = 'opacity 0.3s';
-                    setTimeout(() => toast.remove(), 300);
-                  }, 1500);
-                }}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                주문 복사
-              </button>
+              {isReturning ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setIsReturning(false); setReturnItems([]); }}
+                    className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={saveReturn}
+                    className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    반품 확정
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const lines = [
+                        `[${selectedCustomer?.name || '업체명'}]`,
+                        formatDate(detailOrder.createdAt),
+                        '',
+                        ...(detailOrder.items || []).map(item => `${item.name} x${item.quantity}  ${formatPrice(item.price * item.quantity)}`),
+                        '',
+                        `총 금액: ${formatPrice(detailOrder.totalAmount)}`,
+                      ];
+                      if (detailOrder.totalReturned > 0) {
+                        lines.push(`반품: -${formatPrice(detailOrder.totalReturned)}`);
+                        lines.push(`실결제액: ${formatPrice(detailOrder.totalAmount - detailOrder.totalReturned)}`);
+                      } else {
+                        lines.push(`공급가액: ${formatPrice(calcExVat(detailOrder.totalAmount))}`);
+                      }
+                      if (detailOrder.memo) lines.push(`메모: ${detailOrder.memo}`);
+                      navigator.clipboard.writeText(lines.join('\n'));
+                      const toast = document.createElement('div');
+                      toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg z-[100] animate-fade-in';
+                      toast.textContent = '✓ 복사되었습니다';
+                      document.body.appendChild(toast);
+                      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 1500);
+                    }}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    주문 복사
+                  </button>
+                  {onSaveCustomerReturn && (
+                    <button
+                      onClick={startReturn}
+                      className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      반품 처리
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -13991,6 +14127,11 @@ export default function PriceCalculator() {
         orders={orders}
         formatPrice={formatPrice}
         onBack={() => setShowCustomerListModal(false)}
+        onSaveCustomerReturn={async (returnData) => {
+          await supabase.addCustomerReturn(returnData);
+        }}
+        onRefreshOrders={() => loadOrders(true)}
+        onUpdateOrder={updateOrder}
       />
     );
   }
