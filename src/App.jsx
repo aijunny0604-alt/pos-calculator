@@ -7072,12 +7072,29 @@ ${text}
 
     // JSON 추출 (```json ... ``` 또는 순수 JSON)
     let jsonStr = aiText;
-    const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/\[[\s\S]*\]/);
+    const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/\[[\s\S]*?\]/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1] || jsonMatch[0];
     }
 
-    return JSON.parse(jsonStr);
+    // JSON 정리: 깨진 문자, trailing comma 등 보정
+    jsonStr = jsonStr
+      .replace(/,\s*]/g, ']')       // trailing comma 제거
+      .replace(/,\s*}/g, '}')       // trailing comma 제거
+      .replace(/[\x00-\x1F]/g, ' ') // 제어 문자 제거
+      .trim();
+
+    try {
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      console.error('JSON 파싱 실패, 원본:', aiText);
+      // 한 번 더 시도: 배열 부분만 추출
+      const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        return JSON.parse(arrayMatch[0].replace(/,\s*]/g, ']'));
+      }
+      throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
+    }
   };
 
   // 실시간 자동 저장
