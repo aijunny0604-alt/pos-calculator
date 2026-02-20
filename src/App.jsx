@@ -1,8 +1,33 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Lenis from 'lenis';
 import { createClient } from '@supabase/supabase-js';
-import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, History, List, Save, Eye, Calendar, Clock, ChevronLeft, Cloud, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square, Maximize2, Minimize2, FolderOpen } from 'lucide-react';
+import './custom-styles.css';
+import { Search, ShoppingCart, ShoppingBag, Package, Calculator, Trash2, Plus, Minus, X, ChevronDown, ChevronUp, FileText, Copy, Check, Printer, List, Save, Eye, Calendar, Clock, ChevronLeft, RefreshCw, Users, Receipt, Wifi, WifiOff, Settings, Lock, Upload, Download, Edit, Edit3, LogOut, Zap, AlertTriangle, MapPin, Phone, Building, Truck, RotateCcw, Sparkles, ArrowLeft, Bell, CheckSquare, Square, Maximize2, FolderOpen } from 'lucide-react';
+
+// ==================== HTML 이스케이프 ====================
+const escapeHtml = (str) => {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+// ==================== 날짜 형식 이름 체크 ====================
+const isDateFormatName = (str) => {
+  if (!str) return true;
+  const trimmed = str.trim();
+  const datePatterns = [
+    /^\d{1,2}월\s*\d{1,2}일/,
+    /^\d{4}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2}/,
+    /^오전|^오후/,
+    /^\d{1,2}:\d{2}/,
+  ];
+  return datePatterns.some(pattern => pattern.test(trimmed));
+};
 
 // ==================== 공통 검색 함수 ====================
 const normalizeText = (text) => text.toLowerCase().replace(/[\s\-_]/g, '');
@@ -146,8 +171,7 @@ const supabase = {
       if (!response.ok) {
         // customer_address 컬럼이 없을 경우 재시도
         const errorText = await response.text();
-        if (errorText.includes('customer_address') || errorText.includes('column')) {
-          console.log('⚠️ customer_address 컬럼 없음, 재시도...');
+        if (errorText.includes('customer_address')) {
           const { customer_address, ...orderWithoutAddress } = order;
           const retryResponse = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
             method: 'POST',
@@ -452,7 +476,6 @@ const supabase = {
 
   async addSavedCart(cart) {
     try {
-      console.log('🔵 Supabase에 장바구니 저장 시도:', cart);
       const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts`, {
         method: 'POST',
         headers: {
@@ -470,8 +493,8 @@ const supabase = {
 
         // 컬럼이 없는 경우 재시도 (예약 필드 제외)
         if (errorText.includes('column') || errorText.includes('does not exist')) {
-          console.log('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 저장...');
-          console.log('⚠️ Supabase 테이블에 다음 컬럼들을 추가하세요: delivery_date, status, priority, memo, reminded');
+          console.warn('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 저장...');
+          console.warn('⚠️ Supabase 테이블에 다음 컬럼들을 추가하세요: delivery_date, status, priority, memo, reminded');
           const basicCart = {
             name: cart.name,
             items: cart.items,
@@ -497,7 +520,6 @@ const supabase = {
             throw new Error('Failed to add saved cart (retry)');
           }
           const result = await retryResponse.json();
-          console.log('✅ 기본 필드만 저장 완료:', result);
           // 예약 필드를 원본 데이터에서 복원하여 반환
           return [{
             ...result[0],
@@ -514,7 +536,6 @@ const supabase = {
       }
 
       const result = await response.json();
-      console.log('✅ Supabase 저장 완료:', result);
       return result;
     } catch (error) {
       console.error('❌ Supabase addSavedCart error:', error);
@@ -541,7 +562,6 @@ const supabase = {
 
   async updateSavedCart(id, cart) {
     try {
-      console.log('🔵 Supabase 장바구니 업데이트 시도:', { id, cart });
       const response = await fetch(`${SUPABASE_URL}/rest/v1/saved_carts?id=eq.${id}`, {
         method: 'PATCH',
         headers: {
@@ -559,8 +579,8 @@ const supabase = {
 
         // 컬럼이 없는 경우 재시도 (예약 필드 제외)
         if (errorText.includes('column') || errorText.includes('does not exist')) {
-          console.log('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 업데이트...');
-          console.log('⚠️ Supabase 테이블에 다음 컬럼들을 추가하세요: delivery_date, status, priority, memo, reminded');
+          console.warn('⚠️ Supabase 테이블에 예약 필드 컬럼 없음. 기본 필드만 업데이트...');
+          console.warn('⚠️ Supabase 테이블에 다음 컬럼들을 추가하세요: delivery_date, status, priority, memo, reminded');
           const basicCart = {
             name: cart.name,
             items: cart.items,
@@ -583,7 +603,6 @@ const supabase = {
             throw new Error('Failed to update saved cart (retry)');
           }
           const result = await retryResponse.json();
-          console.log('✅ 기본 필드만 업데이트 완료:', result);
           // 예약 필드를 원본 데이터에서 복원하여 반환
           return [{
             ...result[0],
@@ -600,7 +619,6 @@ const supabase = {
       }
 
       const result = await response.json();
-      console.log('✅ Supabase 업데이트 완료:', result);
       return result;
     } catch (error) {
       console.error('❌ Supabase updateSavedCart error:', error);
@@ -629,610 +647,6 @@ const supabase = {
 // 관리자 비밀번호
 const ADMIN_PASSWORD = '1234';
 
-// 커스텀 스타일 및 애니메이션
-const CustomStyles = () => (
-  <style>{`
-    /* 물리 기반 부드러운 스크롤 */
-    * {
-      scroll-behavior: smooth;
-      -webkit-tap-highlight-color: transparent; /* 터치 하이라이트 제거 */
-    }
-    
-    html {
-      scroll-behavior: smooth;
-      overflow-y: scroll;
-      overscroll-behavior: smooth;
-      background: #1e293b; /* slate-800 - 헤더와 동일 */
-    }
-    
-    body {
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior-y: contain;
-      cursor: default;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      background: #1e293b; /* slate-800 - 헤더와 동일 */
-      min-height: 100vh;
-    }
-    
-    #root {
-      background: #1e293b; /* slate-800 - 헤더와 동일 */
-      min-height: 100vh;
-    }
-    
-    /* 모든 요소 텍스트 선택 방지 */
-    *, *::before, *::after {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    /* 텍스트 드래그 방지 */
-    h1, h2, h3, h4, h5, h6, p, span, div, label {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      -webkit-user-drag: none;
-    }
-    
-    /* 카드, 버튼 등 인터랙티브 요소 */
-    .card, [class*="rounded"], [class*="bg-slate"], [class*="border"] {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      user-select: none;
-    }
-    
-    /* 입력 필드와 복사 필요한 데이터만 선택 가능 */
-    input, textarea, [contenteditable="true"], .selectable {
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      user-select: text;
-      /* iOS 줌 방지 */
-      font-size: 16px !important;
-    }
-    
-    /* 버튼, 링크에만 pointer 커서 */
-    button, a, [role="button"], .cursor-pointer {
-      cursor: pointer;
-      /* 터치 영역 최소 44px (애플 가이드라인) */
-      min-height: 44px;
-    }
-    
-    /* 입력 필드는 text 커서 */
-    input, textarea, select {
-      cursor: text;
-      /* iOS 줌 방지 */
-      font-size: 16px !important;
-    }
-    
-    input[type="number"] {
-      cursor: text;
-    }
-    
-    /* 모바일 최적화 */
-    @media (max-width: 640px) {
-      /* 터치 친화적 버튼 크기 */
-      button {
-        min-height: 44px;
-        min-width: 44px;
-      }
-      
-      /* 모달 풀스크린 최적화 */
-      .fixed.inset-0 > div {
-        max-height: 90vh !important;
-        margin: 16px;
-      }
-      
-      /* 폰트 사이즈 조정 */
-      .text-xs {
-        font-size: 11px !important;
-      }
-      
-      .text-sm {
-        font-size: 13px !important;
-      }
-    }
-    
-    /* 태블릿 최적화 */
-    @media (min-width: 641px) and (max-width: 1024px) {
-      /* 터치 친화적 */
-      button {
-        min-height: 40px;
-      }
-    }
-    
-    /* 아이폰 노치 대응 */
-    @supports (padding: max(0px)) {
-      .fixed.bottom-0 {
-        padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
-      }
-    }
-    
-    /* 모든 스크롤 가능 영역에 부드러운 스크롤 적용 */
-    [class*="overflow"] {
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-    }
-    
-    /* 모달 내부 스크롤 - Lenis 간섭 방지 */
-    [data-lenis-prevent] {
-      overscroll-behavior: contain !important;
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-y !important;
-    }
-    
-    /* 모달 오버레이 스크롤 방지 */
-    .fixed.inset-0 {
-      overscroll-behavior: none;
-      touch-action: none;
-    }
-    
-    /* 모달 내부 컨텐츠는 스크롤 허용 */
-    .fixed.inset-0 .modal-scroll-area {
-      overscroll-behavior: contain !important;
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-y !important;
-    }
-    
-    /* 모바일 터치 스크롤 강화 */
-    .mobile-scroll {
-      -webkit-overflow-scrolling: touch !important;
-      overscroll-behavior: contain !important;
-      touch-action: pan-y !important;
-      scroll-behavior: auto !important;
-    }
-    
-    /* 모바일에서 모달 스크롤 영역 */
-    @media (max-width: 768px) {
-      /* 모달 스크롤 영역 강화 */
-      .modal-scroll-area {
-        -webkit-overflow-scrolling: touch !important;
-        overscroll-behavior: contain !important;
-        touch-action: pan-y !important;
-        overflow-y: auto !important;
-      }
-      
-      /* 모달 높이 모바일 최적화 */
-      .max-h-\\[90vh\\] {
-        max-height: 85vh !important;
-      }
-      
-      .max-h-\\[calc\\(90vh-200px\\)\\] {
-        max-height: calc(85vh - 180px) !important;
-      }
-      
-      /* body 스크롤 잠금 시 */
-      body.modal-open {
-        overflow: hidden !important;
-        position: fixed !important;
-        width: 100% !important;
-        height: 100% !important;
-      }
-    }
-    
-    /* 스크롤바 숨기기 유틸리티 */
-    .scrollbar-hide {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;  /* Firefox */
-    }
-
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;  /* Chrome, Safari and Opera */
-    }
-
-    /* 커스텀 스크롤바 */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: rgba(30, 41, 59, 0.5);
-      border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, #3b82f6, #8b5cf6);
-      border-radius: 10px;
-      border: 2px solid rgba(30, 41, 59, 0.5);
-      transition: background 0.3s ease;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(180deg, #60a5fa, #a78bfa);
-    }
-    
-    /* 카테고리 내부 스크롤바 */
-    .category-scroll::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    .category-scroll::-webkit-scrollbar-track {
-      background: rgba(51, 65, 85, 0.3);
-      border-radius: 10px;
-    }
-    
-    .category-scroll::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, #475569, #64748b);
-      border-radius: 10px;
-    }
-    
-    /* 주문 목록 스크롤바 - 에메랄드 */
-    .order-scroll::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    .order-scroll::-webkit-scrollbar-track {
-      background: rgba(6, 78, 59, 0.3);
-      border-radius: 10px;
-    }
-    
-    .order-scroll::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, #10b981, #14b8a6);
-      border-radius: 10px;
-    }
-    
-    /* 부드러운 스크롤 영역 */
-    .smooth-scroll {
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    /* 애니메이션 정의 */
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    @keyframes fadeInDown {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slideInRight {
-      from {
-        opacity: 0;
-        transform: translateX(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-    
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(100%);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .animate-slide-up {
-      animation: slideUp 0.3s ease-out forwards;
-    }
-    
-    @keyframes slideInLeft {
-      from {
-        opacity: 0;
-        transform: translateX(-30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-    
-    @keyframes scaleIn {
-      from {
-        opacity: 0;
-        transform: scale(0.9) translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-      }
-    }
-    
-    @keyframes pulse-glow {
-      0%, 100% {
-        box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
-      }
-      50% {
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
-      }
-    }
-    
-    @keyframes shimmer {
-      0% {
-        background-position: -200% 0;
-      }
-      100% {
-        background-position: 200% 0;
-      }
-    }
-    
-    /* 시크릿 관리자 로그인 애니메이션 */
-    @keyframes glitch {
-      0%, 100% { transform: translate(0); }
-      20% { transform: translate(-2px, 2px); }
-      40% { transform: translate(-2px, -2px); }
-      60% { transform: translate(2px, 2px); }
-      80% { transform: translate(2px, -2px); }
-    }
-    
-    @keyframes scanline {
-      0% { transform: translateY(-100%); }
-      100% { transform: translateY(100vh); }
-    }
-    
-    @keyframes flicker {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.8; }
-      25%, 75% { opacity: 0.9; }
-    }
-    
-    @keyframes neon-pulse {
-      0%, 100% { 
-        text-shadow: 0 0 5px #ff0040, 0 0 10px #ff0040, 0 0 20px #ff0040;
-        box-shadow: 0 0 5px #ff0040, 0 0 10px #ff0040, inset 0 0 10px rgba(255,0,64,0.1);
-      }
-      50% { 
-        text-shadow: 0 0 10px #ff0040, 0 0 20px #ff0040, 0 0 40px #ff0040;
-        box-shadow: 0 0 10px #ff0040, 0 0 20px #ff0040, inset 0 0 20px rgba(255,0,64,0.2);
-      }
-    }
-    
-    @keyframes border-glow {
-      0%, 100% { border-color: rgba(255,0,64,0.5); }
-      50% { border-color: rgba(255,0,64,1); }
-    }
-    
-    @keyframes typing {
-      from { width: 0; }
-      to { width: 100%; }
-    }
-    
-    @keyframes blink-caret {
-      0%, 100% { border-color: transparent; }
-      50% { border-color: #ff0040; }
-    }
-    
-    @keyframes matrix-rain {
-      0% { transform: translateY(-100%); opacity: 1; }
-      100% { transform: translateY(100%); opacity: 0; }
-    }
-    
-    @keyframes unlock-spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    @keyframes access-granted {
-      0% { transform: scale(0.5); opacity: 0; }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    @keyframes loading-bar {
-      0% { width: 0%; }
-      100% { width: 100%; }
-    }
-    
-    @keyframes shake-error {
-      0%, 100% { transform: translateX(0); }
-      10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-      20%, 40%, 60%, 80% { transform: translateX(8px); }
-    }
-    
-    @keyframes flash-red {
-      0%, 100% { 
-        border-color: rgba(255,0,64,0.5);
-        box-shadow: 0 0 40px rgba(255,0,64,0.3);
-      }
-      25%, 75% { 
-        border-color: rgba(255,0,64,1);
-        box-shadow: 0 0 60px rgba(255,0,64,0.8), inset 0 0 30px rgba(255,0,64,0.2);
-      }
-    }
-    
-    .animate-shake-error {
-      animation: shake-error 0.5s ease-in-out;
-    }
-    
-    .animate-flash-red {
-      animation: flash-red 0.5s ease-in-out;
-    }
-    
-    .animate-glitch {
-      animation: glitch 0.3s ease-in-out infinite;
-    }
-    
-    .animate-flicker {
-      animation: flicker 0.1s ease-in-out infinite;
-    }
-    
-    .animate-neon-pulse {
-      animation: neon-pulse 2s ease-in-out infinite;
-    }
-    
-    .animate-border-glow {
-      animation: border-glow 2s ease-in-out infinite;
-    }
-    
-    .secret-scanline::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(255,0,64,0.5), transparent);
-      animation: scanline 3s linear infinite;
-      pointer-events: none;
-    }
-    
-    /* 애니메이션 클래스 */
-    .animate-fade-in-up {
-      animation: fadeInUp 0.4s ease-out forwards;
-    }
-    
-    .animate-fade-in-down {
-      animation: fadeInDown 0.4s ease-out forwards;
-    }
-    
-    .animate-fade-in {
-      animation: fadeIn 0.3s ease-out forwards;
-    }
-    
-    .animate-slide-in-right {
-      animation: slideInRight 0.4s ease-out forwards;
-    }
-    
-    .animate-slide-in-left {
-      animation: slideInLeft 0.4s ease-out forwards;
-    }
-    
-    .animate-scale-in {
-      animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-    
-    .animate-scale-out {
-      animation: scaleOut 0.2s ease-in forwards;
-    }
-    
-    .animate-fade-out {
-      animation: fadeOut 0.2s ease-in forwards;
-    }
-    
-    @keyframes scaleOut {
-      from {
-        opacity: 1;
-        transform: scale(1);
-      }
-      to {
-        opacity: 0;
-        transform: scale(0.95);
-      }
-    }
-    
-    @keyframes fadeOut {
-      from {
-        opacity: 1;
-      }
-      to {
-        opacity: 0;
-      }
-    }
-    
-    /* 스크롤바 숨기기 */
-    .scrollbar-hide {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;
-    }
-    
-    .animate-pulse-glow {
-      animation: pulse-glow 2s ease-in-out infinite;
-    }
-    
-    /* 스태거 애니메이션 딜레이 */
-    .stagger-1 { animation-delay: 0.05s; }
-    .stagger-2 { animation-delay: 0.1s; }
-    .stagger-3 { animation-delay: 0.15s; }
-    .stagger-4 { animation-delay: 0.2s; }
-    .stagger-5 { animation-delay: 0.25s; }
-    .stagger-6 { animation-delay: 0.3s; }
-    
-    /* 호버 트랜지션 */
-    .hover-lift {
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .hover-lift:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* 버튼 리플 효과 */
-    .btn-ripple {
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .btn-ripple::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      transition: width 0.4s ease, height 0.4s ease;
-    }
-    
-    .btn-ripple:active::after {
-      width: 200px;
-      height: 200px;
-    }
-    
-    /* 카드 호버 글로우 */
-    .card-glow {
-      transition: all 0.3s ease;
-    }
-    
-    .card-glow:hover {
-      box-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
-    }
-    
-    /* 그라데이션 텍스트 */
-    .gradient-text {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    
-    /* 쉬머 로딩 효과 */
-    .shimmer {
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-  `}</style>
-);
 
 // 단가표 데이터 - CSV 기반 전체 데이터 (478개 제품)
 const priceData = [
@@ -2156,15 +1570,15 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
           <div class="info">
             <p><strong>주문번호:</strong> ${order.orderNumber}</p>
             <p><strong>주문일자:</strong> ${formatDate(order.createdAt)}</p>
-            ${order.customerName ? `<p><strong>고객명:</strong> ${order.customerName}</p>` : ''}
-            ${order.customerPhone ? `<p><strong>연락처:</strong> ${order.customerPhone}</p>` : ''}
+            ${order.customerName ? `<p><strong>고객명:</strong> ${escapeHtml(order.customerName)}</p>` : ''}
+            ${order.customerPhone ? `<p><strong>연락처:</strong> ${escapeHtml(order.customerPhone)}</p>` : ''}
             <p><strong>단가기준:</strong> ${order.priceType === 'wholesale' ? '도매가' : '소비자가'}</p>
           </div>
           <table>
             <thead><tr><th>No</th><th>상품명</th><th>단가</th><th>수량</th><th>금액</th></tr></thead>
             <tbody>
               ${order.items.map((item, index) => `
-                <tr><td>${index + 1}</td><td>${item.name}</td><td>${formatPrice(item.price)}</td><td>${item.quantity}</td><td>${formatPrice(item.price * item.quantity)}</td></tr>
+                <tr><td>${index + 1}</td><td>${escapeHtml(item.name)}</td><td>${formatPrice(item.price)}</td><td>${item.quantity}</td><td>${formatPrice(item.price * item.quantity)}</td></tr>
               `).join('')}
             </tbody>
           </table>
@@ -2174,7 +1588,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
             <p>부가세(10%): ${formatPrice(vat)}</p>
             <p class="grand">총 금액: ${formatPrice(order.totalAmount)}</p>
           </div>
-          ${order.memo ? `<div class="memo"><strong>메모:</strong> ${order.memo}</div>` : ''}
+          ${order.memo ? `<div class="memo"><strong>메모:</strong> ${escapeHtml(order.memo)}</div>` : ''}
           <div class="account">
             <strong>입금 계좌</strong><br>
             신한은행 010-5858-6046 무브모터스<br><br>
@@ -2759,7 +2173,7 @@ function OrderDetailModal({ isOpen, onClose, order, formatPrice, onUpdateOrder, 
 
 // ==================== 저장된 장바구니 모달 ====================
 // ==================== 저장된 장바구니 페이지 ====================
-function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], customers = [], formatPrice, onBack, onRefresh, isLoading }) {
+function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, onOrder, products = [], customers = [], formatPrice, onBack, onRefresh, isLoading, showToast }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -2958,9 +2372,6 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
     }
     setShowFilterDeleteConfirm(false);
   };
-
-  // 필터링된 장바구니 목록
-  const filteredCarts = savedCarts.filter(cart => filterByDate(cart) && filterBySearch(cart) && filterByDelivery(cart));
 
   // 필터링된 목록의 원본 인덱스 매핑 및 정렬 (입고예약 상단 고정 + 배송일 기준)
   const filteredCartsWithIndex = savedCarts
@@ -3948,7 +3359,7 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
 
 // ==================== 장바구니 저장 모달 ====================
 // ==================== 거래처 목록 페이지 ====================
-function CustomerListPage({ customers, orders = [], formatPrice, onBack, onSaveCustomerReturn, onRefreshOrders, onUpdateOrder }) {
+function CustomerListPage({ customers, orders = [], formatPrice, onBack, onSaveCustomerReturn, onRefreshOrders, onUpdateOrder, showToast }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null); // 선택된 거래처
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // 상단 접기/펼치기
@@ -4085,12 +3496,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack, onSaveC
     setIsReturning(false);
     setReturnItems([]);
 
-    // 알림
-    const toast = document.createElement('div');
-    toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg z-[100] animate-fade-in';
-    toast.textContent = `✓ 반품 처리 완료 (${returnedItems.length}건)`;
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 1500);
+    if (showToast) showToast(`✓ 반품 처리 완료 (${returnedItems.length}건)`);
   };
 
   return (
@@ -4728,11 +4134,7 @@ function CustomerListPage({ customers, orders = [], formatPrice, onBack, onSaveC
                       }
                       if (detailOrder.memo) lines.push(`메모: ${detailOrder.memo}`);
                       navigator.clipboard.writeText(lines.join('\n'));
-                      const toast = document.createElement('div');
-                      toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg z-[100] animate-fade-in';
-                      toast.textContent = '✓ 복사되었습니다';
-                      document.body.appendChild(toast);
-                      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 1500);
+                      if (showToast) showToast('✓ 복사되었습니다');
                     }}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2"
                   >
@@ -4770,14 +4172,20 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
 
   // 고객별 저장된 택배 설정 (localStorage)
   const [savedCustomerSettings, setSavedCustomerSettings] = useState(() => {
-    const saved = localStorage.getItem('shippingCustomerSettings');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = localStorage.getItem('shippingCustomerSettings');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      console.warn('shippingCustomerSettings 파싱 실패:', e);
+      return {};
+    }
   });
 
   // 임의 추가 리스트 관련 state (localStorage 저장)
   const [customEntries, setCustomEntries] = useState(() => {
     const saved = localStorage.getItem('shippingCustomEntries');
-    return saved ? JSON.parse(saved) : [];
+    try { return saved ? JSON.parse(saved) : []; }
+    catch (e) { console.warn('shippingCustomEntries 파싱 실패:', e); return []; }
   });
   const [showAddCustomModal, setShowAddCustomModal] = useState(false);
 
@@ -5676,19 +5084,19 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           const isPrepaid = setting.paymentType === '선불';
           const rowClass = isPrepaid ? 'prepaid' : '';
 
-          const packagingDisplay = String(setting.packaging || '').replace(/,/g, '<br>');
-          const shippingDisplay = String(setting.shippingCost || '').replace(/,/g, '<br>');
+          const packagingDisplay = escapeHtml(String(setting.packaging || '')).replace(/,/g, '<br>');
+          const shippingDisplay = escapeHtml(String(setting.shippingCost || '')).replace(/,/g, '<br>');
 
           html += `<tr class="${rowClass}">
             <td class="col-num">${dataIndex}</td>
-            <td class="col-name">${order.customerName || ''}</td>
-            <td class="col-payment">${setting.paymentType}</td>
+            <td class="col-name">${escapeHtml(order.customerName || '')}</td>
+            <td class="col-payment">${escapeHtml(setting.paymentType)}</td>
             <td class="col-pack">${packagingDisplay}</td>
             <td class="col-cost">${shippingDisplay}</td>
-            <td class="col-item">${mostExpensive}</td>
-            <td class="col-phone">${phone}</td>
+            <td class="col-item">${escapeHtml(mostExpensive)}</td>
+            <td class="col-phone">${escapeHtml(phone)}</td>
           </tr>`;
-          if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${address}</td></tr>`;
+          if (address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${escapeHtml(address)}</td></tr>`;
           dataIndex++;
         });
 
@@ -5697,19 +5105,19 @@ function ShippingLabelPage({ orders = [], customers = [], formatPrice, onBack, r
           const isPrepaid = entry.paymentType === '선불';
           const rowClass = isPrepaid ? 'prepaid' : '';
 
-          const packagingDisplay = String(entry.packaging || '').replace(/,/g, '<br>');
-          const shippingDisplay = String(entry.shippingCost || '').replace(/,/g, '<br>');
+          const packagingDisplay = escapeHtml(String(entry.packaging || '')).replace(/,/g, '<br>');
+          const shippingDisplay = escapeHtml(String(entry.shippingCost || '')).replace(/,/g, '<br>');
 
           html += `<tr class="${rowClass}">
             <td class="col-num">${dataIndex}</td>
-            <td class="col-name">${entry.name || ''}</td>
-            <td class="col-payment">${entry.paymentType}</td>
+            <td class="col-name">${escapeHtml(entry.name || '')}</td>
+            <td class="col-payment">${escapeHtml(entry.paymentType)}</td>
             <td class="col-pack">${packagingDisplay}</td>
             <td class="col-cost">${shippingDisplay}</td>
-            <td class="col-item">${entry.product || '상품'}</td>
-            <td class="col-phone">${entry.phone || ''}</td>
+            <td class="col-item">${escapeHtml(entry.product || '상품')}</td>
+            <td class="col-phone">${escapeHtml(entry.phone || '')}</td>
           </tr>`;
-          if (entry.address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${entry.address}</td></tr>`;
+          if (entry.address) html += `<tr class="${rowClass}"><td colspan="7" class="address-row">${escapeHtml(entry.address)}</td></tr>`;
           dataIndex++;
         });
       }
@@ -6991,8 +6399,13 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
   const [searchingIndex, setSearchingIndex] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [backupList, setBackupList] = useState(() => {
-    const saved = localStorage.getItem('aiOrderBackups');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('aiOrderBackups');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.warn('aiOrderBackups 파싱 실패:', e);
+      return [];
+    }
   });
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showProductSearch, setShowProductSearch] = useState(false);
@@ -7063,8 +6476,14 @@ ${text}
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'API 호출 실패');
+      let errorMessage = 'API 호출 실패';
+      try {
+        const error = await response.json();
+        errorMessage = error.error?.message || errorMessage;
+      } catch (e) {
+        errorMessage = `API 호출 실패 (HTTP ${response.status})`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -7091,7 +6510,8 @@ ${text}
       // 한 번 더 시도: 배열 부분만 추출
       const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
       if (arrayMatch) {
-        return JSON.parse(arrayMatch[0].replace(/,\s*]/g, ']'));
+        try { return JSON.parse(arrayMatch[0].replace(/,\s*]/g, ']')); }
+        catch (e2) { /* fallback parse도 실패 */ }
       }
       throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
     }
@@ -8413,8 +7833,8 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
           <div class="info">
             <p><strong>주문번호:</strong> ${orderNumber}</p>
             <p><strong>주문일자:</strong> ${formatDate(today.toISOString())}</p>
-            ${customerName ? `<p><strong>고객명:</strong> ${customerName}</p>` : ''}
-            ${customerPhone ? `<p><strong>연락처:</strong> ${customerPhone}</p>` : ''}
+            ${customerName ? `<p><strong>고객명:</strong> ${escapeHtml(customerName)}</p>` : ''}
+            ${customerPhone ? `<p><strong>연락처:</strong> ${escapeHtml(customerPhone)}</p>` : ''}
             <p><strong>단가기준:</strong> ${priceType === 'wholesale' ? '도매가' : '소비자가'}</p>
           </div>
           <table>
@@ -8422,7 +7842,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
             <tbody>
               ${cart.map((item, index) => {
                 const price = priceType === 'wholesale' ? item.wholesale : (item.retail || item.wholesale);
-                return `<tr><td>${index + 1}</td><td>${item.name}</td><td>${formatPrice(price)}</td><td>${item.quantity}</td><td>${formatPrice(price * item.quantity)}</td></tr>`;
+                return `<tr><td>${index + 1}</td><td>${escapeHtml(item.name)}</td><td>${formatPrice(price)}</td><td>${item.quantity}</td><td>${formatPrice(price * item.quantity)}</td></tr>`;
               }).join('')}
             </tbody>
           </table>
@@ -8432,7 +7852,7 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
             <p>부가세(10%): ${formatPrice(vat)}</p>
             <p class="grand">총 금액: ${formatPrice(currentTotal)}</p>
           </div>
-          ${memo ? `<div class="memo"><strong>메모:</strong> ${memo}</div>` : ''}
+          ${memo ? `<div class="memo"><strong>메모:</strong> ${escapeHtml(memo)}</div>` : ''}
           <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
@@ -9748,8 +9168,6 @@ function AdminPage({ products, onBack, onAddProduct, onUpdateProduct, onDeletePr
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      <CustomStyles />
-
       <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 flex-shrink-0 select-none">
         <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
           {/* 상단 행: 뒤로가기, 타이틀, 버튼들 */}
@@ -12055,23 +11473,23 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
   };
 
   // 선택 삭제
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (onDeleteMultiple) {
-      onDeleteMultiple(selectedOrders);
+      await onDeleteMultiple(selectedOrders);
     } else {
-      selectedOrders.forEach(orderNumber => onDeleteOrder(orderNumber));
+      await Promise.allSettled(selectedOrders.map(orderNumber => onDeleteOrder(orderNumber)));
     }
     setSelectedOrders([]);
     setShowBulkDeleteConfirm(false);
   };
 
   // 필터 기준 전체 삭제
-  const handleFilterDelete = () => {
+  const handleFilterDelete = async () => {
     const orderNumbersToDelete = filteredOrders.map(o => o.orderNumber);
     if (onDeleteMultiple) {
-      onDeleteMultiple(orderNumbersToDelete);
+      await onDeleteMultiple(orderNumbersToDelete);
     } else {
-      orderNumbersToDelete.forEach(orderNumber => onDeleteOrder(orderNumber));
+      await Promise.allSettled(orderNumbersToDelete.map(orderNumber => onDeleteOrder(orderNumber)));
     }
     setSelectedOrders([]);
     setShowFilterDeleteConfirm(false);
@@ -12091,7 +11509,6 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <CustomStyles />
       {/* 헤더 */}
       <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40 select-none">
         <div className="w-full px-4 py-3">
@@ -12924,17 +12341,16 @@ export default function PriceCalculator() {
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 비상용 계산기
   const [calculatorInitialValue, setCalculatorInitialValue] = useState(null); // 계산기 초기값
+  const toastTimerRef = useRef(null);
+  const adminLoginTimerRef = useRef(null);
+  const loginErrorTimerRef = useRef(null);
 
   // 알림 설정 (localStorage에서 로드)
   const [notificationSettings, setNotificationSettings] = useState(() => {
     const saved = localStorage.getItem('notificationSettings');
-    return saved ? JSON.parse(saved) : {
-      enabled: true,
-      time: '09:00', // 알림 시간
-      daysBeforeReminder: [0, 1], // 오늘(0), 내일(1) 알림
-      includeOverdue: true, // 지연 건 포함
-      dailyNotification: true // 매일 알림 vs 배송일 당일만
-    };
+    const defaults = { enabled: true, time: '09:00', daysBeforeReminder: [0, 1], includeOverdue: true, dailyNotification: true };
+    try { return saved ? JSON.parse(saved) : defaults; }
+    catch (e) { console.warn('notificationSettings 파싱 실패:', e); return defaults; }
   });
 
   // 동적 카테고리 목록 (Supabase products 기반)
@@ -12986,23 +12402,92 @@ export default function PriceCalculator() {
       }
     });
 
+    let rafId;
     function raf(time) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     // 클린업
     return () => {
+      cancelAnimationFrame(rafId);
       lenis.destroy();
+    };
+  }, []);
+
+  // 타이머 cleanup
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (adminLoginTimerRef.current) clearTimeout(adminLoginTimerRef.current);
+      if (loginErrorTimerRef.current) clearTimeout(loginErrorTimerRef.current);
     };
   }, []);
 
   // 토스트 알림 표시
   const showToast = (message, type = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 2000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   };
+
+  // ==================== useCallback 핸들러 ====================
+  const handleSaveToCart = useCallback(async (order) => {
+    const now = new Date();
+    const cartData = {
+      name: order.customerName || '',
+      phone: order.customerPhone || '',
+      address: '',
+      items: order.items,
+      price_type: order.priceType,
+      total: order.totalAmount,
+      date: now.toLocaleDateString('ko-KR'),
+      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      created_at: now.toISOString(),
+      memo: `주문이력에서 복사 (${order.orderNumber})`
+    };
+    showToast('🛒 장바구니에 저장 중...');
+    try {
+      const result = await supabase.addSavedCart(cartData);
+      if (result && result.length > 0) {
+        setSavedCarts(prev => [result[0], ...prev]);
+        showToast('✅ 저장된 장바구니로 복사 완료!');
+      } else {
+        showToast('❌ 저장 실패', 'error');
+      }
+    } catch (err) {
+      console.warn('장바구니 저장 실패:', err);
+      showToast('❌ 저장 실패', 'error');
+    }
+  }, [showToast]);
+
+  const handleSaveCustomerReturn = useCallback(async (returnData) => {
+    try {
+      await supabase.addCustomerReturn(returnData);
+    } catch (err) {
+      console.warn('고객 반품 저장 실패:', err);
+    }
+  }, []);
+
+  const handleDeleteCustomerReturn = useCallback(async (returnId) => {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/customer_returns?return_id=eq.${returnId}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+    } catch (e) {
+      console.warn('고객 반품 삭제 실패:', e);
+    }
+  }, []);
+
+  const handleOpenSavedCarts = useCallback(async () => {
+    await loadSavedCartsFromDB();
+    setIsSavedCartsModalOpen(true);
+  }, []);
 
   // 관리자 로그인 모달 ESC 키 처리
   useEffect(() => {
@@ -13020,12 +12505,15 @@ export default function PriceCalculator() {
   const loadSavedCartsFromDB = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      console.log('장바구니 불러오기 시도...');
       const data = await supabase.getSavedCarts();
-      console.log('불러온 데이터:', data);
 
       // localStorage에서 예약 필드 불러오기
-      const localExtras = JSON.parse(localStorage.getItem('cart_extras') || '{}');
+      let localExtras = {};
+      try {
+        localExtras = JSON.parse(localStorage.getItem('cart_extras') || '{}');
+      } catch (e) {
+        console.warn('cart_extras 파싱 실패:', e);
+      }
 
       if (data) {
         // Supabase 데이터와 localStorage 데이터 병합
@@ -13034,7 +12522,6 @@ export default function PriceCalculator() {
           ...(localExtras[cart.id] || {})
         }));
         setSavedCarts(mergedData);
-        console.log('savedCarts 업데이트 완료:', mergedData.length, '개');
       }
     } catch (e) {
       console.error('저장된 장바구니 불러오기 실패:', e);
@@ -13189,21 +12676,7 @@ export default function PriceCalculator() {
         newCart.reminded = false;
       }
 
-      console.log('장바구니 저장 시도:', newCart);
 
-      // 날짜 형식 이름인지 체크 (자동 거래처 등록 제외용)
-      const isDateFormatName = (str) => {
-        if (!str) return true;
-        const trimmed = str.trim();
-        // "1월 20일", "12월 5일 오후 03:25", "2026. 1. 20" 등의 패턴
-        const datePatterns = [
-          /^\d{1,2}월\s*\d{1,2}일/,  // "1월 20일"
-          /^\d{4}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2}/,  // "2026. 1. 20" or "2026-01-20"
-          /^오전|^오후/,  // "오전", "오후"로 시작
-          /^\d{1,2}:\d{2}/,  // "03:25"로 시작
-        ];
-        return datePatterns.some(pattern => pattern.test(trimmed));
-      };
 
       // 신규 업체 자동 등록 체크 (날짜 형식 이름은 제외)
       if (name && name.trim() && Array.isArray(customers) && !isDateFormatName(name)) {
@@ -13222,7 +12695,6 @@ export default function PriceCalculator() {
             });
             if (newCustomer) {
               setCustomers(prev => [...prev, newCustomer]);
-              console.log('✅ 신규 거래처 자동 등록 (장바구니):', name);
             }
           } else if (existingCustomer && (phone || address)) {
             // 기존 업체인데 전화번호/주소가 없으면 업데이트
@@ -13235,20 +12707,17 @@ export default function PriceCalculator() {
                 });
                 if (updatedCustomer) {
                   setCustomers(prev => prev.map(c => c.id === existingCustomer.id ? updatedCustomer : c));
-                  console.log('✅ 기존 거래처 정보 업데이트:', name);
                 }
               } catch (err) {
-                console.log('거래처 정보 업데이트 실패:', err);
               }
             }
           }
         } catch (err) {
-          console.log('신규 거래처 등록 실패:', err);
+          console.warn('신규 거래처 등록 실패:', err);
         }
       }
 
       const result = await supabase.addSavedCart(newCart);
-      console.log('저장 결과:', result);
 
       if (result && result[0]) {
         // Supabase에서 반환된 데이터에 예약 필드가 없을 수 있으므로 병합
@@ -13264,7 +12733,12 @@ export default function PriceCalculator() {
 
         // localStorage에 예약 필드 저장
         if (result[0]._localOnly && result[0].id) {
-          const localExtras = JSON.parse(localStorage.getItem('cart_extras') || '{}');
+          let localExtras = {};
+          try {
+            localExtras = JSON.parse(localStorage.getItem('cart_extras') || '{}');
+          } catch (e) {
+            console.warn('cart_extras 파싱 실패:', e);
+          }
           localExtras[result[0].id] = {
             delivery_date: newCart.delivery_date,
             status: newCart.status,
@@ -13273,7 +12747,6 @@ export default function PriceCalculator() {
             reminded: newCart.reminded
           };
           localStorage.setItem('cart_extras', JSON.stringify(localExtras));
-          console.log('💾 예약 필드를 localStorage에 저장:', localExtras[result[0].id]);
         }
 
         setSavedCarts(prev => [savedCart, ...prev]);
@@ -13329,16 +12802,22 @@ export default function PriceCalculator() {
   const updateSavedCart = async (index, updatedCart) => {
     const cartToUpdate = savedCarts[index];
     if (cartToUpdate && cartToUpdate.id) {
-      const result = await supabase.updateSavedCart(cartToUpdate.id, updatedCart);
-      if (result && result[0]) {
-        setSavedCarts(prev => {
-          const newCarts = [...prev];
-          newCarts[index] = result[0];
-          return newCarts;
-        });
-        showToast('✅ 장바구니가 수정되었습니다');
-        return true;
-      } else {
+      try {
+        const result = await supabase.updateSavedCart(cartToUpdate.id, updatedCart);
+        if (result && result[0]) {
+          setSavedCarts(prev => {
+            const newCarts = [...prev];
+            newCarts[index] = result[0];
+            return newCarts;
+          });
+          showToast('✅ 장바구니가 수정되었습니다');
+          return true;
+        } else {
+          showToast('❌ 수정 실패', 'error');
+          return false;
+        }
+      } catch (err) {
+        console.warn('장바구니 수정 실패:', err);
         showToast('❌ 수정 실패', 'error');
         return false;
       }
@@ -13358,11 +12837,16 @@ export default function PriceCalculator() {
   const deleteSavedCart = async (index) => {
     const cartToDelete = savedCarts[index];
     if (cartToDelete && cartToDelete.id) {
-      const success = await supabase.deleteSavedCart(cartToDelete.id);
-      if (success) {
-        setSavedCarts(prev => prev.filter((_, i) => i !== index));
-        showToast('🗑️ 장바구니가 삭제되었습니다');
-      } else {
+      try {
+        const success = await supabase.deleteSavedCart(cartToDelete.id);
+        if (success) {
+          setSavedCarts(prev => prev.filter((_, i) => i !== index));
+          showToast('🗑️ 장바구니가 삭제되었습니다');
+        } else {
+          showToast('❌ 삭제 실패', 'error');
+        }
+      } catch (err) {
+        console.warn('장바구니 삭제 실패:', err);
         showToast('❌ 삭제 실패', 'error');
       }
     } else {
@@ -13374,11 +12858,16 @@ export default function PriceCalculator() {
 
   // 저장된 장바구니 전체 삭제 (Supabase)
   const deleteSavedCartAll = async () => {
-    const success = await supabase.deleteAllSavedCarts();
-    if (success) {
-      setSavedCarts([]);
-      showToast('🗑️ 모든 장바구니가 삭제되었습니다');
-    } else {
+    try {
+      const success = await supabase.deleteAllSavedCarts();
+      if (success) {
+        setSavedCarts([]);
+        showToast('🗑️ 모든 장바구니가 삭제되었습니다');
+      } else {
+        showToast('❌ 삭제 실패', 'error');
+      }
+    } catch (err) {
+      console.warn('전체 장바구니 삭제 실패:', err);
       showToast('❌ 삭제 실패', 'error');
     }
   };
@@ -13402,7 +12891,7 @@ export default function PriceCalculator() {
         setIsOnline(true);
       }
     } catch (error) {
-      console.log('제품 목록 불러오기 실패:', error);
+      console.warn('제품 목록 불러오기 실패:', error);
     } finally {
       setIsProductLoading(false);
     }
@@ -13416,7 +12905,7 @@ export default function PriceCalculator() {
         setCustomers(data);
       }
     } catch (error) {
-      console.log('거래처 목록 불러오기 실패:', error);
+      console.warn('거래처 목록 불러오기 실패:', error);
     }
   };
 
@@ -13529,17 +13018,14 @@ export default function PriceCalculator() {
   const resetAllStock = async (stockValue) => {
     try {
       const sourceProducts = products.length > 0 ? products : priceData;
-      let successCount = 0;
-      
-      for (const product of sourceProducts) {
-        try {
-          await supabase.updateProduct(product.id, { stock: stockValue });
-          successCount++;
-        } catch (err) {
-          console.log('재고 초기화 실패:', product.name, err);
-        }
-      }
-      
+
+      const results = await Promise.allSettled(
+        sourceProducts.map(product =>
+          supabase.updateProduct(product.id, { stock: stockValue })
+        )
+      );
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+
       await loadProducts();
       showToast(`✅ ${successCount}개 제품 재고가 ${stockValue}개로 초기화되었습니다`);
       return true;
@@ -13555,7 +13041,7 @@ export default function PriceCalculator() {
     // 비밀번호가 비어있으면 에러
     if (!adminPassword.trim()) {
       setLoginError(true);
-      setTimeout(() => setLoginError(false), 500);
+      loginErrorTimerRef.current = setTimeout(() => setLoginError(false), 500);
       return;
     }
     
@@ -13564,7 +13050,7 @@ export default function PriceCalculator() {
       setShowAccessGranted(true);
       
       // ACCESS GRANTED 애니메이션 후 페이지 이동
-      setTimeout(() => {
+      adminLoginTimerRef.current = setTimeout(() => {
         setIsAdminLoggedIn(true);
         setAdminPassword('');
         setCurrentPage('admin');
@@ -13575,7 +13061,7 @@ export default function PriceCalculator() {
       // 틀렸을 때 에러 애니메이션
       setLoginError(true);
       setAdminPassword('');
-      setTimeout(() => setLoginError(false), 500);
+      loginErrorTimerRef.current = setTimeout(() => setLoginError(false), 500);
     }
   };
 
@@ -13606,7 +13092,7 @@ export default function PriceCalculator() {
         setIsOnline(false);
       }
     } catch (error) {
-      console.log('주문 내역 불러오기 실패:', error);
+      console.warn('주문 내역 불러오기 실패:', error);
       setOrders([]);
       setIsOnline(false);
     } finally {
@@ -13634,19 +13120,6 @@ export default function PriceCalculator() {
       
       const result = await supabase.saveOrder(supabaseOrder);
       if (result) {
-        // 날짜 형식 이름인지 체크 (자동 거래처 등록 제외용)
-        const isDateFormatName = (str) => {
-          if (!str) return true;
-          const trimmed = str.trim();
-          const datePatterns = [
-            /^\d{1,2}월\s*\d{1,2}일/,
-            /^\d{4}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2}/,
-            /^오전|^오후/,
-            /^\d{1,2}:\d{2}/,
-          ];
-          return datePatterns.some(pattern => pattern.test(trimmed));
-        };
-
         // 신규 업체 자동 등록 체크 (날짜 형식 이름은 제외)
         if (orderData.customerName && Array.isArray(customers) && !isDateFormatName(orderData.customerName)) {
           // 기존 거래처인지 확인
@@ -13665,10 +13138,9 @@ export default function PriceCalculator() {
               });
               if (newCustomer) {
                 setCustomers(prev => [...prev, newCustomer]);
-                console.log('✅ 신규 거래처 자동 등록:', orderData.customerName);
               }
             } catch (err) {
-              console.log('신규 거래처 등록 실패:', err);
+              console.warn('신규 거래처 등록 실패:', err);
             }
           } else if (existingCustomer && (orderData.customerPhone || orderData.customerAddress)) {
             // 기존 업체인데 전화번호/주소가 없으면 업데이트
@@ -13681,10 +13153,8 @@ export default function PriceCalculator() {
                 });
                 if (updatedCustomer) {
                   setCustomers(prev => prev.map(c => c.id === existingCustomer.id ? updatedCustomer : c));
-                  console.log('✅ 기존 거래처 정보 업데이트:', orderData.customerName);
                 }
               } catch (err) {
-                console.log('거래처 정보 업데이트 실패:', err);
               }
             }
           }
@@ -13704,19 +13174,21 @@ export default function PriceCalculator() {
         };
         setOrders(prev => [newOrder, ...prev]);
         
-        // 재고 감소 처리
-        for (const item of orderData.items) {
-          const product = products.find(p => p.id === item.id);
-          if (product) {
-            const currentStock = product.stock !== undefined ? product.stock : 50;
-            const newStock = Math.max(0, currentStock - item.quantity);
-            try {
-              await supabase.updateProduct(item.id, { stock: newStock });
-            } catch (err) {
-              console.log('재고 업데이트 실패:', item.name, err);
+        // 재고 감소 처리 (병렬)
+        const stockUpdates = orderData.items
+          .map(item => {
+            const product = products.find(p => p.id === item.id);
+            if (product) {
+              const currentStock = product.stock !== undefined ? product.stock : 50;
+              const newStock = Math.max(0, currentStock - item.quantity);
+              return supabase.updateProduct(item.id, { stock: newStock }).catch(err => {
+                console.warn('재고 업데이트 실패:', item.name, err);
+              });
             }
-          }
-        }
+            return null;
+          })
+          .filter(Boolean);
+        await Promise.allSettled(stockUpdates);
         
         // 로컬 상태도 업데이트
         setProducts(prev => prev.map(p => {
@@ -13728,13 +13200,7 @@ export default function PriceCalculator() {
           return p;
         }));
         
-        // priceData도 업데이트 (로컬)
-        orderData.items.forEach(item => {
-          const product = priceData.find(p => p.id === item.id);
-          if (product) {
-            product.stock = Math.max(0, (product.stock ?? 50) - item.quantity);
-          }
-        });
+
         
         // 주문 완료 후 장바구니 초기화
         setCart([]);
@@ -13744,7 +13210,6 @@ export default function PriceCalculator() {
           const success = await supabase.deleteSavedCart(orderFromSavedCart);
           if (success) {
             setSavedCarts(prev => prev.filter(c => c.id !== orderFromSavedCart));
-            console.log('✅ 저장된 장바구니 → 주문이력 이전 완료');
           }
           setOrderFromSavedCart(null);
         }
@@ -13774,6 +13239,7 @@ export default function PriceCalculator() {
       const supabaseOrder = {
         customer_name: updatedOrder.customerName || null,
         customer_phone: updatedOrder.customerPhone || null,
+        customer_address: updatedOrder.customerAddress || null,
         price_type: updatedOrder.priceType,
         items: updatedOrder.items,
         subtotal: Math.round(updatedOrder.totalAmount / 1.1),
@@ -13785,9 +13251,7 @@ export default function PriceCalculator() {
         total_returned: updatedOrder.totalReturned || 0
       };
 
-      console.log('🔄 주문 수정 요청:', updatedOrder.orderNumber, supabaseOrder);
       const result = await supabase.updateOrder(updatedOrder.orderNumber, supabaseOrder);
-      console.log('📦 주문 수정 결과:', result);
 
       if (result !== null) {
         // 주문 목록 업데이트
@@ -13844,18 +13308,17 @@ export default function PriceCalculator() {
     let failCount = 0;
     
     try {
-      for (const orderNumber of orderNumbers) {
-        const success = await supabase.deleteOrder(orderNumber);
-        if (success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      }
-      
+      const results = await Promise.allSettled(
+        orderNumbers.map(orderNumber => supabase.deleteOrder(orderNumber))
+      );
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) successCount++;
+        else failCount++;
+      });
+
       // 상태 업데이트 (한 번에)
       setOrders(prev => prev.filter(order => !orderNumbers.includes(order.orderNumber)));
-      
+
       // 알림 한 번만
       if (failCount === 0) {
         showToast(`🗑️ ${successCount}건 삭제 완료!`);
@@ -13874,7 +13337,6 @@ export default function PriceCalculator() {
 
   useEffect(() => {
     loadOrders();
-    loadCustomers();
   }, []);
 
   // Supabase 실시간 구독 - 데이터 변경 시 즉시 업데이트
@@ -13885,7 +13347,6 @@ export default function PriceCalculator() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
         (payload) => {
-          console.log('📦 주문 변경 감지:', payload.eventType);
           loadOrders(true);  // silent reload
         }
       )
@@ -13897,7 +13358,6 @@ export default function PriceCalculator() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'saved_carts' },
         (payload) => {
-          console.log('🛒 장바구니 변경 감지:', payload.eventType);
           loadSavedCartsFromDB(true);  // silent reload
         }
       )
@@ -13936,7 +13396,7 @@ export default function PriceCalculator() {
 
   const addToCart = (product) => {
     const baseStock = product.stock !== undefined ? product.stock : 50;
-    const existingItem = cart.find(item => item.id === product.id);
+    const existingItem = cartMap.get(product.id);
     const currentQty = existingItem ? existingItem.quantity : 0;
     const isIncoming = product.stock_status === 'incoming';
     const isOutOfStock = baseStock === 0 && !isIncoming;
@@ -14021,6 +13481,29 @@ export default function PriceCalculator() {
     return cartWithDiscount.reduce((sum, item) => sum + item.totalDiscount, 0);
   }, [cartWithDiscount]);
 
+  // 헤더 배지용 캐싱 (IIFE 제거)
+  const todayOrderCount = useMemo(() => {
+    const today = new Date().toDateString();
+    return orders.filter(order => new Date(order.createdAt).toDateString() === today).length;
+  }, [orders]);
+
+  const urgentCartInfo = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const urgentCount = savedCarts.filter(cart => {
+      if (!cart.delivery_date) return false;
+      const delivery = new Date(cart.delivery_date);
+      delivery.setHours(0, 0, 0, 0);
+      return delivery <= tomorrow;
+    }).length;
+    return { urgentCount, totalCount: savedCarts.length };
+  }, [savedCarts]);
+
+  // cart를 Map으로 캐싱 (O(n²) → O(n) 최적화)
+  const cartMap = useMemo(() => new Map(cart.map(item => [item.id, item])), [cart]);
+
   const toggleCategory = (category) => {
     setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
@@ -14062,30 +13545,7 @@ export default function PriceCalculator() {
           isLoading={isLoading}
           formatPrice={formatPrice}
           isDetailModalOpen={isDetailModalOpen}
-          onSaveToCart={async (order) => {
-            // 주문 이력을 저장된 장바구니로 저장
-            const now = new Date();
-            const cartData = {
-              name: order.customerName || '',
-              phone: order.customerPhone || '',
-              address: '',
-              items: order.items,
-              price_type: order.priceType,
-              total: order.totalAmount,
-              date: now.toLocaleDateString('ko-KR'),
-              time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-              created_at: now.toISOString(),
-              memo: `주문이력에서 복사 (${order.orderNumber})`
-            };
-            showToast('🛒 장바구니에 저장 중...');
-            const result = await supabase.addSavedCart(cartData);
-            if (result && result.length > 0) {
-              setSavedCarts(prev => [result[0], ...prev]);
-              showToast('✅ 저장된 장바구니로 복사 완료!');
-            } else {
-              showToast('❌ 저장 실패', 'error');
-            }
-          }}
+          onSaveToCart={handleSaveToCart}
         />
         <OrderDetailModal
           isOpen={isDetailModalOpen}
@@ -14094,23 +13554,8 @@ export default function PriceCalculator() {
           formatPrice={formatPrice}
           onUpdateOrder={updateOrder}
           products={products.length > 0 ? products : priceData}
-          onSaveCustomerReturn={async (returnData) => {
-            await supabase.addCustomerReturn(returnData);
-          }}
-          onDeleteCustomerReturn={async (returnId) => {
-            // customer_returns 테이블에서 return_id로 삭제
-            try {
-              await fetch(`${SUPABASE_URL}/rest/v1/customer_returns?return_id=eq.${returnId}`, {
-                method: 'DELETE',
-                headers: {
-                  'apikey': SUPABASE_ANON_KEY,
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                }
-              });
-            } catch (e) {
-              console.error('고객 반품 삭제 실패:', e);
-            }
-          }}
+          onSaveCustomerReturn={handleSaveCustomerReturn}
+          onDeleteCustomerReturn={handleDeleteCustomerReturn}
         />
         {/* 토스트 알림 */}
         {toast && (
@@ -14144,11 +13589,10 @@ export default function PriceCalculator() {
         orders={orders}
         formatPrice={formatPrice}
         onBack={() => setShowCustomerListModal(false)}
-        onSaveCustomerReturn={async (returnData) => {
-          await supabase.addCustomerReturn(returnData);
-        }}
+        onSaveCustomerReturn={handleSaveCustomerReturn}
         onRefreshOrders={() => loadOrders(true)}
         onUpdateOrder={updateOrder}
+        showToast={showToast}
       />
     );
   }
@@ -14182,6 +13626,7 @@ export default function PriceCalculator() {
         onBack={() => setIsSavedCartsModalOpen(false)}
         onRefresh={loadSavedCartsFromDB}
         isLoading={isLoading}
+        showToast={showToast}
       />
     );
   }
@@ -14192,7 +13637,6 @@ export default function PriceCalculator() {
       {showSplash && <WelcomeSplash onComplete={() => setShowSplash(false)} />}
 
       <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 transition-opacity duration-500 ${showSplash ? 'opacity-0' : 'opacity-100'}`}>
-      <CustomStyles />
 
       {/* AI 주문 인식 모달 - 조건부 렌더링 */}
       {showTextAnalyzeModal && (
@@ -14276,72 +13720,44 @@ export default function PriceCalculator() {
                 title="주문 이력"
               >
                 <List className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-emerald-400" />
-                {(() => {
-                  const today = new Date();
-                  const todayCount = orders.filter(order => {
-                    const orderDate = new Date(order.createdAt);
-                    return orderDate.toDateString() === today.toDateString();
-                  }).length;
-                  return todayCount > 0 && (
-                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-emerald-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                      {todayCount > 99 ? '99+' : todayCount}
-                    </span>
-                  );
-                })()}
+                {todayOrderCount > 0 && (
+                  <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-emerald-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    {todayOrderCount > 99 ? '99+' : todayOrderCount}
+                  </span>
+                )}
               </button>
 
               {/* 저장된 장바구니 */}
               <button
-                onClick={async () => { await loadSavedCartsFromDB(); setIsSavedCartsModalOpen(true); }}
+                onClick={handleOpenSavedCarts}
                 className="flex-shrink-0 flex items-center justify-center gap-0.5 xs:gap-1 p-1.5 xs:p-2 sm:px-3 sm:py-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/50 rounded-lg transition-all hover-lift btn-ripple"
                 title="저장된 장바구니"
               >
                 <ShoppingBag className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-violet-400" />
-                {(() => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const tomorrow = new Date(today);
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-
-                  const urgentCount = savedCarts.filter(cart => {
-                    if (!cart.delivery_date) return false;
-                    const delivery = new Date(cart.delivery_date);
-                    delivery.setHours(0, 0, 0, 0);
-                    return delivery <= tomorrow; // 오늘 또는 내일
-                  }).length;
-
-                  return urgentCount > 0 ? (
-                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-red-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                      {urgentCount > 9 ? '9+' : urgentCount}
-                    </span>
-                  ) : savedCarts.length > 0 ? (
-                    <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                      {savedCarts.length > 9 ? '9+' : savedCarts.length}
-                    </span>
-                  ) : null;
-                })()}
+                {urgentCartInfo.urgentCount > 0 ? (
+                  <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-red-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    {urgentCartInfo.urgentCount > 9 ? '9+' : urgentCartInfo.urgentCount}
+                  </span>
+                ) : urgentCartInfo.totalCount > 0 ? (
+                  <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-violet-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    {urgentCartInfo.totalCount > 9 ? '9+' : urgentCartInfo.totalCount}
+                  </span>
+                ) : null}
               </button>
 
               {/* 택배 송장 - 장바구니 옆 */}
-              {(() => {
-                const today = new Date().toDateString();
-                const todayOrderCount = orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
-                const hasOrders = todayOrderCount > 0;
-                return (
-                  <button
-                    onClick={() => { loadOrders(); setShowShippingModal(true); }}
-                    className={`flex-shrink-0 flex items-center justify-center gap-0.5 p-1.5 xs:p-2 sm:px-3 sm:py-2 ${hasOrders ? 'bg-orange-600/30 hover:bg-orange-600/50 border-orange-500/50' : 'bg-slate-700/50 hover:bg-slate-600/50 border-slate-500/50'} border rounded-lg transition-all hover-lift btn-ripple`}
-                    title="택배 송장"
-                  >
-                    <Truck className={`w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 ${hasOrders ? 'text-orange-400' : 'text-slate-300'}`} />
-                    {hasOrders && (
-                      <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-orange-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
-                        {todayOrderCount > 9 ? '9+' : todayOrderCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })()}
+              <button
+                onClick={() => { loadOrders(); setShowShippingModal(true); }}
+                className={`flex-shrink-0 flex items-center justify-center gap-0.5 p-1.5 xs:p-2 sm:px-3 sm:py-2 ${todayOrderCount > 0 ? 'bg-orange-600/30 hover:bg-orange-600/50 border-orange-500/50' : 'bg-slate-700/50 hover:bg-slate-600/50 border-slate-500/50'} border rounded-lg transition-all hover-lift btn-ripple`}
+                title="택배 송장"
+              >
+                <Truck className={`w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 ${todayOrderCount > 0 ? 'text-orange-400' : 'text-slate-300'}`} />
+                {todayOrderCount > 0 && (
+                  <span className="min-w-3.5 xs:min-w-4 sm:min-w-5 h-3.5 xs:h-4 sm:h-5 px-0.5 xs:px-1 sm:px-1.5 bg-orange-500 text-white text-[8px] xs:text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold">
+                    {todayOrderCount > 9 ? '9+' : todayOrderCount}
+                  </span>
+                )}
+              </button>
 
               {/* 구분선 */}
               <div className="hidden sm:block w-px h-6 bg-slate-600 mx-1"></div>
@@ -14497,7 +13913,7 @@ export default function PriceCalculator() {
                   {isExpanded && (
                   <div className="p-2 grid grid-cols-2 gap-1.5 max-h-80 overflow-y-auto category-scroll animate-fade-in overscroll-contain mobile-scroll" data-lenis-prevent="true" style={{ WebkitOverflowScrolling: 'touch' }}>
                     {products.map(product => {
-                      const cartItem = cart.find(item => item.id === product.id);
+                      const cartItem = cartMap.get(product.id);
                       const cartQuantity = cartItem ? cartItem.quantity : 0;
                       const displayPrice = priceType === 'wholesale' ? product.wholesale : (product.retail || product.wholesale);
                       const exVatPrice = Math.round(displayPrice / 1.1);
