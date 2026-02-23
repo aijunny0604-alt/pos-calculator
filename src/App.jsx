@@ -2395,6 +2395,9 @@ function SavedCartsPage({ savedCarts, onLoad, onDelete, onDeleteAll, onUpdate, o
       return dateA - dateB;
     });
 
+  // filteredCartsWithIndex에서 cart 배열만 추출
+  const filteredCarts = filteredCartsWithIndex.map(({ cart }) => cart);
+
   // ESC 키로 뒤로가기 (모달 우선순위 순서대로 닫기)
   useEffect(() => {
     const handleKeyDown = (e) => {
