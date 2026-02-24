@@ -7186,7 +7186,8 @@ ${text}
 2m 환봉 1개 12파이
 MVB 64 Y R 2개`}
               rows={5}
-              className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
+              className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm overflow-y-auto"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             />
           </div>
 
@@ -7788,8 +7789,9 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
       }))
     };
     
-    const success = await onSaveOrder(orderData);
-    if (success) {
+    const result = await onSaveOrder(orderData);
+    if (result) {
+      const isMerged = result?.merged;
       const isNewCustomer = customerName && !selectedCustomerId &&
         !(customers || []).find(c => c?.name?.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, ''));
 
@@ -7798,7 +7800,12 @@ function OrderPage({ cart, priceType, totalAmount, formatPrice, onSaveOrder, isS
         c?.name?.toLowerCase().replace(/\s/g, '') === customerName.toLowerCase().replace(/\s/g, '') && c.is_blacklist
       );
 
-      let message = `✅ 주문이 저장되었습니다!\n\n주문번호: ${orderNumber}\n총 금액: ${formatPrice(currentTotal)}`;
+      let message;
+      if (isMerged) {
+        message = `✅ 기존 주문(${result.mergedOrderNumber})에 병합되었습니다!\n\n추가 금액: ${formatPrice(currentTotal)}`;
+      } else {
+        message = `✅ 주문이 저장되었습니다!\n\n주문번호: ${orderNumber}\n총 금액: ${formatPrice(currentTotal)}`;
+      }
       if (isBlacklistCustomer) {
         message += `\n\n🚫 주의: "${customerName}"은(는) 블랙리스트 업체입니다!`;
       }
@@ -11703,6 +11710,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
               return (
                 <div
                   key={order.orderNumber}
+                  onClick={() => onViewOrder(order)}
                   className={`rounded-xl p-4 border transition-all duration-200 cursor-pointer transform select-none relative overflow-hidden ${
                     selectedOrders.includes(order.orderNumber)
                       ? 'ring-2 ring-emerald-500 bg-emerald-900/20 border-emerald-500/50'
@@ -11722,6 +11730,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                     type="checkbox"
                     checked={selectedOrders.includes(order.orderNumber)}
                     onChange={() => handleSelect(order.orderNumber)}
+                    onClick={(e) => e.stopPropagation()}
                     className="mt-1 w-5 h-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500 cursor-pointer flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
@@ -11773,7 +11782,7 @@ function OrderHistoryPage({ orders, onBack, onDeleteOrder, onDeleteMultiple, onV
                 </div>
 
                 {/* 하단: 액션 버튼 */}
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => onViewOrder(order)}
                     className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all btn-ripple"
@@ -12345,6 +12354,7 @@ export default function PriceCalculator() {
   const [showQuickCalculator, setShowQuickCalculator] = useState(false); // 비상용 계산기
   const [calculatorInitialValue, setCalculatorInitialValue] = useState(null); // 계산기 초기값
   const toastTimerRef = useRef(null);
+  const savingToCartRef = useRef(new Set()); // 장바구니 저장 중복 방지
   const adminLoginTimerRef = useRef(null);
   const loginErrorTimerRef = useRef(null);
 
@@ -12436,34 +12446,85 @@ export default function PriceCalculator() {
   };
 
   // ==================== useCallback 핸들러 ====================
-  const handleSaveToCart = useCallback(async (order) => {
-    const now = new Date();
-    const cartData = {
-      name: order.customerName || '',
-      phone: order.customerPhone || '',
-      address: '',
-      items: order.items,
-      price_type: order.priceType,
-      total: order.totalAmount,
-      date: now.toLocaleDateString('ko-KR'),
-      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      created_at: now.toISOString(),
-      memo: `주문이력에서 복사 (${order.orderNumber})`
-    };
-    showToast('🛒 장바구니에 저장 중...');
+  const handleSaveToCart = async (order) => {
+    const customerName = order.customerName || '';
+    const normalizedName = customerName ? customerName.toLowerCase().replace(/\s/g, '') : '';
+
+    // 중복 저장 방지 (같은 업체 동시 클릭 방어)
+    if (normalizedName && savingToCartRef.current.has(normalizedName)) {
+      showToast('⏳ 저장 중입니다. 잠시 기다려주세요.');
+      return;
+    }
+    if (normalizedName) savingToCartRef.current.add(normalizedName);
+
     try {
-      const result = await supabase.addSavedCart(cartData);
-      if (result && result.length > 0) {
-        setSavedCarts(prev => [result[0], ...prev]);
-        showToast('✅ 저장된 장바구니로 복사 완료!');
-      } else {
+      // 같은 업체의 기존 저장된 장바구니 찾기
+      if (customerName) {
+        const existingSavedCart = savedCarts.find(c =>
+          c.name && c.name.toLowerCase().replace(/\s/g, '') === normalizedName
+        );
+
+        if (existingSavedCart) {
+          const confirmed = window.confirm(
+            `"${customerName}"의 저장된 장바구니가 이미 있습니다.\n\n기존 장바구니에 제품을 병합하시겠습니까?\n\n[확인] 기존 장바구니에 추가\n[취소] 별도 장바구니로 생성`
+          );
+          if (confirmed) {
+            const mergedItems = mergeItems(existingSavedCart.items, order.items);
+            const mergedTotal = mergedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const mergedMemo = [existingSavedCart.memo, `주문이력에서 병합 (${order.orderNumber})`].filter(Boolean).join('\n');
+
+            try {
+              const result = await supabase.updateSavedCart(existingSavedCart.id, {
+                items: mergedItems,
+                total: mergedTotal,
+                memo: mergedMemo
+              });
+              if (result && result[0]) {
+                setSavedCarts(prev => prev.map(c => c.id === existingSavedCart.id ? result[0] : c));
+                showToast('✅ 기존 장바구니에 병합 완료!');
+              } else {
+                showToast('❌ 병합 실패', 'error');
+              }
+            } catch (err) {
+              console.warn('장바구니 병합 실패:', err);
+              showToast('❌ 병합 실패', 'error');
+            }
+            return;
+          }
+        }
+      }
+
+      // 신규 저장된 장바구니 생성
+      const now = new Date();
+      const cartData = {
+        name: customerName,
+        phone: order.customerPhone || '',
+        address: '',
+        items: order.items,
+        price_type: order.priceType,
+        total: order.totalAmount,
+        date: now.toLocaleDateString('ko-KR'),
+        time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        created_at: now.toISOString(),
+        memo: `주문이력에서 복사 (${order.orderNumber})`
+      };
+      showToast('🛒 장바구니에 저장 중...');
+      try {
+        const result = await supabase.addSavedCart(cartData);
+        if (result && result.length > 0) {
+          setSavedCarts(prev => [result[0], ...prev]);
+          showToast('✅ 저장된 장바구니로 복사 완료!');
+        } else {
+          showToast('❌ 저장 실패', 'error');
+        }
+      } catch (err) {
+        console.warn('장바구니 저장 실패:', err);
         showToast('❌ 저장 실패', 'error');
       }
-    } catch (err) {
-      console.warn('장바구니 저장 실패:', err);
-      showToast('❌ 저장 실패', 'error');
+    } finally {
+      if (normalizedName) savingToCartRef.current.delete(normalizedName);
     }
-  }, [showToast]);
+  };
 
   const handleSaveCustomerReturn = useCallback(async (returnData) => {
     try {
@@ -12680,6 +12741,39 @@ export default function PriceCalculator() {
       }
 
 
+
+      // 같은 업체의 기존 저장된 장바구니 병합 체크
+      if (name) {
+        const normalizedName = name.toLowerCase().replace(/\s/g, '');
+        const existingSavedCart = savedCarts.find(c =>
+          c.name && c.name.toLowerCase().replace(/\s/g, '') === normalizedName
+        );
+
+        if (existingSavedCart) {
+          const confirmed = window.confirm(
+            `"${name}"의 저장된 장바구니가 이미 있습니다.\n\n기존 장바구니에 제품을 병합하시겠습니까?\n\n[확인] 기존 장바구니에 추가\n[취소] 별도 장바구니로 생성`
+          );
+          if (confirmed) {
+            const mergedItems = mergeItems(existingSavedCart.items, newCart.items);
+            const mergedTotal = mergedItems.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0) || total;
+            const mergedMemo = [existingSavedCart.memo, memo].filter(Boolean).join('\n');
+
+            const result = await supabase.updateSavedCart(existingSavedCart.id, {
+              items: mergedItems,
+              total: mergedTotal,
+              memo: mergedMemo
+            });
+            if (result && result[0]) {
+              setSavedCarts(prev => prev.map(c => c.id === existingSavedCart.id ? result[0] : c));
+              setCart([]);
+              showToast(`✅ "${name}" 기존 장바구니에 병합 완료!`);
+            } else {
+              showToast('❌ 병합 실패', 'error');
+            }
+            return;
+          }
+        }
+      }
 
       // 신규 업체 자동 등록 체크 (날짜 형식 이름은 제외)
       if (name && name.trim() && Array.isArray(customers) && !isDateFormatName(name)) {
@@ -13103,11 +13197,141 @@ export default function PriceCalculator() {
     }
   };
 
+  // 아이템 병합 공통 유틸 (동일 제품은 수량 합산)
+  const mergeItems = (existingItems, newItems) => {
+    const merged = [...(existingItems || [])];
+    for (const newItem of (newItems || [])) {
+      const idx = merged.findIndex(item => item.id === newItem.id);
+      if (idx >= 0) {
+        merged[idx] = { ...merged[idx], quantity: merged[idx].quantity + newItem.quantity };
+      } else {
+        merged.push(newItem);
+      }
+    }
+    return merged;
+  };
+
+  // KST 기준 오늘 날짜 문자열 (YYYY-MM-DD)
+  const getKSTDateStr = (dateInput) => {
+    const d = dateInput ? new Date(dateInput) : new Date();
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+  };
+
+  // 기존 주문에 새 아이템 병합
+  const mergeIntoOrder = async (existingOrder, newOrderData) => {
+    try {
+      const mergedItems = mergeItems(existingOrder.items, newOrderData.items);
+      const mergedTotal = mergedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const mergedMemo = [existingOrder.memo, newOrderData.memo].filter(Boolean).join('\n');
+
+      const updatedOrder = {
+        orderNumber: existingOrder.orderNumber,
+        customerName: existingOrder.customerName,
+        customerPhone: existingOrder.customerPhone || newOrderData.customerPhone,
+        customerAddress: existingOrder.customerAddress || newOrderData.customerAddress,
+        priceType: existingOrder.priceType,
+        items: mergedItems,
+        totalAmount: mergedTotal,
+        memo: mergedMemo || null,
+        createdAt: existingOrder.createdAt,
+        returns: existingOrder.returns || null,
+        totalReturned: existingOrder.totalReturned || 0
+      };
+
+      const supabaseOrder = {
+        customer_phone: updatedOrder.customerPhone || null,
+        customer_address: updatedOrder.customerAddress || null,
+        items: mergedItems,
+        subtotal: Math.round(mergedTotal / 1.1),
+        vat: mergedTotal - Math.round(mergedTotal / 1.1),
+        total: mergedTotal,
+        memo: updatedOrder.memo,
+        returns: updatedOrder.returns,
+        total_returned: updatedOrder.totalReturned
+      };
+
+      const result = await supabase.updateOrder(existingOrder.orderNumber, supabaseOrder);
+      if (result !== null) {
+        setOrders(prev => prev.map(o =>
+          o.orderNumber === existingOrder.orderNumber ? updatedOrder : o
+        ));
+
+        // 재고 감소 (새로 추가된 수량만)
+        const stockUpdates = newOrderData.items
+          .map(item => {
+            const product = products.find(p => p.id === item.id);
+            if (product) {
+              const currentStock = product.stock !== undefined ? product.stock : 50;
+              const newStock = Math.max(0, currentStock - item.quantity);
+              return supabase.updateProduct(item.id, { stock: newStock }).catch(err => {
+                console.warn('재고 업데이트 실패:', item.name, err);
+              });
+            }
+            return null;
+          })
+          .filter(Boolean);
+        await Promise.allSettled(stockUpdates);
+
+        setProducts(prev => prev.map(p => {
+          const orderedItem = newOrderData.items.find(i => i.id === p.id);
+          if (orderedItem) {
+            const currentStock = p.stock !== undefined ? p.stock : 50;
+            return { ...p, stock: Math.max(0, currentStock - orderedItem.quantity) };
+          }
+          return p;
+        }));
+
+        setCart([]);
+        if (orderFromSavedCart) {
+          const success = await supabase.deleteSavedCart(orderFromSavedCart);
+          if (success) {
+            setSavedCarts(prev => prev.filter(c => c.id !== orderFromSavedCart));
+          }
+          setOrderFromSavedCart(null);
+        }
+
+        setIsOnline(true);
+        return { success: true, merged: true, mergedOrderNumber: existingOrder.orderNumber };
+      }
+      return null;
+    } catch (err) {
+      console.error('주문 병합 실패:', err);
+      return null;
+    }
+  };
+
   // Supabase에 주문 저장
   const saveOrder = async (orderData) => {
     setIsSaving(true);
     try {
-      // Supabase 형식으로 변환
+      // 동일 업체 오늘 주문 병합 체크 (KST 기준)
+      if (orderData.customerName) {
+        const todayKST = getKSTDateStr();
+        const normalizedName = orderData.customerName.toLowerCase().replace(/\s/g, '');
+        // 가장 최근 주문을 찾기 위해 역순 탐색
+        const existingTodayOrder = [...orders].reverse().find(o =>
+          o.customerName &&
+          o.customerName.toLowerCase().replace(/\s/g, '') === normalizedName &&
+          getKSTDateStr(o.createdAt) === todayKST
+        );
+
+        if (existingTodayOrder) {
+          // 가격 타입 불일치 경고
+          const priceTypeWarning = existingTodayOrder.priceType !== orderData.priceType
+            ? `\n\n⚠️ 주의: 기존 주문은 ${existingTodayOrder.priceType === 'wholesale' ? '도매' : '소매'}가, 현재는 ${orderData.priceType === 'wholesale' ? '도매' : '소매'}가입니다.`
+            : '';
+          const confirmed = window.confirm(
+            `"${orderData.customerName}"에 오늘 주문(${existingTodayOrder.orderNumber})이 이미 있습니다.\n\n기존 주문에 제품을 병합하시겠습니까?${priceTypeWarning}\n\n[확인] 기존 주문에 추가\n[취소] 별도 주문으로 생성`
+          );
+          if (confirmed) {
+            const mergeResult = await mergeIntoOrder(existingTodayOrder, orderData);
+            if (mergeResult) return mergeResult;
+            alert('병합에 실패했습니다. 별도 주문으로 저장합니다.');
+          }
+        }
+      }
+
+      // Supabase 형식으로 변환 (신규 주문)
       const supabaseOrder = {
         id: orderData.orderNumber,
         customer_name: orderData.customerName || null,

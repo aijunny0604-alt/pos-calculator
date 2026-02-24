@@ -468,7 +468,7 @@ input[type="number"] {
 
 /* 애니메이션 클래스 */
 .animate-fade-in-up {
-  animation: fadeInUp 0.4s ease-out forwards;
+  animation: fadeInUp 0.4s ease-out backwards;
 }
 
 .animate-fade-in-down {
