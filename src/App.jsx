@@ -6441,27 +6441,44 @@ function TextAnalyzePage({ products, onAddToCart, formatPrice, priceType, initia
       throw new Error('API 키가 설정되지 않았습니다.');
     }
 
-    // 제품 목록 요약 (이름만)
-    const productNames = products.map(p => p.name).join(', ');
+    // 제품 목록을 카테고리별로 그룹화
+    const grouped = {};
+    products.forEach(p => {
+      const cat = p.category || '기타';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(p.name);
+    });
+    const productList = Object.entries(grouped)
+      .map(([cat, names]) => `[${cat}] ${names.join(', ')}`)
+      .join('\n');
 
-    const prompt = `당신은 주문서 분석 AI입니다. 아래 제품 목록과 주문 텍스트를 분석해서 JSON 형식으로 결과를 반환하세요.
+    const prompt = `당신은 자동차 배기 부품 전문 주문서 분석 AI입니다.
 
-제품 목록: ${productNames}
+제품 목록 (카테고리별):
+${productList}
 
 주문 텍스트:
 ${text}
 
-규칙:
-1. 각 줄에서 제품명과 수량을 추출하세요
-2. 오타, 줄임말, 띄어쓰기 오류를 자동 보정하세요
-3. "하나", "두개", "세개" 등 한글 숫자도 인식하세요
-4. 매칭되는 제품이 없으면 matchedProduct를 null로 설정
-5. 결과는 반드시 JSON 배열로만 반환 (설명 없이)
+핵심 규칙:
+1. matchedProduct는 반드시 위 제품 목록에 있는 정확한 이름을 사용하세요. 목록에 없는 이름을 만들지 마세요.
+2. 각 줄에서 제품명과 수량을 추출하세요.
+3. 오타, 줄임말, 띄어쓰기 오류를 자동 보정하세요.
+4. "하나", "두개", "세개" 등 한글 숫자도 인식하세요.
+5. 줄에 제품명 없이 규격/숫자만 있으면(예: "76 10개") 바로 윗줄의 제품 카테고리를 이어받아 같은 카테고리에서 매칭하세요.
+6. 슬래시(/)나 쉼표로 구분된 여러 제품도 각각 분리하세요.
+7. 매칭 불가 시 matchedProduct를 null로 설정하세요.
+8. JSON 배열만 반환하세요 (설명 없이).
 
-응답 형식 (JSON만):
-[
-  {"originalText": "원본 텍스트", "matchedProduct": "정확한 제품명 또는 null", "quantity": 숫자}
-]`;
+제품명 매칭 힌트:
+- "플랜지 63 L" 또는 "후렌지 63" → "플랜지 FL 63"
+- "카본 93 듀얼" → "카본 듀얼 SCF 93D-G" 또는 "카본 듀얼 CFK 93D-G"
+- "레조 100 250 51" → 레조 소음기 카테고리에서 정확히 매칭
+- "CH 200 64" → CH 공갈 레조 카테고리에서 매칭
+- 싱글=S, 듀얼=D, 실버=S, 티탄=T, 블랙=B, 골드=G
+
+응답 형식:
+[{"originalText":"원본","matchedProduct":"정확한 제품명 또는 null","quantity":숫자}]`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
@@ -6472,7 +6489,7 @@ ${text}
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 2048
+            maxOutputTokens: 8192
           }
         })
       }
